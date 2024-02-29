@@ -40,7 +40,7 @@ using BattleTypes = DefaultTypes<
 struct BattleHash
 {
 	// TODO always returns 0
-	size_t operator(const std::array<uint8_t> &data)() { return 0; }
+	size_t operator()(const std::array<uint8_t, SIZE_BATTLE_NO_PRNG> &data) const { return 0; }
 };
 
 // log=0 means we don't even allocate the log buffer. save_debug_log() just saves what it has
@@ -55,8 +55,86 @@ template <
 	int log = 64,
 	bool chance = true,
 	int rolls = 39,
-	typename Prob>
+	typename Prob,
+	typename Real>
 struct Battle;
+
+// log size
+// prob type
+// real type
+// obs type
+// clamping
+
+enum BattleObs
+{
+	log,
+	chance,
+	battle,
+};
+
+struct BattleDataCommon
+{
+	pkmn_gen1_battle battle;
+	pkmn_gen1_battle_options options;
+	pkmn_result result;
+	pkmn_result_kind result_kind;
+};
+
+template <size_t LOG_SIZE, size_t ROLLS = 0, typename Prob = mpq_class, BattleObs Obs = chance>
+struct BattleData;
+
+template <size_t LOG_SIZE, size_t ROLLS, typename Prob, BattleObs Obs>
+struct BattleData<LOG_SIZE, ROLLS, Prob, Obs>
+	: BattleDataCommon
+{
+	static constexpr bool dlog = true;
+	static constexpr bool dchance = true;
+	static constexpr bool dcalc = true;
+
+	std::array<uint8_t, LOG_SIZE> log_buffer;
+	pkmn_gen1_chance_options chance_options;
+	pkmn_gen1_calc_options calc_options;
+	pkmn_rational *p;
+};
+
+template <size_t LOG_SIZE, BattleObs Obs>
+struct BattleData<LOG_SIZE, 0, bool, Obs>
+	: BattleDataCommon
+{
+	static constexpr bool dlog = true;
+	static constexpr bool dchance = false;
+	static constexpr bool dcalc = false;
+
+	std::array<uint8_t, LOG_SIZE> log_buffer;
+};
+
+template <>
+struct BattleData<0, 0, bool, battle>
+	: BattleDataCommon
+{
+	static constexpr bool dlog = false;
+	static constexpr bool dchance = false;
+	static constexpr bool dcalc = false;
+};
+
+
+template <
+	size_t LOG_SIZE,
+	size_t ROLLS = 0,
+	typename Prob = mpq_class,
+	typename Real = mpq_class,
+	BattleObs Obs = chance>
+struct Battle2 
+{
+	class State : BattleData<LOG_SIZE, ROLLS, Prob, Obs>
+	{
+	};
+};
+
+/*
+we use fundamentally different logic depending on the template parameters above
+while much of it can be accomplished using `if constexpr`, we can't do that with data members
+*/
 
 using Btl = Battle<>;
 
