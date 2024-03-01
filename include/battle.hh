@@ -33,7 +33,7 @@ using BattleTypes = DefaultTypes<
 	pkmn_choice,
 	Obs,
 	Prob,
-	ConstantSum<1, 1>::Value<Real>,
+	ConstantSum<1, 1>::Value,
 	A<9>::Array>;
 
 // ad hoc hash function
@@ -70,7 +70,8 @@ namespace BattleDataImpl
 	*/
 
 	// all battle wrappers will use this data, so we place it in a base class
-	struct BattleDataBase
+	template <size_t LOG_SIZE, size_t ROLLS = 0, typename Prob = mpq_class, BattleObsType Obs = ChanceObs>
+	struct BattleDataBase : PerfectInfoState<BattleTypes<std::array<uint8_t, 16>, float, float>>
 	{
 		pkmn_gen1_battle battle;
 		pkmn_gen1_battle_options options;
@@ -83,7 +84,7 @@ namespace BattleDataImpl
 
 	template <size_t LOG_SIZE, size_t ROLLS, typename Prob, BattleObsType ObsEnum>
 	struct BattleData
-		: BattleDataBase
+		: BattleDataBase<LOG_SIZE, ROLLS, Prob, ObsEnum>
 	{
 		std::array<uint8_t, LOG_SIZE> log_buffer;
 		pkmn_gen1_log_options log_options;
@@ -94,34 +95,37 @@ namespace BattleDataImpl
 		static constexpr bool dlog = true;
 		static constexpr bool dchance = true;
 		static constexpr bool dcalc = true;
+		static constexpr size_t log_size = LOG_SIZE;
 	};
 
 	// No chance/calc needed
 	template <size_t LOG_SIZE, BattleObsType Obs>
 	struct BattleData<LOG_SIZE, 0, bool, Obs>
-		: BattleDataBase
+		: BattleDataBase<LOG_SIZE, 0, bool, Obs>
 	{
-		static_assert(Obs == battle || Obs == LogObs);
+		static_assert(Obs == BattleObs || Obs == LogObs);
 		std::array<uint8_t, LOG_SIZE> log_buffer;
 		pkmn_gen1_log_options log_options;
 
 		static constexpr bool dlog = true;
 		static constexpr bool dchance = false;
 		static constexpr bool dcalc = false;
+		static constexpr size_t log_size = LOG_SIZE;
 	};
 
 	template <>
-	struct BattleData<0, 0, bool, battle>
-		: BattleDataBase
+	struct BattleData<0, 0, bool, BattleObs>
+		: BattleDataBase<0, 0, bool, BattleObs>
 	{
 		static constexpr bool dlog = false;
 		static constexpr bool dchance = false;
 		static constexpr bool dcalc = false;
+		static constexpr size_t log_size = 0;
 	};
 
 	template <size_t ROLLS, typename Prob, BattleObsType ObsEnum>
 	struct BattleData<0, ROLLS, Prob, ObsEnum>
-		: BattleDataBase
+		: BattleDataBase<0, ROLLS, Prob, ObsEnum>
 	{
 		pkmn_gen1_chance_options chance_options;
 		pkmn_gen1_calc_options calc_options;
@@ -130,6 +134,7 @@ namespace BattleDataImpl
 		static constexpr bool dlog = false;
 		static constexpr bool dchance = true;
 		static constexpr bool dcalc = true;
+		static constexpr size_t log_size = 0;
 	};
 };
 
@@ -139,11 +144,14 @@ template <
 	BattleObsType Obs = ChanceObs,
 	typename Prob = mpq_class,
 	typename Real = mpq_class>
-struct Battle
+struct Battle : BattleTypes<std::array<uint8_t, 16>, float, float>
 {
+	using TypeList = BattleTypes<std::array<uint8_t, 16>, float, float>;
+
 	class State
-		: public BattleDataImpl::BattleData<LOG_SIZE, ROLLS, Prob, Obs>
+		: public BattleDataImpl::BattleData<LOG_SIZE, ROLLS, Prob, BattleObsType::ChanceObs>
 	{
+	public:
 		State(const uint8_t *row_side, const uint8_t *col_side)
 		{
 			// init: copy sides onto battle and zero initialize certain bits
@@ -158,8 +166,8 @@ struct Battle
 			}
 			if constexpr (State::dchance)
 			{
-				pkmn_rational_init(&chance_options.probability);
-				p = pkmn_gen1_battle_options_chance_probability(&options);
+				pkmn_rational_init(&this->chance_options.probability);
+				this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
 			}
 
 			get_actions();
@@ -175,7 +183,7 @@ struct Battle
 			memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
 			this->options = other.options;
 			this->result = other.result;
-			// this->result_kind = other.result_kind; // not needed
+			// this->result_kind = other.result_kind; // not needed prolly
 			if constexpr (State::dlog)
 			{
 				this->log_options = {this->log_buffer.data(), LOG_SIZE};
@@ -183,7 +191,7 @@ struct Battle
 			}
 			else
 			{
-				pkmn_gen1_battle_options_set(&options, NULL, NULL, NULL);
+				pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
 			}
 			if constexpr (State::dchance)
 			{
@@ -216,29 +224,29 @@ struct Battle
 			// TODO assumes ROLLS = 3
 			if constexpr (ROLLS != 0)
 			{
-				calc_options.overrides.bytes[0] = 217 + 19 * (battle.bytes[383] % 3);
-				calc_options.overrides.bytes[8] = 217 + 19 * (battle.bytes[382] % 3);
-				pkmn_gen1_battle_options_set(&options, NULL, NULL, &calc_options);
+				this->calc_options.overrides.bytes[0] = 217 + 19 * (this->battle.bytes[383] % 3);
+				this->calc_options.overrides.bytes[8] = 217 + 19 * (this->battle.bytes[382] % 3);
+				pkmn_gen1_battle_options_set(&this->options, NULL, NULL, &this->calc_options);
 			}
 			else
 			{
-				pkmn_gen1_battle_options_set(&options, NULL, NULL, NULL);
+				pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
 			}
 
-			result = pkmn_gen1_battle_update(&battle, row_action, col_action, &options);
+			this->result = pkmn_gen1_battle_update(&this->battle, row_action, col_action, &this->options);
 
 			if constexpr (std::is_floating_point_v<Prob>)
 			{
-				this->prob = static_cast<Prob>(pkmn_rational_numerator(p) / pkmn_rational_denominator(p));
+				this->prob = static_cast<Prob>(pkmn_rational_numerator(this->p) / pkmn_rational_denominator(this->p));
 			}
 			else
 			{
-				this->prob = Prob{pkmn_rational_numerator(p), pkmn_rational_denominator(p)};
+				this->prob = Prob{pkmn_rational_numerator(this->p), pkmn_rational_denominator(this->p)};
 			}
 
 			if constexpr (State::dchance)
 			{
-				pkmn_gen1_chance_actions *chance_ptr = pkmn_gen1_battle_options_chance_actions(&options);
+				pkmn_gen1_chance_actions *chance_ptr = pkmn_gen1_battle_options_chance_actions(&this->options);
 			}
 
 			// TODO WARNING trying this disabled
@@ -259,11 +267,11 @@ struct Battle
 				}
 			}
 
-			this->result_kind = pkmn_result_type(result);
+			this->result_kind = pkmn_result_type(this->result);
 			if (this->result_kind) [[unlikely]]
 			{
 				this->terminal = true;
-				switch (pkmn_result_type(result))
+				switch (pkmn_result_type(this->result))
 				{
 				case PKMN_RESULT_WIN:
 				{
@@ -319,10 +327,10 @@ void apply_actions_with_log(
 	pkmn_choice col_action,
 	uint8_t *data)
 {
-	battle.apply_actions(row_action, col_action);
-	memcpy(battle.log_buffer, data, State::log_size);
-	memcpy(battle.battle, data, SIZE_BATTLE_WITH_PRNG);
-	data[State::log_size + SIZE_BATTLE_WITH_PRNG] = battle.result;
+	state.apply_actions(row_action, col_action);
+	memcpy(state.log_buffer.data(), data, State::log_size);
+	memcpy(state.battle.bytes, data, SIZE_BATTLE_WITH_PRNG);
+	data[State::log_size + SIZE_BATTLE_WITH_PRNG] = state.result;
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 1] = row_action;
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 2] = col_action;
 }
@@ -335,10 +343,10 @@ void apply_actions_with_log_and_eval(
 	pkmn_choice col_action,
 	uint8_t *data)
 {
-	battle.apply_actions(row_action, col_action);
-	memcpy(battle.log_buffer, data, State::log_size);
-	memcpy(battle.battle, data + State::log_size, SIZE_BATTLE_WITH_PRNG);
-	data[State::log_size + SIZE_BATTLE_WITH_PRNG] = battle.result;
+	state.apply_actions(row_action, col_action);
+	memcpy(state.log_buffer, data, State::log_size);
+	memcpy(state.battle, data + State::log_size, SIZE_BATTLE_WITH_PRNG);
+	data[State::log_size + SIZE_BATTLE_WITH_PRNG] = state.result;
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 1] = row_action;
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 2] = col_action;
 	// TODO row_value, col_value, rows, row_model_row_policy, col_model_row_policy, etc

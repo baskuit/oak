@@ -1,13 +1,16 @@
-set(CMAKE_MINIMUM_REQUIRED_VERSION 3.8)
+cmake_minimum_required(VERSION 3.8)
+project(oak VERSION 0.0.1)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 add_subdirectory(extern/pinyon)
+target_include_directories(pinyon INTERFACE extern/pinyon/src)
 
 include_directories(extern/engine/zig-out/include)
 set(libpkmn ${PROJECT_SOURCE_DIR}/extern/engine/zig-out/lib/libpkmn-showdown.a)
 
-add_executable(main src/main.cc)
+add_executable(main ./src/main.cc)
+target_link_libraries(main pinyon)
 target_link_libraries(main ${libpkmn})
 
 add_executable(bull ./src/bull.cc)
