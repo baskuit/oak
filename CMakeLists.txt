@@ -19,3 +19,11 @@ target_link_libraries(bull pinyon)
 add_executable(bull-pinyon ./src/bull-pinyon.cc)
 target_link_libraries(bull-pinyon pinyon)
 target_link_libraries(bull-pinyon ${libpkmn})
+
+add_executable(a ./benchmark/a.cc)
+target_link_libraries(a pinyon)
+target_link_libraries(a ${libpkmn})
+
+add_executable(b ./benchmark/b.cc)
+target_link_libraries(b pinyon)
+target_link_libraries(b ${libpkmn})

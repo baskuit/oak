@@ -2,3 +2,7 @@
 
 # no leaks
 /include/sides.hh
+
+#logs
+/logs/*.log
+/logs/*.html

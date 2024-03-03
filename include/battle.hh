@@ -108,18 +108,17 @@ namespace BattleDataImpl
 			return {Real{Rational<>(1, 2)}};
 		}
 
+		void randomize_transition(prng &device)
+		{
+			uint8_t *battle_prng_bytes = battle.bytes + SIZE_BATTLE_NO_PRNG;
+			*(reinterpret_cast<uint64_t *>(battle_prng_bytes)) = device.uniform_64();
+		}
 
-        void randomize_transition(prng &device)
-        {
-            uint8_t *battle_prng_bytes = battle.bytes + SIZE_BATTLE_NO_PRNG;
-            *(reinterpret_cast<uint64_t *>(battle_prng_bytes)) = device.uniform_64();
-        }
-
-        void randomize_transition(const uint64_t seed)
-        {
-            uint8_t *battle_prng_bytes = battle.bytes + SIZE_BATTLE_NO_PRNG;
-            *(reinterpret_cast<uint64_t *>(battle_prng_bytes)) = seed;
-        }
+		void randomize_transition(const uint64_t seed)
+		{
+			uint8_t *battle_prng_bytes = battle.bytes + SIZE_BATTLE_NO_PRNG;
+			*(reinterpret_cast<uint64_t *>(battle_prng_bytes)) = seed;
+		}
 	};
 
 	template <size_t LOG_SIZE, size_t ROLLS = 0, typename Real = mpq_class, typename Prob = mpq_class, BattleObsT Obs = ChanceObs>
@@ -138,6 +137,19 @@ namespace BattleDataImpl
 		inline void set()
 		{
 			pkmn_gen1_battle_options_set(&this->options, &log_options, &chance_options, &calc_options);
+		}
+
+		const std::array<uint8_t, 16>& get_obs() const
+		{
+			auto *ptr = pkmn_gen1_battle_options_chance_actions(&this->options)->bytes;
+			const std::array<uint8_t, 16> &obs_ref = *reinterpret_cast<std::array<uint8_t, 16> *>(ptr);
+			std::array<uint8_t, 16> obs = obs_ref;
+			// for (int i = 0; i < 16; ++i) {
+			// 	std::cout << obs[i] << ' ';
+			// }
+			// std::cout << std::endl;
+			// return obs;
+			return obs_ref;
 		}
 
 		static constexpr bool dlog = true;
@@ -225,13 +237,11 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 
 			if constexpr (State::dlog)
 			{
-				std::cout << "state init dlog" << std::endl;
-				this->log_buffer = {};
+				// this->log_buffer = {};
 				this->log_options = {this->log_buffer.data(), LOG_SIZE};
 			}
 			if constexpr (State::dchance)
 			{
-				std::cout << "state init dchance" << std::endl;
 				pkmn_rational_init(&this->chance_options.probability);
 				this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
 			}
@@ -241,13 +251,12 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 			get_actions();
 		}
 
-		template <typename State_>
-		State(const State_ &other)
+		State(const State &other)
 		{
+			// std::cout << "normal copy constr invoked" << std::endl;
 			this->prob = other.prob;
 			this->row_actions = other.row_actions;
 			this->col_actions = other.col_actions;
-			this->terminal = other.terminal;
 			memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
 			this->options = other.options;
 			this->result = other.result;
@@ -384,7 +393,7 @@ void apply_actions_with_log(
 {
 	state.apply_actions(row_action, col_action);
 	memcpy(data, state.log_buffer.data(), State::log_size);
-	memcpy(data, state.battle.bytes, SIZE_BATTLE_WITH_PRNG);
+	memcpy(data + State::log_size, state.battle.bytes, SIZE_BATTLE_WITH_PRNG);
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG] = state.result;
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 1] = row_action;
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 2] = col_action;
