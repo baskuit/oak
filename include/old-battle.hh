@@ -31,7 +31,7 @@ struct TypeList : TypeList_
 };
 
 template <bool use_debug_log = false>
-struct BattleTypes : TypeList
+struct OldBattleTypes : TypeList
 {
     static const int n_bytes_battle = 376;
 

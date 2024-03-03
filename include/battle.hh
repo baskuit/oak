@@ -22,37 +22,7 @@ constexpr size_t SIZE_BATTLE_NO_PRNG = 376;
 constexpr size_t SIZE_BATTLE_WITH_PRNG = SIZE_BATTLE_NO_PRNG + 8;
 constexpr size_t SIZE_SIDE = 184;
 
-// basic type list depends on above template params / flags.
-// No log or chance means we have to improvise. I'm feeling hash function tbh TODO
-// if chance actions then those are used as Obs type. Otherwise use the debug log
-// it's faster to use 9 element arrays than vectors for actions containers, certain vectors, etc
-
-template <typename Obs, typename Prob, typename Real = float>
-using BattleTypes = DefaultTypes<
-	Real,
-	pkmn_choice,
-	Obs,
-	Prob,
-	ConstantSum<1, 1>::Value,
-	A<9>::Array>;
-
-// ad hoc hash function
-struct BattleHash
-{
-	// TODO always returns 0
-	size_t operator()(const std::array<uint8_t, SIZE_BATTLE_NO_PRNG> &data) const { return 0; }
-};
-
-// log=0 means we don't even allocate the log buffer. save_debug_log() just saves what it has
-// chance determines whether chance actions are used as Obs type. otherwise log or battle hash is used
-// chance=false also forces the Prob template param to be bool. using probs but not chance actions is silly
-// rolls= the number of possible damage rolls. a simple flooring function determines the roll byte
-// Only values: 3, 20, and 39 are aesthetic. imo 3 is best anyway since it's just min, mean, and max.
-// if default is used no calc_options are passed to options, so a different specialization is used
-// prob type can be floating point or rational type. there are tradeoffs for either
-// prob=bool assumes -Dchance/-Dcalc are not enabled
-
-enum BattleObsType
+enum BattleObsT
 {
 	// In order of size aka preference
 	ChanceObs,
@@ -60,37 +30,115 @@ enum BattleObsType
 	BattleObs,
 };
 
+namespace BattleTypesImpl
+{
+	template <typename Real, typename Prob, BattleObsT Obs>
+	struct BattleTypes;
+
+	template <typename Real, typename Prob>
+	struct BattleTypes<Real, Prob, ChanceObs>
+		: DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 16>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>
+	{
+		using TypeList = DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 16>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>;
+	};
+
+	template <typename Real, typename Prob>
+	struct BattleTypes<Real, Prob, LogObs>
+		: DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 64>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>
+	{
+		using TypeList = DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 64>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>;
+	};
+
+	template <typename Real, typename Prob>
+	struct BattleTypes<Real, Prob, BattleObs>
+		: DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 376>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>
+	{
+		using TypeList = DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 376>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>;
+	};
+};
+
 namespace BattleDataImpl
 {
-
 	/*
+
 	Different data members are required for a libpkmn battle depending on what features we want
 	C++'s `if constexpr` allows for a lot of in-line compile time stuff
 	but changing data members at compile time requires templat specialization
 	*/
 
 	// all battle wrappers will use this data, so we place it in a base class
-	template <size_t LOG_SIZE, size_t ROLLS = 0, typename Prob = mpq_class, BattleObsType Obs = ChanceObs>
-	struct BattleDataBase : PerfectInfoState<BattleTypes<std::array<uint8_t, 16>, float, float>>
+	template <size_t LOG_SIZE, size_t ROLLS = 0, typename Real = mpq_class, typename Prob = mpq_class, BattleObsT Obs = ChanceObs>
+	struct BattleDataBase
 	{
+		A<9>::Array<pkmn_choice> row_actions{};
+		A<9>::Array<pkmn_choice> col_actions{};
+		Prob prob{};
+
 		pkmn_gen1_battle battle;
 		pkmn_gen1_battle_options options;
 		pkmn_result result;
 		pkmn_result_kind result_kind;
+
+		bool is_terminal() const
+		{
+			return result_kind;
+		}
+
+		ConstantSum<1, 1>::Value<Real> get_payoff() const
+		{
+			if (this->result_kind) [[likely]]
+			{
+				switch (pkmn_result_type(this->result))
+				{
+				case PKMN_RESULT_WIN:
+				{
+					return {Real{0}};
+				}
+				case PKMN_RESULT_LOSE:
+				{
+					return {Real{1}};
+				}
+				case PKMN_RESULT_ERROR:
+				{
+					std::exception();
+				}
+				}
+			}
+			// tie/not terminal
+			return {Real{Rational<>(1, 2)}};
+		}
+
+
+        void randomize_transition(prng &device)
+        {
+            uint8_t *battle_prng_bytes = battle.bytes + SIZE_BATTLE_NO_PRNG;
+            *(reinterpret_cast<uint64_t *>(battle_prng_bytes)) = device.uniform_64();
+        }
+
+        void randomize_transition(const uint64_t seed)
+        {
+            uint8_t *battle_prng_bytes = battle.bytes + SIZE_BATTLE_NO_PRNG;
+            *(reinterpret_cast<uint64_t *>(battle_prng_bytes)) = seed;
+        }
 	};
 
-	template <size_t LOG_SIZE, size_t ROLLS = 0, typename Prob = mpq_class, BattleObsType Obs = ChanceObs>
+	template <size_t LOG_SIZE, size_t ROLLS = 0, typename Real = mpq_class, typename Prob = mpq_class, BattleObsT Obs = ChanceObs>
 	struct BattleData;
 
-	template <size_t LOG_SIZE, size_t ROLLS, typename Prob, BattleObsType ObsEnum>
+	template <size_t LOG_SIZE, size_t ROLLS, typename Real, typename Prob, BattleObsT ObsEnum>
 	struct BattleData
-		: BattleDataBase<LOG_SIZE, ROLLS, Prob, ObsEnum>
+		: BattleDataBase<LOG_SIZE, ROLLS, Real, Prob, ObsEnum>
 	{
-		std::array<uint8_t, LOG_SIZE> log_buffer;
-		pkmn_gen1_log_options log_options;
-		pkmn_gen1_chance_options chance_options;
-		pkmn_gen1_calc_options calc_options;
+		std::array<uint8_t, LOG_SIZE> log_buffer{};
+		pkmn_gen1_log_options log_options{};
+		pkmn_gen1_chance_options chance_options{};
+		pkmn_gen1_calc_options calc_options{};
 		pkmn_rational *p;
+
+		inline void set()
+		{
+			pkmn_gen1_battle_options_set(&this->options, &log_options, &chance_options, &calc_options);
+		}
 
 		static constexpr bool dlog = true;
 		static constexpr bool dchance = true;
@@ -99,13 +147,18 @@ namespace BattleDataImpl
 	};
 
 	// No chance/calc needed
-	template <size_t LOG_SIZE, BattleObsType Obs>
-	struct BattleData<LOG_SIZE, 0, bool, Obs>
-		: BattleDataBase<LOG_SIZE, 0, bool, Obs>
+	template <size_t LOG_SIZE, typename Real, BattleObsT Obs>
+	struct BattleData<LOG_SIZE, 0, Real, bool, Obs>
+		: BattleDataBase<LOG_SIZE, 0, Real, bool, Obs>
 	{
 		static_assert(Obs == BattleObs || Obs == LogObs);
-		std::array<uint8_t, LOG_SIZE> log_buffer;
-		pkmn_gen1_log_options log_options;
+		std::array<uint8_t, LOG_SIZE> log_buffer{};
+		pkmn_gen1_log_options log_options{};
+
+		inline void set()
+		{
+			pkmn_gen1_battle_options_set(&this->options, &log_options, NULL, NULL);
+		}
 
 		static constexpr bool dlog = true;
 		static constexpr bool dchance = false;
@@ -113,23 +166,33 @@ namespace BattleDataImpl
 		static constexpr size_t log_size = LOG_SIZE;
 	};
 
-	template <>
-	struct BattleData<0, 0, bool, BattleObs>
-		: BattleDataBase<0, 0, bool, BattleObs>
+	template <typename Real>
+	struct BattleData<0, 0, Real, bool, BattleObs>
+		: BattleDataBase<0, 0, Real, bool, BattleObs>
 	{
+		inline void set()
+		{
+			pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
+		}
+
 		static constexpr bool dlog = false;
 		static constexpr bool dchance = false;
 		static constexpr bool dcalc = false;
 		static constexpr size_t log_size = 0;
 	};
 
-	template <size_t ROLLS, typename Prob, BattleObsType ObsEnum>
-	struct BattleData<0, ROLLS, Prob, ObsEnum>
-		: BattleDataBase<0, ROLLS, Prob, ObsEnum>
+	template <size_t ROLLS, typename Real, typename Prob, BattleObsT ObsEnum>
+	struct BattleData<0, ROLLS, Real, Prob, ObsEnum>
+		: BattleDataBase<0, ROLLS, Real, Prob, ObsEnum>
 	{
 		pkmn_gen1_chance_options chance_options;
 		pkmn_gen1_calc_options calc_options;
 		pkmn_rational *p;
+
+		inline void set()
+		{
+			pkmn_gen1_battle_options_set(&this->options, NULL, &chance_options, &calc_options);
+		}
 
 		static constexpr bool dlog = false;
 		static constexpr bool dchance = true;
@@ -141,15 +204,15 @@ namespace BattleDataImpl
 template <
 	size_t LOG_SIZE,
 	size_t ROLLS = 0,
-	BattleObsType Obs = ChanceObs,
+	BattleObsT Obs = ChanceObs,
 	typename Prob = mpq_class,
 	typename Real = mpq_class>
-struct Battle : BattleTypes<std::array<uint8_t, 16>, float, float>
+struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 {
-	using TypeList = BattleTypes<std::array<uint8_t, 16>, float, float>;
+	using TypeList = BattleTypesImpl::BattleTypes<Real, Prob, Obs>;
 
 	class State
-		: public BattleDataImpl::BattleData<LOG_SIZE, ROLLS, Prob, BattleObsType::ChanceObs>
+		: public BattleDataImpl::BattleData<LOG_SIZE, ROLLS, Real, Prob, Obs>
 	{
 	public:
 		State(const uint8_t *row_side, const uint8_t *col_side)
@@ -162,13 +225,18 @@ struct Battle : BattleTypes<std::array<uint8_t, 16>, float, float>
 
 			if constexpr (State::dlog)
 			{
+				std::cout << "state init dlog" << std::endl;
+				this->log_buffer = {};
 				this->log_options = {this->log_buffer.data(), LOG_SIZE};
 			}
 			if constexpr (State::dchance)
 			{
+				std::cout << "state init dchance" << std::endl;
 				pkmn_rational_init(&this->chance_options.probability);
 				this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
 			}
+
+			this->set();
 
 			get_actions();
 		}
@@ -253,7 +321,7 @@ struct Battle : BattleTypes<std::array<uint8_t, 16>, float, float>
 			// memcpy(this->obs.data(), chance_ptr->bytes, 16);
 			if constexpr (ROLLS != 0)
 			{
-				const Obs &obs_ref = this->get_obs();
+				const typename TypeList::Obs &obs_ref = this->get_obs();
 
 				if (obs_ref[1] & 2 && obs_ref[0])
 				{
@@ -268,33 +336,6 @@ struct Battle : BattleTypes<std::array<uint8_t, 16>, float, float>
 			}
 
 			this->result_kind = pkmn_result_type(this->result);
-			if (this->result_kind) [[unlikely]]
-			{
-				this->terminal = true;
-				switch (pkmn_result_type(this->result))
-				{
-				case PKMN_RESULT_WIN:
-				{
-					this->payoff = TypeList::Value{Real{0}};
-					break;
-				}
-				case PKMN_RESULT_LOSE:
-				{
-					this->payoff = TypeList::Value{Real{1}};
-					break;
-				}
-				case PKMN_RESULT_TIE:
-				{
-					// TODO mpq_class/float stuff here
-					this->payoff = TypeList::Value{Real{Rational<>(1, 2)}};
-					break;
-				}
-				case PKMN_RESULT_ERROR:
-				{
-					std::exception();
-				}
-				}
-			}
 		}
 	};
 };
@@ -318,6 +359,20 @@ int n_alive(const uint8_t *data)
 	return n;
 }
 
+int n_alive_side(const uint8_t *data, int player = 0)
+{
+	int n{0};
+	for (int p = 0; p < 6; ++p)
+	{
+		const int index = SIZE_SIDE * player + 24 * p + 18;
+		const bool alive = data[index] || data[index + 1];
+		if (alive)
+			++n;
+	}
+
+	return n;
+}
+
 // here we need to call the `apply_actions` function so internals are updated so we have to template
 // the data pointer is assumed to be a buffer(slice) big enough for that turn
 template <typename State>
@@ -328,28 +383,19 @@ void apply_actions_with_log(
 	uint8_t *data)
 {
 	state.apply_actions(row_action, col_action);
-	memcpy(state.log_buffer.data(), data, State::log_size);
-	memcpy(state.battle.bytes, data, SIZE_BATTLE_WITH_PRNG);
+	memcpy(data, state.log_buffer.data(), State::log_size);
+	memcpy(data, state.battle.bytes, SIZE_BATTLE_WITH_PRNG);
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG] = state.result;
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 1] = row_action;
 	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 2] = col_action;
 }
 
-// assumes the output objects have the pinyon-esque 'row/col_strategy' members
-template <typename State, typename RowModelOutput, typename ColModelOutput>
-void apply_actions_with_log_and_eval(
-	State &state,
-	pkmn_choice row_action,
-	pkmn_choice col_action,
-	uint8_t *data)
+template <typename State>
+void get_active_hp(const State &state)
 {
-	state.apply_actions(row_action, col_action);
-	memcpy(state.log_buffer, data, State::log_size);
-	memcpy(state.battle, data + State::log_size, SIZE_BATTLE_WITH_PRNG);
-	data[State::log_size + SIZE_BATTLE_WITH_PRNG] = state.result;
-	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 1] = row_action;
-	data[State::log_size + SIZE_BATTLE_WITH_PRNG + 2] = col_action;
-	// TODO row_value, col_value, rows, row_model_row_policy, col_model_row_policy, etc
+	const int hp_0 = state.battle.bytes[18] + 256 * state.battle.bytes[19];
+	const int hp_1 = state.battle.bytes[18 + SIZE_SIDE] + 256 * state.battle.bytes[19 + SIZE_SIDE];
+	std::cout << "action hp: " << hp_0 << ' ' << hp_1 << std::endl;
 }
 
 // TODO just write extra function in zig, dummy!
