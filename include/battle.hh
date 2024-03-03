@@ -24,12 +24,13 @@ constexpr size_t SIZE_SIDE = 184;
 
 enum BattleObsT
 {
-	// In order of size aka preference
+	// In order of preference aka size
 	ChanceObs,
 	LogObs,
 	BattleObs,
 };
 
+// basically a converter between ObsType enums and the actual types in the constructor for the basic type list
 namespace BattleTypesImpl
 {
 	template <typename Real, typename Prob, BattleObsT Obs>
@@ -39,34 +40,41 @@ namespace BattleTypesImpl
 	struct BattleTypes<Real, Prob, ChanceObs>
 		: DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 16>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>
 	{
-		using TypeList = DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 16>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>;
 	};
 
 	template <typename Real, typename Prob>
 	struct BattleTypes<Real, Prob, LogObs>
 		: DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 64>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>
 	{
-		using TypeList = DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 64>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>;
 	};
 
 	template <typename Real, typename Prob>
 	struct BattleTypes<Real, Prob, BattleObs>
 		: DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 376>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>
 	{
-		using TypeList = DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 376>, Prob, ConstantSum<1, 1>::Value, A<9>::Array>;
 	};
 };
 
 namespace BattleDataImpl
 {
 	/*
+	
+	This base class template spares code by holding 
+	the data members that are required for all battles.
 
-	Different data members are required for a libpkmn battle depending on what features we want
-	C++'s `if constexpr` allows for a lot of in-line compile time stuff
-	but changing data members at compile time requires templat specialization
+	We also implement the basic `State` methods that are expected by pinyon.
+	In most of the library code we use the base class `PerfectInfoState` for this.
+	We opt not to use that here since it has an `Obs` type member and the `get_obs` method
+	simply returns a reference to this.
+	The search code for pinyon copies the state object instead of using an `unmake_move` method
+	In view of this, the `Obs` member merely results in extra allocation.
+	This is because the `pkmn_gen1_options` struct is the canonical container for the chance actions, for example.
+	So even if our `get_obs` currectly just references this data theres still a vestigial data member
+	that must be allocated for with every copied state.
+
+	
 	*/
 
-	// all battle wrappers will use this data, so we place it in a base class
 	template <size_t LOG_SIZE, size_t ROLLS = 0, typename Real = mpq_class, typename Prob = mpq_class, BattleObsT Obs = ChanceObs>
 	struct BattleDataBase
 	{
@@ -105,6 +113,7 @@ namespace BattleDataImpl
 				}
 			}
 			// tie/not terminal
+			// Rational type is used because it has a conversion operator to mpq_class and floating point
 			return {Real{Rational<>(1, 2)}};
 		}
 
@@ -120,6 +129,13 @@ namespace BattleDataImpl
 			*(reinterpret_cast<uint64_t *>(battle_prng_bytes)) = seed;
 		}
 	};
+
+	/*
+
+	Different data members are required for a libpkmn battle depending on what features we want
+	C++'s `if constexpr` allows for a lot of in-line compile time stuff
+	but changing data members at compile time requires templat specialization
+	*/
 
 	template <size_t LOG_SIZE, size_t ROLLS = 0, typename Real = mpq_class, typename Prob = mpq_class, BattleObsT Obs = ChanceObs>
 	struct BattleData;
@@ -137,19 +153,6 @@ namespace BattleDataImpl
 		inline void set()
 		{
 			pkmn_gen1_battle_options_set(&this->options, &log_options, &chance_options, &calc_options);
-		}
-
-		const std::array<uint8_t, 16>& get_obs() const
-		{
-			auto *ptr = pkmn_gen1_battle_options_chance_actions(&this->options)->bytes;
-			const std::array<uint8_t, 16> &obs_ref = *reinterpret_cast<std::array<uint8_t, 16> *>(ptr);
-			std::array<uint8_t, 16> obs = obs_ref;
-			// for (int i = 0; i < 16; ++i) {
-			// 	std::cout << obs[i] << ' ';
-			// }
-			// std::cout << std::endl;
-			// return obs;
-			return obs_ref;
 		}
 
 		static constexpr bool dlog = true;
@@ -237,7 +240,6 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 
 			if constexpr (State::dlog)
 			{
-				// this->log_buffer = {};
 				this->log_options = {this->log_buffer.data(), LOG_SIZE};
 			}
 			if constexpr (State::dchance)
@@ -260,7 +262,7 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 			memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
 			this->options = other.options;
 			this->result = other.result;
-			// this->result_kind = other.result_kind; // not needed prolly
+			this->result_kind = other.result_kind;
 			if constexpr (State::dlog)
 			{
 				this->log_options = {this->log_buffer.data(), LOG_SIZE};
@@ -276,6 +278,63 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 			}
 		}
 
+		template <typename State_>
+		State(const State_ &other)
+		{
+			std::cout << "templated copy constr invoked" << std::endl;
+			this->prob = other.prob;
+			this->row_actions = other.row_actions;
+			this->col_actions = other.col_actions;
+			memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
+			this->options = other.options;
+			this->result = other.result;
+			this->result_kind = other.result_kind;
+			if constexpr (State::dlog)
+			{
+				if constexpr (State_::dlog) {
+
+				} else {
+					
+				}
+				this->log_options = {this->log_buffer.data(), LOG_SIZE};
+				pkmn_gen1_battle_options_set(&this->options, &this->log_options, NULL, NULL);
+			}
+			else
+			{
+				pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
+			}
+			if constexpr (State::dchance)
+			{
+				this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
+			}
+		}
+
+		const auto &get_obs() const
+		{
+			if constexpr (Obs == ChanceObs)
+			{
+				auto *ptr = pkmn_gen1_battle_options_chance_actions(&this->options)->bytes;
+				const std::array<uint8_t, 16> &obs_ref = *reinterpret_cast<std::array<uint8_t, 16> *>(ptr);
+				// std::array<uint8_t, 16> obs = obs_ref;
+				// for (int i = 0; i < 16; ++i) {
+				// 	std::cout << obs[i] << ' ';
+				// }
+				// std::cout << std::endl;
+				// return obs;
+				return obs_ref;
+			}
+			if constexpr (Obs == LogObs)
+			{
+				return this->log_buffer;
+			}
+			if constexpr (Obs == BattleObs)
+			{
+				auto *ptr = this->battle.bytes;
+				const std::array<uint8_t, SIZE_BATTLE_WITH_PRNG> &obs_ref = *reinterpret_cast<std::array<uint8_t, SIZE_BATTLE_WITH_PRNG> *>(ptr);
+				return obs_ref;
+			}
+		}
+
 		void get_actions()
 		{
 			this->row_actions.resize(
@@ -284,6 +343,7 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 				pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P2, pkmn_result_p2(this->result), this->col_actions.data(), PKMN_MAX_CHOICES));
 		}
 
+		// possibly a legacy method
 		void get_actions(
 			TypeList::VectorAction &row_actions,
 			TypeList::VectorAction &col_actions) const
@@ -301,8 +361,8 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 			// TODO assumes ROLLS = 3
 			if constexpr (ROLLS != 0)
 			{
-				this->calc_options.overrides.bytes[0] = 217 + 19 * (this->battle.bytes[383] % 3);
-				this->calc_options.overrides.bytes[8] = 217 + 19 * (this->battle.bytes[382] % 3);
+				this->calc_options.overrides.bytes[0] = 217 + int{38 / (ROLLS - 1)} * (this->battle.bytes[383] % ROLLS);
+				this->calc_options.overrides.bytes[8] = 217 + int{38 / (ROLLS - 1)} * (this->battle.bytes[382] % ROLLS);
 				pkmn_gen1_battle_options_set(&this->options, NULL, NULL, &this->calc_options);
 			}
 			else
@@ -316,7 +376,7 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 			{
 				this->prob = static_cast<Prob>(pkmn_rational_numerator(this->p) / pkmn_rational_denominator(this->p));
 			}
-			else
+			else if constexpr (!std::is_same_v<Prob, bool>)
 			{
 				this->prob = Prob{pkmn_rational_numerator(this->p), pkmn_rational_denominator(this->p)};
 			}
@@ -326,21 +386,19 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 				pkmn_gen1_chance_actions *chance_ptr = pkmn_gen1_battle_options_chance_actions(&this->options);
 			}
 
-			// TODO WARNING trying this disabled
-			// memcpy(this->obs.data(), chance_ptr->bytes, 16);
 			if constexpr (ROLLS != 0)
 			{
-				const typename TypeList::Obs &obs_ref = this->get_obs();
-
+				// TODO clean up static_cast nonsense
+				const auto &obs_ref = this->get_obs();
 				if (obs_ref[1] & 2 && obs_ref[0])
 				{
-					this->prob *= static_cast<typename TypeList::Prob>(
-						typename TypeList::Q{13, 1});
+					this->prob *= static_cast<Prob>(
+						typename TypeList::Q{static_cast<int>(39 / ROLLS), 1});
 				}
 				if (obs_ref[9] & 2 && obs_ref[8])
 				{
-					this->prob *= static_cast<typename TypeList::Prob>(
-						typename TypeList::Q{13, 1});
+					this->prob *= static_cast<Prob>(
+						typename TypeList::Q{static_cast<int>(39 / ROLLS), 1});
 				}
 			}
 
