@@ -2,6 +2,8 @@
 
 #include <pkmn.h>
 
+#include <pinyon.hh>
+
 /*
 
 DefaultNodes<...>::ChanceNode happens to be a generic linked-list backed set impl.
