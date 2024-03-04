@@ -1,30 +1,18 @@
 #include "../include/battle.hh"
-#include "../include/debug-log.hh"
-#include "../include/old-battle.hh"
-
+#include "../include/prob-test.hh"
 #include "../include/sides.hh"
 
-
-int main()
-{
+int main() {
     prng device{0};
-    using T = MonteCarloModel<
-        Battle<64, 3, ChanceObs, mpq_class, mpq_class>>;
-    using U = AlphaBetaIter<T>;
-    T::State
-        state{sides[4], sides[0]};
-    DebugLog<T::State> debug_log{state};
+    using T = Battle<64, 3, ChanceObs, mpq_class, mpq_class>;
 
+    T::State state{sides[0], sides[0]};
+
+    state.clamped = true;
     state.apply_actions(0, 0);
     state.get_actions();
-
-    U::Model model{0};
-
-    U::Search search{0, 1 << 7, mpq_class{0}};
-    U::MatrixNode node{};
-    search.run(1, device, state, model, node);
-
-    std::cout << node.alpha.get_d() << ' ' << node.beta.get_d() << std::endl;
-    node.chance_data_matrix.print();
+    pkmn_choice action = state.row_actions[0];
+    mpq_class total_prob = prob_test<T>(device, 1 << 5, state, action, action);
+    std::cout << total_prob.get_str() << " ~ " << total_prob.get_d() << std::endl;
     return 0;
 }
