@@ -42,6 +42,6 @@ void q_value()
 
 int main(int argc, char **argv)
 {
-    // q_value();
+    q_value();
     return 0;
 }
