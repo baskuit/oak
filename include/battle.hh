@@ -100,11 +100,11 @@ namespace BattleDataImpl
 				{
 				case PKMN_RESULT_WIN:
 				{
-					return {Real{0}};
+					return {Real{1}};
 				}
 				case PKMN_RESULT_LOSE:
 				{
-					return {Real{1}};
+					return {Real{0}};
 				}
 				case PKMN_RESULT_ERROR:
 				{
@@ -149,6 +149,7 @@ namespace BattleDataImpl
 		pkmn_gen1_chance_options chance_options{};
 		pkmn_gen1_calc_options calc_options{};
 		pkmn_rational *p;
+		bool clamped = false;
 
 		inline void set()
 		{
@@ -203,6 +204,7 @@ namespace BattleDataImpl
 		pkmn_gen1_chance_options chance_options;
 		pkmn_gen1_calc_options calc_options;
 		pkmn_rational *p;
+		bool clamped = false;
 
 		inline void set()
 		{
@@ -276,6 +278,10 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 			{
 				this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
 			}
+			if constexpr (State::dcalc) 
+			{
+				this->clamped = other.clamped;
+			}
 		}
 
 		template <typename State_>
@@ -306,6 +312,10 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 			if constexpr (State::dchance)
 			{
 				this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
+			}
+			if constexpr (State::dcalc)
+			{
+				this->clamped = other.clamped;
 			}
 		}
 
@@ -361,9 +371,15 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs>
 			// TODO assumes ROLLS = 3
 			if constexpr (ROLLS != 0)
 			{
-				this->calc_options.overrides.bytes[0] = 217 + int{38 / (ROLLS - 1)} * (this->battle.bytes[383] % ROLLS);
-				this->calc_options.overrides.bytes[8] = 217 + int{38 / (ROLLS - 1)} * (this->battle.bytes[382] % ROLLS);
-				pkmn_gen1_battle_options_set(&this->options, NULL, NULL, &this->calc_options);
+				if (this->clamped) {
+					this->calc_options.overrides.bytes[0] = 217 + int{38 / (ROLLS - 1)} * (this->battle.bytes[383] % ROLLS);
+					this->calc_options.overrides.bytes[8] = 217 + int{38 / (ROLLS - 1)} * (this->battle.bytes[382] % ROLLS);
+					pkmn_gen1_battle_options_set(&this->options, NULL, NULL, &this->calc_options);
+				}
+				else
+				{
+					pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
+				}
 			}
 			else
 			{

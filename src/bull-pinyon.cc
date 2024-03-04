@@ -1,35 +1,47 @@
-// #include <pinyon.hh>
+#include <pinyon.hh>
 
-// #include "./src/battle.hh"
-// #include "./src/print.hh"
-// #include "./src/mcm-no-switch.hh"
-// #include "./src/monte-carlo-average.hh"
+#include "../include/battle.hh"
+#include "../include/mc-average.hh"
+#include "../include/clamp.hh"
+#include "../include/sides.hh"
 
-// void rollout_and_save()
-// {
-//     using S = BattleTypes<true>::State;
-//     S state{0, 0};
-//     // state.print_log = true;
-
-//     prng device{0};
-
-//     while (!state.is_terminal())
-//     {
-//         const int row_idx = device.random_int(state.row_actions.size());
-//         const int col_idx = device.random_int(state.col_actions.size());
-//         const auto row_action = state.row_actions[row_idx];
-//         const auto col_action = state.col_actions[col_idx];
-//         state.apply_actions(row_action, col_action);
-//         state.get_actions();
-//     }
-
-//     state.save_debug_log();
-// }
-
-int main()
+void q_value()
 {
+    // depth-2 alpha beta solve with MC-AVG at leafs. damage rolls are clamped at the start
+    using LeafModel = Clamped<SearchModel<
+        AlphaBetaForce<MonteCarloModelAverage<Battle<64, 0, ChanceObs, float, float>>>, false, false, false>>;
 
-    // rollout_and_save();
+    // the bull 1v1 exhaustively explored up to depth 1. at 'terminal' nodes, we apply the above value estimation
+    using Types = FullTraversal<NullModel<MappedState<LeafModel, true>>>;
 
+    prng device{22524};
+
+    Battle<64, 0, ChanceObs, float, float>::State battle{sides[0], sides[0]};
+    battle.apply_actions(0, 0);
+    battle.get_actions();
+
+    const size_t leaf_depth = 2;
+    LeafModel::Model leaf_model{leaf_depth, prng{0}, {prng{0}, 1 << 1}, {0, 1 << 7, 0.0f}};
+
+    const size_t mapping_tries = 1 << 18;
+    const size_t mapping_depth = 1;
+    Types::State mapped_state{mapping_depth, mapping_tries, prng{3}, leaf_model, battle};
+    std::cout << "mapped state initialized!" << std::endl;
+    std::cout << "tries: " << mapping_tries << "; " << mapped_state.node->count_matrix_nodes() << " nodes." << std::endl;
+
+    Types::Model model{};
+    Types::Search search{};
+    Types::MatrixNode node{};
+    const size_t threads = 8;
+    search.run(1, device, mapped_state, model, node, threads);
+
+    // the point of all this compute. this allows us to approximate the q-value matrix that bull.cc provides
+    node.stats.nash_payoff_matrix.print();
+}
+
+
+int main(int argc, char **argv)
+{
+    // q_value();
     return 0;
 }

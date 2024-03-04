@@ -13,6 +13,10 @@ add_executable(main ./src/main.cc)
 target_link_libraries(main pinyon)
 target_link_libraries(main ${libpkmn})
 
+add_executable(abmpq ./src/mpq-alpha-beta.cc)
+target_link_libraries(abmpq pinyon)
+target_link_libraries(abmpq ${libpkmn})
+
 add_executable(bull ./src/bull.cc)
 target_link_libraries(bull pinyon)
 
