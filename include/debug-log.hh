@@ -1,21 +1,20 @@
 #pragma once
 
-#include "./battle.hh"
-
 #include <filesystem>
 #include <fstream>
 
+#include "./battle.hh"
+
 template <typename State>
-struct DebugLog
-{
+struct DebugLog {
     static constexpr size_t header_size = SIZE_BATTLE_WITH_PRNG + 4;
     static constexpr size_t frame_size = State::log_size + SIZE_BATTLE_WITH_PRNG + 3;
+    static constexpr size_t eval_frame_size = 1000;
 
     std::array<uint8_t, header_size> header{};
-    std::vector<std::array<uint8_t, frame_size>> frames{};
+    std::vector<std::array<uint8_t, eval_frame_size>> frames{};
 
-    DebugLog(const State &state)
-    {
+    DebugLog(const State &state) {
         header[0] = uint8_t{1};
         header[1] = uint8_t{1};
         header[2] = uint8_t{State::log_size % 256};
@@ -23,8 +22,7 @@ struct DebugLog
         memcpy(header.data() + 4, state.battle.bytes, SIZE_BATTLE_WITH_PRNG);
     }
 
-    void save(const State &state) const
-    {
+    void save(const State &state) const {
         const uint8_t *battle_prng_bytes = state.battle.bytes + SIZE_BATTLE_NO_PRNG;
         const uint64_t *seed = reinterpret_cast<const uint64_t *>(battle_prng_bytes);
         const std::string cwd = std::filesystem::current_path();
@@ -34,42 +32,99 @@ struct DebugLog
 
         file.write(reinterpret_cast<const char *>(header.data()), header_size);
 
-        for (const auto &frame : frames)
-        {
-            file.write(reinterpret_cast<const char *>(frame.data()), frame_size);
+        for (const auto &frame : frames) {
+            file.write(reinterpret_cast<const char *>(frame.data()), eval_frame_size);
         }
 
         file.close();
     }
 
-    void print() const
-    {
+    void print() const {
         std::cout << "HEADER: " << std::endl;
-        for (int i = 0; i < header_size; ++i)
-        {
+        for (int i = 0; i < header_size; ++i) {
             std::cout << (int)header[i] << ' ';
         }
         std::cout << std::endl;
 
-        for (const auto &frame : frames)
+        for (const auto &frame : frames) {
+            std::cout << '{' << std::endl;
+            this->process_frame(frame);
+            std::cout << '}' << std::endl << std::endl;
+
+        }
+    }
+
+    void process_frame(const std::array<uint8_t, eval_frame_size> &frame) const {
+        int index = 0;
+        std::cout << "LOG: " << std::endl;
+        for (int i = 0; i < State::log_size; ++i) {
+            std::cout << (int)frame[index++] << ' ';
+        }
+        std::cout << std::endl;
+
+        std::cout << "BATTLE: " << std::endl;
+        for (int i = 0; i < SIZE_BATTLE_WITH_PRNG; ++i) {
+            std::cout << (int)frame[index++] << ' ';
+        }
+        std::cout << std::endl;
+
+        std::cout << "RESULT: " << std::endl;
+        for (int i = 0; i < 3; ++i) {
+            std::cout << (int)frame[index++] << ' ';
+        }
+        std::cout << std::endl;
+
+        int rows = frame[index++];
+        int cols = frame[index++];
+        std::cout << "ROWS: " << rows << " COLS: " << cols << std::endl;
+
+        const float *data_f = reinterpret_cast<const float *>(frame.data() + index);
+        int float_index = 0;
+        std::cout << "  ROW DATA: " << std::endl;
         {
-            std::cout << "FRAME: " << std::endl;
-            for (int i = 0; i < frame_size; ++i)
-            {
-                std::cout << (int)frame[i] << ' ';
+            std::cout << "ROW'S VALUE: " << *(data_f + (float_index++)) << std::endl;
+            std::cout << "ROW'S ROW POLICY:" << std::endl;
+            for (int i = 0; i < rows; ++i) {
+                std::cout << *(data_f + (float_index++)) << ' ';
             }
             std::cout << std::endl;
+            std::cout << "ROW'S COL POLICY:" << std::endl;
+            for (int i = 0; i < cols; ++i) {
+                std::cout << *(data_f + (float_index++)) << ' ';
+            }
+            std::cout << std::endl;
+
+            index += 4 * float_index;
+            std::cout << "N ROW MATRICES: " << (int)frame[index++] << std::endl;
+        }
+
+        data_f = reinterpret_cast<const float *>(frame.data() + index);
+        float_index = 0;
+        std::cout << "  COL DATA: " << std::endl;
+        {
+            std::cout << "COL'S VALUE: " << *(data_f + (float_index++)) << std::endl;
+            std::cout << "COL'S ROW POLICY:" << std::endl;
+            for (int i = 0; i < rows; ++i) {
+                std::cout << *(data_f + (float_index++)) << ' ';
+            }
+            std::cout << std::endl;
+            std::cout << "COL'S COL POLICY:" << std::endl;
+            for (int i = 0; i < cols; ++i) {
+                std::cout << *(data_f + (float_index++)) << ' ';
+            }
+            std::cout << std::endl;
+
+            index += 4 * float_index;
+            std::cout << "N ROW MATRICES: " << (int)frame[index++] << std::endl;
         }
     }
 };
 
 template <typename State>
-void rollout_with_debug(State &state, DebugLog<State> &debug_log)
-{
+void rollout_with_debug(State &state, DebugLog<State> &debug_log) {
     prng device{};
     int frame = 0;
-    while (!state.is_terminal())
-    {
+    while (!state.is_terminal()) {
         std::cout << "frame: " << frame << std::endl;
         get_active_hp(state);
 
@@ -85,4 +140,28 @@ void rollout_with_debug(State &state, DebugLog<State> &debug_log)
     }
 
     get_active_hp(state);
+}
+
+template <typename State, typename RowModelTypes, typename ColModelTypes>
+void rollout_with_eval_debug(State &state, typename RowModelTypes::Model &row_model,
+                             typename ColModelTypes::Model &col_model, DebugLog<State> &debug_log) {
+    prng device{};
+    int frame = 0;
+    typename RowModelTypes::ModelOutput row_output{};
+    typename ColModelTypes::ModelOutput col_output{};
+
+    while (!state.is_terminal()) {
+        row_model.inference(State{state}, row_output);
+        col_model.inference(State{state}, col_output);
+
+        const int row_idx = device.sample_pdf(row_output.row_policy);
+        const int col_idx = device.sample_pdf(col_output.col_policy);
+        const auto row_action = state.row_actions[row_idx];
+        const auto col_action = state.col_actions[col_idx];
+        debug_log.frames.emplace_back();
+        uint8_t *data = debug_log.frames[frame].data();
+        apply_actions_with_eval_log(state, row_action, col_action, &row_output, &col_output, data);
+        state.get_actions();
+        ++frame;
+    }
 }

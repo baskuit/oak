@@ -28,6 +28,10 @@ add_executable(abmpq ./src/mpq-alpha-beta.cc)
 target_link_libraries(abmpq pinyon)
 target_link_libraries(abmpq ${libpkmn})
 
+add_executable(eval-log ./src/eval-log.cc)
+target_link_libraries(eval-log pinyon)
+target_link_libraries(eval-log ${libpkmn})
+
 add_executable(a ./benchmark/a.cc)
 target_link_libraries(a pinyon)
 target_link_libraries(a ${libpkmn})

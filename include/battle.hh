@@ -4,6 +4,8 @@
 
 #include <pinyon.hh>
 
+#include <limits>
+
 /*
 
 This is the pinyon wrapper for gen 1 libpkmn.
@@ -379,6 +381,75 @@ void apply_actions_with_log(State &state, pkmn_choice row_action, pkmn_choice co
     data[State::log_size + SIZE_BATTLE_WITH_PRNG] = state.result;
     data[State::log_size + SIZE_BATTLE_WITH_PRNG + 1] = row_action;
     data[State::log_size + SIZE_BATTLE_WITH_PRNG + 2] = col_action;
+}
+
+// helper for eval log function below
+template <typename Real>
+void write_real_as_float(const Real x, uint8_t *data, int &index) {
+    float f = math::to_float(x);
+    uint8_t *f_raw = reinterpret_cast<uint8_t *>(&f);
+    memcpy(data + index, f_raw, 4);
+    index += 4;
+}
+
+//
+template <typename State, typename RowModelOutput, typename ColModelOutput>
+void apply_actions_with_eval_log(State &state, pkmn_choice row_action, pkmn_choice col_action,
+                                 RowModelOutput *row_output, ColModelOutput *col_output, uint8_t *data) {
+    // no non eval update
+    const uint8_t rows = state.row_actions.size();
+    const uint8_t cols = state.col_actions.size();
+    apply_actions_with_log(state, row_action, col_action, data);
+    // return;
+
+    // prepare
+    int index = 3 + SIZE_BATTLE_WITH_PRNG + State::log_size;
+
+    float nan_ = std::numeric_limits<float>::quiet_NaN();
+    float row_eval = nan_;
+    float col_eval = nan_;
+    std::array<float, 9> rows_row_policy{nan_};
+    std::array<float, 9> rows_col_policy{nan_};
+    std::array<float, 9> cols_row_policy{nan_};
+    std::array<float, 9> cols_col_policy{nan_};
+    if (row_output != nullptr) {
+        row_eval = math::to_float(row_output->value.get_row_value());
+        for (uint8_t row_idx{}; row_idx < rows; ++row_idx) {
+            rows_row_policy[row_idx] = math::to_float(row_output->row_policy[row_idx]);
+        }
+        for (uint8_t col_idx{}; col_idx < cols; ++col_idx) {
+            rows_col_policy[col_idx] = math::to_float(row_output->col_policy[col_idx]);
+        }
+    }
+    if (col_output != nullptr) {
+        col_eval = math::to_float(col_output->value.get_row_value());
+        for (uint8_t row_idx{}; row_idx < rows; ++row_idx) {
+            cols_row_policy[row_idx] = math::to_float(col_output->row_policy[row_idx]);
+        }
+        for (uint8_t col_idx{}; col_idx < cols; ++col_idx) {
+            cols_col_policy[col_idx] = math::to_float(col_output->col_policy[col_idx]);
+        }
+    }
+
+    // writing
+    data[index++] = rows;
+    data[index++] = cols;
+    write_real_as_float(row_eval, data, index);
+    for (int row_idx{}; row_idx < rows; ++row_idx) {
+        write_real_as_float(rows_row_policy[row_idx], data, index);
+    }
+    for (int col_idx{}; col_idx < cols; ++col_idx) {
+        write_real_as_float(rows_col_policy[col_idx], data, index);
+    }
+    data[index++] = 0;
+    write_real_as_float(col_eval, data, index);
+    for (int row_idx{}; row_idx < rows; ++row_idx) {
+        write_real_as_float(cols_row_policy[row_idx], data, index);
+    }
+    for (int col_idx{}; col_idx < cols; ++col_idx) {
+        write_real_as_float(cols_col_policy[col_idx], data, index);
+    }
+    data[index++] = 0;
 }
 
 template <typename State>
