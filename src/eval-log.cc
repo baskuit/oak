@@ -29,4 +29,5 @@ int main()
     rollout_with_eval_debug<T::State, RowModelTypes, ColModelTypes>(state, row_model, col_model, debug_log);
 
     debug_log.print();
+    debug_log.save(state);
 }

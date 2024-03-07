@@ -9,10 +9,12 @@ template <typename State>
 struct DebugLog {
     static constexpr size_t header_size = SIZE_BATTLE_WITH_PRNG + 4;
     static constexpr size_t frame_size = State::log_size + SIZE_BATTLE_WITH_PRNG + 3;
-    static constexpr size_t eval_frame_size = 1000;
+    // assumes matrix data is nulls
+    static constexpr size_t eval_frame_size = frame_size + 2 + 2 + 2 * 4 * (19);
 
     std::array<uint8_t, header_size> header{};
     std::vector<std::array<uint8_t, eval_frame_size>> frames{};
+    std::vector<int> frame_sizes{};
 
     DebugLog(const State &state) {
         header[0] = uint8_t{1};
@@ -32,8 +34,9 @@ struct DebugLog {
 
         file.write(reinterpret_cast<const char *>(header.data()), header_size);
 
-        for (const auto &frame : frames) {
-            file.write(reinterpret_cast<const char *>(frame.data()), eval_frame_size);
+        for (int i = 0; i < frames.size(); ++i) {
+            const auto &frame = frames[i];
+            file.write(reinterpret_cast<const char *>(frame.data()), frame_sizes[i]);
         }
 
         file.close();
@@ -50,8 +53,7 @@ struct DebugLog {
             std::cout << '{' << std::endl;
             this->process_frame(frame);
             std::cout << '}' << std::endl << std::endl;
-
-        }
+        }        
     }
 
     void process_frame(const std::array<uint8_t, eval_frame_size> &frame) const {
@@ -158,9 +160,13 @@ void rollout_with_eval_debug(State &state, typename RowModelTypes::Model &row_mo
         const int col_idx = device.sample_pdf(col_output.col_policy);
         const auto row_action = state.row_actions[row_idx];
         const auto col_action = state.col_actions[col_idx];
+
         debug_log.frames.emplace_back();
+
         uint8_t *data = debug_log.frames[frame].data();
-        apply_actions_with_eval_log(state, row_action, col_action, &row_output, &col_output, data);
+        const int frame_size = apply_actions_with_eval_log(state, row_action, col_action, &row_output, &col_output, data);
+        debug_log.frame_sizes.push_back(frame_size);
+
         state.get_actions();
         ++frame;
     }

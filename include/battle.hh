@@ -394,7 +394,7 @@ void write_real_as_float(const Real x, uint8_t *data, int &index) {
 
 //
 template <typename State, typename RowModelOutput, typename ColModelOutput>
-void apply_actions_with_eval_log(State &state, pkmn_choice row_action, pkmn_choice col_action,
+int apply_actions_with_eval_log(State &state, pkmn_choice row_action, pkmn_choice col_action,
                                  RowModelOutput *row_output, ColModelOutput *col_output, uint8_t *data) {
     // no non eval update
     const uint8_t rows = state.row_actions.size();
@@ -450,6 +450,8 @@ void apply_actions_with_eval_log(State &state, pkmn_choice row_action, pkmn_choi
         write_real_as_float(cols_col_policy[col_idx], data, index);
     }
     data[index++] = 0;
+
+    return index;
 }
 
 template <typename State>
