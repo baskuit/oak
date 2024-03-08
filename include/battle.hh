@@ -2,9 +2,8 @@
 
 #include <pkmn.h>
 
-#include <pinyon.hh>
-
 #include <limits>
+#include <pinyon.hh>
 
 /*
 
@@ -39,11 +38,32 @@ struct BattleTypes;
 
 template <typename Real, typename Prob>
 struct BattleTypes<Real, Prob, ChanceObs>
-    : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 16>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {};
+    : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 16>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {
+    struct ObsHash {
+        size_t operator()(const std::array<uint8_t, 16> &obs) const {
+            static const uint64_t duration_mask = 0xFFFFFFFFFF0FFFFF;
+            const uint64_t *a = reinterpret_cast<const uint64_t *>(obs.data());
+            const uint64_t side_1 = a[0] & duration_mask;
+            const uint64_t side_2 = a[1] & duration_mask;
+            return ((side_1 << 32) >> 32) | (side_2 << 32);
+        }
+    };
+};
 
 template <typename Real, typename Prob>
 struct BattleTypes<Real, Prob, LogObs>
-    : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 64>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {};
+    : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 64>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {
+    struct ObsHash {
+        size_t operator()(const std::array<uint8_t, 64> &obs) const {
+            const uint64_t *a = reinterpret_cast<const uint64_t *>(obs.data());
+            size_t hash = 0;
+            for (int i = 0; i < 8; ++i) {
+                hash ^= a[i];
+            }
+            return hash;
+        }
+    };
+};
 
 template <typename Real, typename Prob>
 struct BattleTypes<Real, Prob, BattleObs>
@@ -231,33 +251,33 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs> {
             }
         }
 
-        template <typename State_>
-        State(const State_ &other) {
-            std::cout << "templated copy constr invoked" << std::endl;
-            this->prob = other.prob;
-            this->row_actions = other.row_actions;
-            this->col_actions = other.col_actions;
-            memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
-            this->options = other.options;
-            this->result = other.result;
-            this->result_kind = other.result_kind;
-            if constexpr (State::dlog) {
-                if constexpr (State_::dlog) {
-                    // TODO
-                } else {
-                }
-                this->log_options = {this->log_buffer.data(), LOG_SIZE};
-                pkmn_gen1_battle_options_set(&this->options, &this->log_options, NULL, NULL);
-            } else {
-                pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
-            }
-            if constexpr (State::dchance) {
-                this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
-            }
-            if constexpr (State::dcalc) {
-                this->clamped = other.clamped;
-            }
-        }
+        // template <typename State_>
+        // State(const State_ &other) {
+        //     std::cout << "templated copy constr invoked" << std::endl;
+        //     this->prob = other.prob;
+        //     this->row_actions = other.row_actions;
+        //     this->col_actions = other.col_actions;
+        //     memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
+        //     this->options = other.options;
+        //     this->result = other.result;
+        //     this->result_kind = other.result_kind;
+        //     if constexpr (State::dlog) {
+        //         if constexpr (State_::dlog) {
+        //             // TODO
+        //         } else {
+        //         }
+        //         this->log_options = {this->log_buffer.data(), LOG_SIZE};
+        //         pkmn_gen1_battle_options_set(&this->options, &this->log_options, NULL, NULL);
+        //     } else {
+        //         pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
+        //     }
+        //     if constexpr (State::dchance) {
+        //         this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
+        //     }
+        //     if constexpr (State::dcalc) {
+        //         this->clamped = other.clamped;
+        //     }
+        // }
 
         const auto &get_obs() const {
             if constexpr (Obs == ChanceObs) {
@@ -395,7 +415,7 @@ void write_real_as_float(const Real x, uint8_t *data, int &index) {
 //
 template <typename State, typename RowModelOutput, typename ColModelOutput>
 int apply_actions_with_eval_log(State &state, pkmn_choice row_action, pkmn_choice col_action,
-                                 RowModelOutput *row_output, ColModelOutput *col_output, uint8_t *data) {
+                                RowModelOutput *row_output, ColModelOutput *col_output, uint8_t *data) {
     // no non eval update
     const uint8_t rows = state.row_actions.size();
     const uint8_t cols = state.col_actions.size();

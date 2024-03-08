@@ -20,6 +20,10 @@ add_executable(prob-test ./src/prob-test.cc)
 target_link_libraries(prob-test pinyon)
 target_link_libraries(prob-test ${libpkmn})
 
+add_executable(simple-prob ./src/simple-prob.cc)
+target_link_libraries(simple-prob pinyon)
+target_link_libraries(simple-prob ${libpkmn})
+
 add_executable(main ./src/main.cc)
 target_link_libraries(main pinyon)
 target_link_libraries(main ${libpkmn})
