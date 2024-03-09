@@ -182,7 +182,6 @@ void self_play_rollout_with_eval_debug(prng &device, State &state, typename Mode
         model.inference(State{state}, output);
         const auto end = std::chrono::high_resolution_clock::now();
         const double duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << "think time: " << (duration / 1000) << std::endl;
 
         const int row_idx = device.sample_pdf(output.row_policy);
         const int col_idx = device.sample_pdf(output.col_policy);
