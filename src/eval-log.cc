@@ -14,7 +14,7 @@ int main()
 {
     prng device{1121256};
     using T = MonteCarloModel<
-        Battle<64, 3, ChanceObs, float, float>>;
+        Battle<0, 3, ChanceObs, float, float>>;
     using U = AlphaBetaForce<T>;
     T::State
         state{sides[1], sides[0]};

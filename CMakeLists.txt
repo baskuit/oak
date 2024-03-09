@@ -28,9 +28,13 @@ add_executable(main ./src/main.cc)
 target_link_libraries(main pinyon)
 target_link_libraries(main ${libpkmn})
 
-add_executable(abmpq ./src/mpq-alpha-beta.cc)
-target_link_libraries(abmpq pinyon)
-target_link_libraries(abmpq ${libpkmn})
+add_executable(ab-mpq ./src/ab-mpq.cc)
+target_link_libraries(ab-mpq pinyon)
+target_link_libraries(ab-mpq ${libpkmn})
+
+add_executable(ab-self-play ./src/ab-self-play.cc)
+target_link_libraries(ab-self-play pinyon)
+target_link_libraries(ab-self-play ${libpkmn})
 
 add_executable(eval-log ./src/eval-log.cc)
 target_link_libraries(eval-log pinyon)

@@ -98,7 +98,7 @@ struct BattleDataBase {
     pkmn_gen1_battle battle;
     pkmn_gen1_battle_options options;
     pkmn_result result{};
-    pkmn_result_kind result_kind;
+    pkmn_result_kind result_kind{};
 
     bool is_terminal() const { return result_kind; }
 
@@ -187,8 +187,8 @@ struct BattleData<0, 0, Real, bool, BattleObs> : BattleDataBase<0, 0, Real, bool
 
 template <size_t ROLLS, typename Real, typename Prob, BattleObsT ObsEnum>
 struct BattleData<0, ROLLS, Real, Prob, ObsEnum> : BattleDataBase<0, ROLLS, Real, Prob, ObsEnum> {
-    pkmn_gen1_chance_options chance_options;
-    pkmn_gen1_calc_options calc_options;
+    pkmn_gen1_chance_options chance_options{};
+    pkmn_gen1_calc_options calc_options{};
     pkmn_rational *p;
     bool clamped = false;
 
@@ -251,33 +251,34 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs> {
             }
         }
 
-        // template <typename State_>
-        // State(const State_ &other) {
-        //     std::cout << "templated copy constr invoked" << std::endl;
-        //     this->prob = other.prob;
-        //     this->row_actions = other.row_actions;
-        //     this->col_actions = other.col_actions;
-        //     memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
-        //     this->options = other.options;
-        //     this->result = other.result;
-        //     this->result_kind = other.result_kind;
-        //     if constexpr (State::dlog) {
-        //         if constexpr (State_::dlog) {
-        //             // TODO
-        //         } else {
-        //         }
-        //         this->log_options = {this->log_buffer.data(), LOG_SIZE};
-        //         pkmn_gen1_battle_options_set(&this->options, &this->log_options, NULL, NULL);
-        //     } else {
-        //         pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
-        //     }
-        //     if constexpr (State::dchance) {
-        //         this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
-        //     }
-        //     if constexpr (State::dcalc) {
-        //         this->clamped = other.clamped;
-        //     }
-        // }
+        template <typename State_>
+            requires(!std::is_same_v<State_, State>)
+        State(const State_ &other) {
+            std::cout << "templated copy constr invoked" << std::endl;
+            this->prob = other.prob;
+            this->row_actions = other.row_actions;
+            this->col_actions = other.col_actions;
+            memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
+            this->options = other.options;
+            this->result = other.result;
+            this->result_kind = other.result_kind;
+            if constexpr (State::dlog) {
+                if constexpr (State_::dlog) {
+                    // TODO
+                } else {
+                }
+                this->log_options = {this->log_buffer.data(), LOG_SIZE};
+                pkmn_gen1_battle_options_set(&this->options, &this->log_options, NULL, NULL);
+            } else {
+                pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
+            }
+            if constexpr (State::dchance) {
+                this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
+            }
+            if constexpr (State::dcalc) {
+                this->clamped = other.clamped;
+            }
+        }
 
         const auto &get_obs() const {
             if constexpr (Obs == ChanceObs) {
@@ -396,7 +397,9 @@ int n_alive_side(const uint8_t *data, int player = 0) {
 template <typename State>
 void apply_actions_with_log(State &state, pkmn_choice row_action, pkmn_choice col_action, uint8_t *data) {
     state.apply_actions(row_action, col_action);
-    memcpy(data, state.log_buffer.data(), State::log_size);
+    if constexpr (State::dlog) {
+        memcpy(data, state.log_buffer.data(), State::log_size);
+    }
     memcpy(data + State::log_size, state.battle.bytes, SIZE_BATTLE_WITH_PRNG);
     data[State::log_size + SIZE_BATTLE_WITH_PRNG] = state.result;
     data[State::log_size + SIZE_BATTLE_WITH_PRNG + 1] = row_action;

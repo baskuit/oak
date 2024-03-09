@@ -53,7 +53,7 @@ struct DebugLog {
             std::cout << '{' << std::endl;
             this->process_frame(frame);
             std::cout << '}' << std::endl << std::endl;
-        }        
+        }
     }
 
     void process_frame(const std::array<uint8_t, eval_frame_size> &frame) const {
@@ -164,10 +164,37 @@ void rollout_with_eval_debug(State &state, typename RowModelTypes::Model &row_mo
         debug_log.frames.emplace_back();
 
         uint8_t *data = debug_log.frames[frame].data();
-        const int frame_size = apply_actions_with_eval_log(state, row_action, col_action, &row_output, &col_output, data);
+        const int frame_size =
+            apply_actions_with_eval_log(state, row_action, col_action, &row_output, &col_output, data);
         debug_log.frame_sizes.push_back(frame_size);
 
         state.get_actions();
         ++frame;
+    }
+}
+
+template <typename State, typename ModelTypes>
+void self_play_rollout_with_eval_debug(prng &device, State &state, typename ModelTypes::Model &model,
+                                       DebugLog<State> &debug_log) {
+    typename ModelTypes::ModelOutput output{};
+    while (!state.is_terminal()) {
+        const auto start = std::chrono::high_resolution_clock::now();
+        model.inference(State{state}, output);
+        const auto end = std::chrono::high_resolution_clock::now();
+        const double duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "think time: " << (duration / 1000) << std::endl;
+
+        const int row_idx = device.sample_pdf(output.row_policy);
+        const int col_idx = device.sample_pdf(output.col_policy);
+        const auto row_action = state.row_actions[row_idx];
+        const auto col_action = state.col_actions[col_idx];
+
+        debug_log.frames.emplace_back();
+        uint8_t *data = debug_log.frames.back().data();
+        const int frame_size = apply_actions_with_eval_log(
+            state, row_action, col_action, &output, static_cast<typename ModelTypes::ModelOutput *>(nullptr), data);
+        debug_log.frame_sizes.push_back(frame_size);
+
+        state.get_actions();
     }
 }
