@@ -12,7 +12,7 @@ In each frame, in addition to the usual battle, choices, etc data, we have:
 {col choice}
 {rows}
 {cols}
-row players:
+row player's:
 {
     {value}
     {row policy}
@@ -20,7 +20,7 @@ row players:
     {n matrices}
     {matrices data}
 }
-col players:
+col player's:
 {
     {value}
     {row policy}
@@ -29,3 +29,18 @@ col players:
     {matrices data}
 }
 ```
+
+Matrix Data consists of:
+
+{rows}
+{cols}
+{n data elements}
+{indivdual data type enums}
+(
+    0 = uint8_t
+    1 = int32
+    2 = float32
+)
+{
+    matrix data in row - col - z order
+}

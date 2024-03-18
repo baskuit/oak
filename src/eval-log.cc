@@ -1,5 +1,5 @@
 #include "../include/battle.hh"
-#include "../include/debug-log.hh"
+#include "../include/eval-log.hh"
 #include "../include/old-battle.hh"
 
 #include "../include/sides.hh"
@@ -19,7 +19,7 @@ int main()
     T::State
         state{sides[1], sides[0]};
     state.clamped = true;
-    DebugLog<T::State> debug_log{state};
+    EvalLog<T::State> debug_log{state};
 
     using RowModelTypes = SearchModel<TreeBandit<Exp3<T>>>;
     using ColModelTypes = SearchModel<TreeBandit<Exp3<T>>>;

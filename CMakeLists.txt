@@ -36,6 +36,10 @@ add_executable(ab-self-play ./src/ab-self-play.cc)
 target_link_libraries(ab-self-play pinyon)
 target_link_libraries(ab-self-play ${libpkmn})
 
+add_executable(verify ./src/verify.cc)
+target_link_libraries(verify pinyon)
+target_link_libraries(verify ${libpkmn})
+
 add_executable(eval-log ./src/eval-log.cc)
 target_link_libraries(eval-log pinyon)
 target_link_libraries(eval-log ${libpkmn})

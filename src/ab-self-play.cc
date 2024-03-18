@@ -1,6 +1,6 @@
 #include "../include/battle.hh"
 #include "../include/clamp.hh"
-#include "../include/debug-log.hh"
+#include "../include/eval-log.hh"
 #include "../include/mc-average.hh"
 #include "../include/sides.hh"
 
@@ -17,7 +17,7 @@ void self_play_loop(typename Types::PRNG *device_, typename Types::Model *model_
         const int c = device.random_int(n_sides - 1);
         typename Types::State state{sides[r + 1], sides[c + 1]};
         state.randomize_transition(device);
-        DebugLog<typename Types::State> debug_log{state};
+        EvalLog<typename Types::State> debug_log{state};
         self_play_rollout_with_eval_debug<typename Types::State, Types>(device, state, model, debug_log);
         debug_log.save(state);
     }

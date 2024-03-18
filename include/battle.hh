@@ -9,12 +9,12 @@
 
 This is the pinyon wrapper for gen 1 libpkmn.
 
-This wrapper is intended to be fast also
-and so there are template parameters that reflect libpkmn flags
+This wrapper is intended to be fast so the data structures and control flow depend on the features that libpkmn was
+compiled with, e.g.
 
 `-Dlog -Dchance -Dcalc`
 
-as well as damage roll clamping, which is crucial for search feasibility.
+Note:
 
 `-Dshowdown` is assumed.
 
@@ -24,6 +24,13 @@ constexpr size_t SIZE_BATTLE_NO_PRNG = 376;
 constexpr size_t SIZE_BATTLE_WITH_PRNG = SIZE_BATTLE_NO_PRNG + 8;
 constexpr size_t SIZE_SIDE = 184;
 
+/*
+These enums are used to choose between the choice of Obs data type
+
+ChanceObs will use the chance actions (16 bytes)
+LogObs will use the debug log. Even in OU, this typically requires 64 bytes (otherwise the obs are not faithful)
+BattleObs will use the entire battle except the seed (376 bytes)
+*/
 enum BattleObsT {
     // In order of preference aka size
     ChanceObs,
@@ -31,13 +38,25 @@ enum BattleObsT {
     BattleObs,
 };
 
-// basically a converter between ObsType enums and the actual types in the constructor for the basic type list
+/*
+This implemenents the basic pinyon "type list" for our battle wrapper. The types subject to change are:
+    Real, Prob, Obs (and ObsHash)
+
+The Action type will always be `pkmn_choice`, the Value type will always be ConstantSum<1, 1>::Value<Real>
+
+Pinyon uses the `ObsHash` name to hash the Obs type for use with std::unordered_map
+The hash function for the ChanceObs case is collision free in the OU case, at least as far as my tests can tell
+I have absolutely no idea about the BattleObs hasher. Its not supposed to be used lol
+Note: TreeBandit with DefaultNodes (aka the most basic possible search) will use equality with a linear scan to
+identify different obs
+
+*/
 namespace BattleTypesImpl {
-template <typename Real, typename Prob, BattleObsT Obs>
+template <typename Real, typename Prob, BattleObsT Obs, size_t LOG_SIZE>
 struct BattleTypes;
 
-template <typename Real, typename Prob>
-struct BattleTypes<Real, Prob, ChanceObs>
+template <typename Real, typename Prob, size_t LOG_SIZE>
+struct BattleTypes<Real, Prob, ChanceObs, LOG_SIZE>
     : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 16>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {
     struct ObsHash {
         size_t operator()(const std::array<uint8_t, 16> &obs) const {
@@ -50,11 +69,11 @@ struct BattleTypes<Real, Prob, ChanceObs>
     };
 };
 
-template <typename Real, typename Prob>
-struct BattleTypes<Real, Prob, LogObs>
-    : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 64>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {
+template <typename Real, typename Prob, size_t LOG_SIZE>
+struct BattleTypes<Real, Prob, LogObs, LOG_SIZE>
+    : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, LOG_SIZE>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {
     struct ObsHash {
-        size_t operator()(const std::array<uint8_t, 64> &obs) const {
+        size_t operator()(const std::array<uint8_t, LOG_SIZE> &obs) const {
             const uint64_t *a = reinterpret_cast<const uint64_t *>(obs.data());
             size_t hash = 0;
             for (int i = 0; i < 8; ++i) {
@@ -65,16 +84,26 @@ struct BattleTypes<Real, Prob, LogObs>
     };
 };
 
-template <typename Real, typename Prob>
-struct BattleTypes<Real, Prob, BattleObs>
-    : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, 376>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {};
-};  // namespace BattleTypesImpl
+template <typename Real, typename Prob, size_t LOG_SIZE>
+struct BattleTypes<Real, Prob, BattleObs, LOG_SIZE>
+    : DefaultTypes<Real, pkmn_choice, std::array<uint8_t, SIZE_BATTLE_NO_PRNG>, Prob, ConstantSum<1, 1>::Value, A<9>::Array> {};
+    struct ObsHash {
+        size_t operator()(const std::array<uint8_t, SIZE_BATTLE_NO_PRNG> &obs) const {
+            const uint64_t *a = reinterpret_cast<const uint64_t *>(obs.data());
+            size_t hash = 0;
+            for (int i = 0; i < 47; ++i) {
+                hash ^= a[i];
+            }
+            return hash;
+        }
+    };
+};
 
 namespace BattleDataImpl {
 /*
 
 This base class template spares code by holding
-the data members that are required for all battles.
+the data members that are required for all libpkmn variants.
 
 We also implement the basic `State` methods that are expected by pinyon.
 In most of the library code we use the base class `PerfectInfoState` for this.
@@ -82,7 +111,8 @@ We opt not to use that here since it has an `Obs` type member and the `get_obs` 
 simply returns a reference to this.
 The search code for pinyon copies the state object instead of using an `unmake_move` method
 In view of this, the `Obs` member merely results in extra allocation.
-This is because the `pkmn_gen1_options` struct is the canonical container for the chance actions, for example.
+This is because the `pkmn_gen1_options` struct is the canonical container for the chance actions
+(assuming we are using ChanceObs)
 So even if our `get_obs` currectly just references this data theres still a vestigial data member
 that must be allocated for with every copied state.
 
@@ -203,8 +233,8 @@ struct BattleData<0, ROLLS, Real, Prob, ObsEnum> : BattleDataBase<0, ROLLS, Real
 
 template <size_t LOG_SIZE, size_t ROLLS = 0, BattleObsT Obs = ChanceObs, typename Prob = mpq_class,
           typename Real = mpq_class>
-struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs> {
-    using TypeList = BattleTypesImpl::BattleTypes<Real, Prob, Obs>;
+struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
+    using TypeList = BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE>;
 
     class State : public BattleDataImpl::BattleData<LOG_SIZE, ROLLS, Real, Prob, Obs> {
        public:
@@ -284,12 +314,6 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs> {
             if constexpr (Obs == ChanceObs) {
                 auto *ptr = pkmn_gen1_battle_options_chance_actions(&this->options)->bytes;
                 const std::array<uint8_t, 16> &obs_ref = *reinterpret_cast<std::array<uint8_t, 16> *>(ptr);
-                // std::array<uint8_t, 16> obs = obs_ref;
-                // for (int i = 0; i < 16; ++i) {
-                // 	std::cout << obs[i] << ' ';
-                // }
-                // std::cout << std::endl;
-                // return obs;
                 return obs_ref;
             }
             if constexpr (Obs == LogObs) {
@@ -297,8 +321,8 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs> {
             }
             if constexpr (Obs == BattleObs) {
                 auto *ptr = this->battle.bytes;
-                const std::array<uint8_t, SIZE_BATTLE_WITH_PRNG> &obs_ref =
-                    *reinterpret_cast<std::array<uint8_t, SIZE_BATTLE_WITH_PRNG> *>(ptr);
+                const std::array<uint8_t, SIZE_BATTLE_NO_PRNG> &obs_ref =
+                    *reinterpret_cast<std::array<uint8_t, SIZE_BATTLE_NO_PRNG> *>(ptr);
                 return obs_ref;
             }
         }
@@ -312,16 +336,17 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs> {
                                                               PKMN_MAX_CHOICES));
         }
 
-        // possibly a legacy method
-        void get_actions(TypeList::VectorAction &row_actions, TypeList::VectorAction &col_actions) const {
-            row_actions.resize(pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P1, pkmn_result_p1(this->result),
-                                                        row_actions.data(), PKMN_MAX_CHOICES));
-            col_actions.resize(pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P2, pkmn_result_p2(this->result),
-                                                        col_actions.data(), PKMN_MAX_CHOICES));
-        }
+        // // possibly a legacy method
+        // void get_actions(TypeList::VectorAction &row_actions, TypeList::VectorAction &col_actions) const {
+        //     row_actions.resize(pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P1, pkmn_result_p1(this->result),
+        //                                                 row_actions.data(), PKMN_MAX_CHOICES));
+        //     col_actions.resize(pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P2, pkmn_result_p2(this->result),
+        //                                                 col_actions.data(), PKMN_MAX_CHOICES));
+        // }
 
         void apply_actions(pkmn_choice row_action, pkmn_choice col_action) {
-            // TODO assumes ROLLS = 3
+            // Only 2, 3, 20, and 39 are supported as Roll values
+            // TODO use 'high quality' bits of the showdown seed
             if constexpr (ROLLS != 0) {
                 if (this->clamped) {
                     this->calc_options.overrides.bytes[0] =
@@ -336,16 +361,14 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs> {
                 pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
             }
 
+            // The actual update call
             this->result = pkmn_gen1_battle_update(&this->battle, row_action, col_action, &this->options);
 
+            // bool is the type when no prob is computed i.e. dchance is false
             if constexpr (std::is_floating_point_v<Prob>) {
                 this->prob = static_cast<Prob>(pkmn_rational_numerator(this->p) / pkmn_rational_denominator(this->p));
             } else if constexpr (!std::is_same_v<Prob, bool>) {
                 this->prob = Prob{pkmn_rational_numerator(this->p), pkmn_rational_denominator(this->p)};
-            }
-
-            if constexpr (State::dchance) {
-                pkmn_gen1_chance_actions *chance_ptr = pkmn_gen1_battle_options_chance_actions(&this->options);
             }
 
             if constexpr (ROLLS != 0) {
@@ -361,6 +384,7 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs> {
                 }
             }
 
+            // updates is_terminal() output
             this->result_kind = pkmn_result_type(this->result);
         }
     };
@@ -427,14 +451,14 @@ int apply_actions_with_eval_log(State &state, pkmn_choice row_action, pkmn_choic
 
     // prepare
     int index = 3 + SIZE_BATTLE_WITH_PRNG + State::log_size;
-
-    float nan_ = std::numeric_limits<float>::quiet_NaN();
-    float row_eval = nan_;
-    float col_eval = nan_;
-    std::array<float, 9> rows_row_policy{nan_};
-    std::array<float, 9> rows_col_policy{nan_};
-    std::array<float, 9> cols_row_policy{nan_};
-    std::array<float, 9> cols_col_policy{nan_};
+    
+    constexpr float NaN_ = std::numeric_limits<float>::quiet_NaN();
+    float row_eval = NaN_;
+    float col_eval = NaN_;
+    std::array<float, 9> rows_row_policy{NaN_};
+    std::array<float, 9> rows_col_policy{NaN_};
+    std::array<float, 9> cols_row_policy{NaN_};
+    std::array<float, 9> cols_col_policy{NaN_};
     if (row_output != nullptr) {
         row_eval = math::to_float(row_output->value.get_row_value());
         for (uint8_t row_idx{}; row_idx < rows; ++row_idx) {
@@ -483,21 +507,3 @@ void get_active_hp(const State &state) {
     const int hp_1 = state.battle.bytes[18 + SIZE_SIDE] + 256 * state.battle.bytes[19 + SIZE_SIDE];
     std::cout << "action hp: " << hp_0 << ' ' << hp_1 << std::endl;
 }
-
-// TODO just write extra function in zig, dummy!
-template <typename Types>
-struct NoSwitch {
-    class State : public Types::State {
-        using Types::State::State;
-
-        void get_actions() {
-            Types::State::get_actions();
-            // if (this->result_kind == move) {} // TODO skip based on request status
-            // TODO code to prune non choice
-        }
-
-        void get_action(Types::VectorAction &row_actions, Types::VectorAction &col_actions) const {
-            // TODO duplicate above
-        }
-    };
-};

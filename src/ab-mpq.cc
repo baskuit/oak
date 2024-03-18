@@ -1,5 +1,5 @@
 #include "../include/battle.hh"
-#include "../include/debug-log.hh"
+#include "../include/eval-log.hh"
 #include "../include/old-battle.hh"
 #include "../include/sides.hh"
 
@@ -10,7 +10,7 @@ int main() {
     using U = AlphaBetaForce<T>;
     T::State state{sides[0], sides[0]};
     state.clamped = true;
-    DebugLog<T::State> debug_log{state};
+    EvalLog<T::State> debug_log{state};
 
     state.apply_actions(0, 0);
     state.get_actions();

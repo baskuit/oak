@@ -6,17 +6,16 @@
 #include "./battle.hh"
 
 template <typename State>
-struct DebugLog {
+struct EvalLog {
     static constexpr size_t header_size = SIZE_BATTLE_WITH_PRNG + 4;
-    static constexpr size_t frame_size = State::log_size + SIZE_BATTLE_WITH_PRNG + 3;
-    // assumes matrix data is nulls
-    static constexpr size_t eval_frame_size = frame_size + 2 + 2 + 2 * 4 * (19);
+    // assumes matrix data is null
+    static constexpr size_t frame_size = State::log_size + SIZE_BATTLE_WITH_PRNG + 3 + 2 + 2 + 2 * 4 * (19);
 
     std::array<uint8_t, header_size> header{};
-    std::vector<std::array<uint8_t, eval_frame_size>> frames{};
+    std::vector<std::array<uint8_t, frame_size>> frames{};
     std::vector<int> frame_sizes{};
 
-    DebugLog(const State &state) {
+    EvalLog(const State &state) {
         header[0] = uint8_t{1};
         header[1] = uint8_t{1};
         header[2] = uint8_t{State::log_size % 256};
@@ -56,7 +55,7 @@ struct DebugLog {
         }
     }
 
-    void process_frame(const std::array<uint8_t, eval_frame_size> &frame) const {
+    void process_frame(const std::array<uint8_t, frame_size> &frame) const {
         int index = 0;
         std::cout << "LOG: " << std::endl;
         for (int i = 0; i < State::log_size; ++i) {
@@ -123,7 +122,7 @@ struct DebugLog {
 };
 
 template <typename State>
-void rollout_with_debug(State &state, DebugLog<State> &debug_log) {
+void rollout_with_debug(State &state, EvalLog<State> &debug_log) {
     prng device{};
     int frame = 0;
     while (!state.is_terminal()) {
@@ -146,7 +145,7 @@ void rollout_with_debug(State &state, DebugLog<State> &debug_log) {
 
 template <typename State, typename RowModelTypes, typename ColModelTypes>
 void rollout_with_eval_debug(State &state, typename RowModelTypes::Model &row_model,
-                             typename ColModelTypes::Model &col_model, DebugLog<State> &debug_log) {
+                             typename ColModelTypes::Model &col_model, EvalLog<State> &debug_log) {
     prng device{};
     int frame = 0;
     typename RowModelTypes::ModelOutput row_output{};
@@ -175,7 +174,7 @@ void rollout_with_eval_debug(State &state, typename RowModelTypes::Model &row_mo
 
 template <typename State, typename ModelTypes>
 void self_play_rollout_with_eval_debug(prng &device, State &state, typename ModelTypes::Model &model,
-                                       DebugLog<State> &debug_log) {
+                                       EvalLog<State> &debug_log) {
     typename ModelTypes::ModelOutput output{};
     while (!state.is_terminal()) {
         const auto start = std::chrono::high_resolution_clock::now();
