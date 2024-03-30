@@ -336,13 +336,12 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
                                                               PKMN_MAX_CHOICES));
         }
 
-        // // possibly a legacy method
-        // void get_actions(TypeList::VectorAction &row_actions, TypeList::VectorAction &col_actions) const {
-        //     row_actions.resize(pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P1, pkmn_result_p1(this->result),
-        //                                                 row_actions.data(), PKMN_MAX_CHOICES));
-        //     col_actions.resize(pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P2, pkmn_result_p2(this->result),
-        //                                                 col_actions.data(), PKMN_MAX_CHOICES));
-        // }
+        void get_actions(TypeList::VectorAction &row_actions, TypeList::VectorAction &col_actions) const {
+            row_actions.resize(pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P1, pkmn_result_p1(this->result),
+                                                        row_actions.data(), PKMN_MAX_CHOICES));
+            col_actions.resize(pkmn_gen1_battle_choices(&this->battle, PKMN_PLAYER_P2, pkmn_result_p2(this->result),
+                                                        col_actions.data(), PKMN_MAX_CHOICES));
+        }
 
         void apply_actions(pkmn_choice row_action, pkmn_choice col_action) {
             // Only 2, 3, 20, and 39 are supported as Roll values
@@ -376,11 +375,11 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
                 const auto &obs_ref = this->get_obs();
                 if (obs_ref[1] & 2 && obs_ref[0]) {
                     this->prob *= static_cast<Prob>(typename TypeList::Q{static_cast<int>(39 / ROLLS), 1});
-                    canonicalize(this->prob);
+                    math::canonicalize(this->prob);
                 }
                 if (obs_ref[9] & 2 && obs_ref[8]) {
                     this->prob *= static_cast<Prob>(typename TypeList::Q{static_cast<int>(39 / ROLLS), 1});
-                    canonicalize(this->prob);
+                    math::canonicalize(this->prob);
                 }
             }
 
