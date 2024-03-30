@@ -69,11 +69,11 @@ int main() {
     using U = Clamped<SearchModel<T, false, true, false>>;
 
     // depth 3 alpha beta
-    const size_t search_depth = 4;
-    U::Model model{search_depth, prng{234723875}, {prng{12312}, 1 << 5}, {0, 1 << 5, 0.0f}};
+    const size_t search_depth = 3;
+    U::Model model{search_depth, prng{234723875}, {prng{12312}, 1 << 5}, {0, 1 << 10, 0.0f}};
 
     constexpr int n_threads = 1;
-    const int max_positions = 1;
+    constexpr int max_positions = 1;
     std::array<std::thread, n_threads> threads{};
     for (int t{}; t < n_threads; ++t) {
         threads[t] = std::thread(&self_play_loop<U>, &device, &model, max_positions);
