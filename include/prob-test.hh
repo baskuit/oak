@@ -35,7 +35,7 @@ typename Types::Prob prob_test(typename Types::PRNG &device, size_t tries, const
             // do nothing
         } else {
             total_prob += state_copy.prob;
-            canonicalize(total_prob);
+            math::canonicalize(total_prob);
             matrix_node->stats.seen = true;
         }
     }
