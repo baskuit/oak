@@ -44,6 +44,10 @@ add_executable(eval-log ./src/eval-log.cc)
 target_link_libraries(eval-log pinyon)
 target_link_libraries(eval-log ${libpkmn})
 
+add_executable(parse-self-play ./src/parse-self-play.cc)
+target_link_libraries(parse-self-play pinyon)
+target_link_libraries(parse-self-play ${libpkmn})
+
 add_executable(a ./benchmark/a.cc)
 target_link_libraries(a pinyon)
 target_link_libraries(a ${libpkmn})
