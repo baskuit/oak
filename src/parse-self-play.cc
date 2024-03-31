@@ -3,11 +3,6 @@
 #include <vector>
 
 #include "../include/battle.hh"
-#include "../include/eval-log.hh"
-#include "../include/old-battle.hh"
-#include "../include/sides.hh"
-
-enum MoveKind { Move, Switch };
 
 struct Frame {
     std::array<uint8_t, SIZE_BATTLE_WITH_PRNG> battle{};
@@ -17,7 +12,7 @@ struct Frame {
 };
 
 struct Trajectory {
-    float row_value;
+    float terminal_value;
     std::vector<Frame> frames{};
 };
 
@@ -90,27 +85,133 @@ Trajectory get_trajectory(const char* data, const int size) {
 
     switch (pkmn_result_kind(result)) {
         case PKMN_RESULT_WIN: {
-            trajectory.row_value = 1.0;
+            trajectory.terminal_value = 1.0;
         }
         case PKMN_RESULT_LOSE: {
-            trajectory.row_value = 1.0;
+            trajectory.terminal_value = 0.0;
         }
         case PKMN_RESULT_TIE: {
-            trajectory.row_value = 0.5;
+            trajectory.terminal_value = 0.5;
         }
         case PKMN_RESULT_ERROR: {
             std::exception();
         }
     }
 
+    trajectory.frames.pop_back();
+
     return trajectory;
 }
 
-void open_file_and_get_trajectory(std::string file_path) {
+void encode_volatiles(const uint8_t* data, std::vector<float>& encoding) {
+    for (int byte{}; byte < 2; ++byte) {
+        for (int bit{}; bit < 8; ++bit) {
+            encoding.push_back(static_cast<float>(data[byte] & (1 << bit)));
+        }
+    }
+
+    encoding.push_back(static_cast<float>(data[2] & 1));             // reflect
+    encoding.push_back(static_cast<float>(data[2] & 2));             // transform
+    encoding.push_back(static_cast<float>(data[2] & (4 + 8 + 16)));  // confusion dur
+    encoding.push_back(static_cast<float>(data[2] >> 5));            // attacks dur
+    // TODO state
+    encoding.push_back(static_cast<float>(data[5]));       // sub hp
+    encoding.push_back(static_cast<float>(data[6] & 15));  // transform id
+    encoding.push_back(static_cast<float>(data[6] >> 4));  // disable dur
+    encoding.push_back(static_cast<float>(data[7] & 7));   // disabled move
+    encoding.push_back(static_cast<float>(data[7] >> 3));  // toxic turns
+}
+
+void encode_active_pokemon(const uint8_t* data, std::vector<float>& encoding) {
+    const auto* data_16 = reinterpret_cast<const uint16_t*>(data);
+    encoding.push_back(static_cast<float>(data_16[0]));  // hp
+    encoding.push_back(static_cast<float>(data_16[1]));  // atk
+    encoding.push_back(static_cast<float>(data_16[2]));  // def
+    encoding.push_back(static_cast<float>(data_16[3]));  // spe
+    encoding.push_back(static_cast<float>(data_16[4]));  // spc
+    encoding.push_back(static_cast<float>(data[10]));    // species
+    uint8_t type = data[11];
+    encoding.push_back(static_cast<float>(type & 15));  // type 1
+    encoding.push_back(static_cast<float>(type >> 4));  // type 2
+    uint8_t boosts_atk_def = data[12];
+    encoding.push_back(static_cast<float>(boosts_atk_def & 15));  // atk boost
+    encoding.push_back(static_cast<float>(boosts_atk_def >> 4));  // def boost
+    uint8_t boosts_spe_spc = data[13];
+    encoding.push_back(static_cast<float>(boosts_spe_spc & 15));  // spe boost
+    encoding.push_back(static_cast<float>(boosts_spe_spc >> 4));  // spc boost
+    uint8_t boosts_acc_eva = data[14];
+    encoding.push_back(static_cast<float>(boosts_acc_eva & 15));  // acc boost
+    encoding.push_back(static_cast<float>(boosts_acc_eva >> 4));  // eva boost
+
+    encode_volatiles(data + 16, encoding);
+
+    for (int i{}; i < 8; ++i) {
+        encoding.push_back(static_cast<float>(data[24 + i]));
+    }
+}
+
+void encode_bench_pokemon(const uint8_t* data, std::vector<float>& encoding) {
+    const auto* data_16 = reinterpret_cast<const uint16_t*>(data);
+    encoding.push_back(static_cast<float>(data_16[0]));  // hp
+    encoding.push_back(static_cast<float>(data_16[1]));  // atk
+    encoding.push_back(static_cast<float>(data_16[2]));  // def
+    encoding.push_back(static_cast<float>(data_16[3]));  // spe
+    encoding.push_back(static_cast<float>(data_16[4]));  // spc
+    // 4 moves: id + pp
+    for (int i{}; i < 8; ++i) {
+        encoding.push_back(static_cast<float>(data[10 + i]));
+    }
+    encoding.push_back(static_cast<float>(data_16[9]));   // current hp
+    const uint8_t status = data[20];                      // status
+    encoding.push_back(static_cast<float>(status & 7));   // status duration
+    encoding.push_back(static_cast<float>(status >> 3));  // status id
+
+    encoding.push_back(static_cast<float>(data[21]));  // species
+    const uint8_t type = data[22];
+    encoding.push_back(static_cast<float>(type & 15));  // type 1
+    encoding.push_back(static_cast<float>(type >> 4));  // type 2
+
+    encoding.push_back(static_cast<float>(data[23]));  // level
+}
+
+void encode_side(const uint8_t* data, std::vector<float>& encoding) {
+    // last used move is outside this call, in encode_battle
+    const uint8_t* order = data + 176;
+
+    {
+        for (int i{}; i < 6; ++i) {
+            std::cout << (int)order[i] << ' ';
+        }
+        std::cout << std::endl;
+    };
+
+    const uint8_t* active_data = data + 144;
+    encode_active_pokemon(active_data, encoding);
+
+    for (int p{}; p < 6; ++p) {
+        uint8_t pokemon = order[p] - 1;
+        assert(pokemon >= 0 and pokemon < 6);
+        const uint8_t* pokemon_data = data + 24 * pokemon;
+        encode_bench_pokemon(pokemon_data, encoding);
+    }
+}
+
+void encode_battle(const uint8_t* data, std::vector<float>& encoding) {
+    for (int side{}; side < 2; ++side) {
+        const uint8_t* side_data = data + side * SIZE_SIDE;
+        encode_side(side_data, encoding);
+        encoding.push_back(static_cast<float>(data[372 + 2 * side]));  // last move
+        encoding.push_back(static_cast<float>(data[373 + 2 * side]));  // counterable
+    }
+    encoding.push_back(static_cast<float>(data[368] + 256 * data[369]));  // turn
+    encoding.push_back(static_cast<float>(data[370] + 256 * data[371]));  // last damage
+}
+
+Trajectory open_file_and_get_trajectory(std::string file_path) {
     std::ifstream file(file_path, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         std::cerr << "Failed to open file." << std::endl;
-        return;
+        return {};
     }
 
     // Get the size of the file
@@ -132,12 +233,17 @@ void open_file_and_get_trajectory(std::string file_path) {
     // Don't forget to close the file
     file.close();
 
-    get_trajectory(data, fileSize);
+    Trajectory trajectory = get_trajectory(data, fileSize);
+
+    return trajectory;
 }
 
 int main() {
     std::string demo_path = "/home/user/oak/logs/12463111002853059008.log";
-    open_file_and_get_trajectory(demo_path);
-
+    auto trajectory = open_file_and_get_trajectory(demo_path);
+    for (const Frame& frame : trajectory.frames) {
+        std::vector<float> tensor{};
+        encode_battle(frame.battle.data(), tensor);
+    }
     return 0;
 }
