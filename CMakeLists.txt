@@ -28,6 +28,10 @@ add_executable(main ./src/main.cc)
 target_link_libraries(main pinyon)
 target_link_libraries(main ${libpkmn})
 
+add_executable(matrix-ucb-tune ./src/matrix-ucb-tune.cc)
+target_link_libraries(matrix-ucb-tune pinyon)
+target_link_libraries(matrix-ucb-tune ${libpkmn})
+
 add_executable(ab-mpq ./src/ab-mpq.cc)
 target_link_libraries(ab-mpq pinyon)
 target_link_libraries(ab-mpq ${libpkmn})
@@ -45,7 +49,6 @@ target_link_libraries(eval-log pinyon)
 target_link_libraries(eval-log ${libpkmn})
 
 add_executable(parse-self-play ./src/parse-self-play.cc)
-target_link_libraries(parse-self-play pinyon)
 target_link_libraries(parse-self-play ${libpkmn})
 
 add_executable(a ./benchmark/a.cc)
