@@ -4,6 +4,53 @@
 
 #include "../include/battle.hh"
 
+std::array<std::string, 166> move_names{
+    "None",         "Pound",        "KarateChop",   "DoubleSlap",   "CometPunch",   "MegaPunch",   "PayDay",
+    "FirePunch",    "IcePunch",     "ThunderPunch", "Scratch",      "ViseGrip",     "Guillotine",  "RazorWind",
+    "SwordsDance",  "Cut",          "Gust",         "WingAttack",   "Whirlwind",    "Fly",         "Bind",
+    "Slam",         "VineWhip",     "Stomp",        "DoubleKick",   "MegaKick",     "JumpKick",    "RollingKick",
+    "SandAttack",   "Headbutt",     "HornAttack",   "FuryAttack",   "HornDrill",    "Tackle",      "BodySlam",
+    "Wrap",         "TakeDown",     "Thrash",       "DoubleEdge",   "TailWhip",     "PoisonSting", "Twineedle",
+    "PinMissile",   "Leer",         "Bite",         "Growl",        "Roar",         "Sing",        "Supersonic",
+    "SonicBoom",    "Disable",      "Acid",         "Ember",        "Flamethrower", "Mist",        "WaterGun",
+    "HydroPump",    "Surf",         "IceBeam",      "Blizzard",     "Psybeam",      "BubbleBeam",  "AuroraBeam",
+    "HyperBeam",    "Peck",         "DrillPeck",    "Submission",   "LowKick",      "Counter",     "SeismicToss",
+    "Strength",     "Absorb",       "MegaDrain",    "LeechSeed",    "Growth",       "RazorLeaf",   "SolarBeam",
+    "PoisonPowder", "StunSpore",    "SleepPowder",  "PetalDance",   "StringShot",   "DragonRage",  "FireSpin",
+    "ThunderShock", "Thunderbolt",  "ThunderWave",  "Thunder",      "RockThrow",    "Earthquake",  "Fissure",
+    "Dig",          "Toxic",        "Confusion",    "Psychic",      "Hypnosis",     "Meditate",    "Agility",
+    "QuickAttack",  "Rage",         "Teleport",     "NightShade",   "Mimic",        "Screech",     "DoubleTeam",
+    "Recover",      "Harden",       "Minimize",     "Smokescreen",  "ConfuseRay",   "Withdraw",    "DefenseCurl",
+    "Barrier",      "LightScreen",  "Haze",         "Reflect",      "FocusEnergy",  "Bide",        "Metronome",
+    "MirrorMove",   "SelfDestruct", "EggBomb",      "Lick",         "Smog",         "Sludge",      "BoneClub",
+    "FireBlast",    "Waterfall",    "Clamp",        "Swift",        "SkullBash",    "SpikeCannon", "Constrict",
+    "Amnesia",      "Kinesis",      "SoftBoiled",   "HighJumpKick", "Glare",        "DreamEater",  "PoisonGas",
+    "Barrage",      "LeechLife",    "LovelyKiss",   "SkyAttack",    "Transform",    "Bubble",      "DizzyPunch",
+    "Spore",        "Flash",        "Psywave",      "Splash",       "AcidArmor",    "Crabhammer",  "Explosion",
+    "FurySwipes",   "Bonemerang",   "Rest",         "RockSlide",    "HyperFang",    "Sharpen",     "Conversion",
+    "TriAttack",    "SuperFang",    "Slash",        "Substitute",   "Struggle"};
+
+std::array<std::string, 152> species_names{
+    "None",       "Bulbasaur",  "Ivysaur",   "Venusaur",   "Charmander", "Charmeleon", "Charizard",  "Squirtle",
+    "Wartortle",  "Blastoise",  "Caterpie",  "Metapod",    "Butterfree", "Weedle",     "Kakuna",     "Beedrill",
+    "Pidgey",     "Pidgeotto",  "Pidgeot",   "Rattata",    "Raticate",   "Spearow",    "Fearow",     "Ekans",
+    "Arbok",      "Pikachu",    "Raichu",    "Sandshrew",  "Sandslash",  "NidoranF",   "Nidorina",   "Nidoqueen",
+    "NidoranM",   "Nidorino",   "Nidoking",  "Clefairy",   "Clefable",   "Vulpix",     "Ninetales",  "Jigglypuff",
+    "Wigglytuff", "Zubat",      "Golbat",    "Oddish",     "Gloom",      "Vileplume",  "Paras",      "Parasect",
+    "Venonat",    "Venomoth",   "Diglett",   "Dugtrio",    "Meowth",     "Persian",    "Psyduck",    "Golduck",
+    "Mankey",     "Primeape",   "Growlithe", "Arcanine",   "Poliwag",    "Poliwhirl",  "Poliwrath",  "Abra",
+    "Kadabra",    "Alakazam",   "Machop",    "Machoke",    "Machamp",    "Bellsprout", "Weepinbell", "Victreebel",
+    "Tentacool",  "Tentacruel", "Geodude",   "Graveler",   "Golem",      "Ponyta",     "Rapidash",   "Slowpoke",
+    "Slowbro",    "Magnemite",  "Magneton",  "Farfetchd",  "Doduo",      "Dodrio",     "Seel",       "Dewgong",
+    "Grimer",     "Muk",        "Shellder",  "Cloyster",   "Gastly",     "Haunter",    "Gengar",     "Onix",
+    "Drowzee",    "Hypno",      "Krabby",    "Kingler",    "Voltorb",    "Electrode",  "Exeggcute",  "Exeggutor",
+    "Cubone",     "Marowak",    "Hitmonlee", "Hitmonchan", "Lickitung",  "Koffing",    "Weezing",    "Rhyhorn",
+    "Rhydon",     "Chansey",    "Tangela",   "Kangaskhan", "Horsea",     "Seadra",     "Goldeen",    "Seaking",
+    "Staryu",     "Starmie",    "MrMime",    "Scyther",    "Jynx",       "Electabuzz", "Magmar",     "Pinsir",
+    "Tauros",     "Magikarp",   "Gyarados",  "Lapras",     "Ditto",      "Eevee",      "Vaporeon",   "Jolteon",
+    "Flareon",    "Porygon",    "Omanyte",   "Omastar",    "Kabuto",     "Kabutops",   "Aerodactyl", "Snorlax",
+    "Articuno",   "Zapdos",     "Moltres",   "Dratini",    "Dragonair",  "Dragonite",  "Mewtwo",     "Mew"};
+
 struct Frame {
     std::array<uint8_t, SIZE_BATTLE_WITH_PRNG> battle{};
     pkmn_result result;
@@ -67,7 +114,6 @@ Trajectory get_trajectory(const char* data, const int size) {
         // std::cout << "cols: " << (int)cols << std::endl;
         frame.col_policy.resize(cols);
         index += 1;
-
 
         const float* float_ptr = reinterpret_cast<const float*>(data + index);
         frame.row_value = *float_ptr;
@@ -190,13 +236,6 @@ void encode_side(const uint8_t* data, std::vector<float>& encoding) {
     // last used move is outside this call, in encode_battle
     const uint8_t* order = data + 176;
 
-    // {
-    //     for (int i{}; i < 6; ++i) {
-    //         std::cout << (int)order[i] << ' ';
-    //     }
-    //     std::cout << std::endl;
-    // };
-
     const uint8_t* active_data = data + 144;
     encode_active_pokemon(active_data, encoding);
 
@@ -217,6 +256,28 @@ void encode_battle(const uint8_t* data, std::vector<float>& encoding) {
     }
     encoding.push_back(static_cast<float>(data[368] + 256 * data[369]));  // turn
     encoding.push_back(static_cast<float>(data[370] + 256 * data[371]));  // last damage
+}
+
+std::string decode_action(const uint8_t* side_data, const pkmn_choice action) {
+    const int data = action >> 2;
+    // std::cout << (int)(action & 3) << ' ' << (int)(action >> 2) << std::endl;
+    switch (action & 3) {
+        case 0: {
+            return "Pass";
+        }
+        case 1: {
+            const uint8_t* active_move_data = side_data + 144 + 24;
+            const uint8_t move_id = active_move_data[2 * (data - 1)];
+            return move_names[move_id];
+        }
+        case 2: {
+            // const uint8_t* order = side_data + 176;
+            const uint8_t* switch_target = side_data + 24 * (data - 1);
+            const uint8_t switch_species = switch_target[21];
+            return species_names[switch_species];
+        }
+    }
+    return "ERROR DECODING";
 }
 
 Trajectory open_file_and_get_trajectory(std::string file_path) {
@@ -261,15 +322,21 @@ int main() {
 
         Battle<0, 0, BattleObs, bool, float>::State state{frame.battle.data(), frame.battle.data() + SIZE_SIDE};
         state.result = frame.result;
-        std::cout << "result: " << (int) frame.result << std::endl;
+        std::cout << "result: " << (int)frame.result << std::endl;
         state.get_actions();
-        
+
         assert(frame.row_policy.size() == state.row_actions.size());
         assert(frame.col_policy.size() == state.col_actions.size());
 
-        std::cout << "tensor size: " << frame.encoding.size() << std::endl;
-        for (int f{}; f < frame.encoding.size(); ++f) {
-            std::cout << frame.encoding[f] << ' ';
+        std::cout << "row actions:" << std::endl;
+        for (const auto action : state.row_actions) {
+            std::cout << decode_action(frame.battle.data(), action) << ", ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "col actions:" << std::endl;
+        for (const auto action : state.col_actions) {
+            std::cout << decode_action(frame.battle.data() + SIZE_SIDE, action) << ", ";
         }
         std::cout << std::endl;
 
