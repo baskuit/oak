@@ -57,7 +57,7 @@ struct Frame {
     pkmn_choice row_action, col_action;
     std::vector<float> row_policy{}, col_policy{};
     std::vector<float> encoding{};
-    float row_value;
+    float value;
 };
 
 struct Trajectory {
@@ -116,7 +116,7 @@ Trajectory get_trajectory(const char* data, const int size) {
         index += 1;
 
         const float* float_ptr = reinterpret_cast<const float*>(data + index);
-        frame.row_value = *float_ptr;
+        frame.value = *float_ptr;
         ++float_ptr;
         for (int row_idx{}; row_idx < frame.row_policy.size(); ++row_idx) {
             frame.row_policy[row_idx] = *float_ptr;
@@ -139,20 +139,24 @@ Trajectory get_trajectory(const char* data, const int size) {
 
     assert(index == size);
 
-    switch (pkmn_result_kind(final_result)) {
+    switch (pkmn_result_type(final_result)) {
         case PKMN_RESULT_WIN: {
             trajectory.terminal_value = 1.0;
+            break;
         }
         case PKMN_RESULT_LOSE: {
             trajectory.terminal_value = 0.0;
+            break;
         }
         case PKMN_RESULT_TIE: {
             trajectory.terminal_value = 0.5;
+            break;
         }
         case PKMN_RESULT_ERROR: {
             std::exception();
         }
     }
+
     // get rid of empty frame
     trajectory.frames.pop_back();
 
@@ -317,30 +321,46 @@ int main() {
 
     int frame_index{};
     for (Frame& frame : trajectory.frames) {
+        
         std::cout << "Frame: " << frame_index << std::endl;
+
+        // turn battle into un-bit-packed tensor data
         encode_battle(frame.battle.data(), frame.encoding);
 
+        std::cout << "result: " << (int)frame.result << std::endl;
+
+        // reconstruct battle object to get legal actions, which were not stored...
         Battle<0, 0, BattleObs, bool, float>::State state{frame.battle.data(), frame.battle.data() + SIZE_SIDE};
         state.result = frame.result;
-        std::cout << "result: " << (int)frame.result << std::endl;
         state.get_actions();
 
+        // basic assertion to check validity of saved battle bytes, etc
         assert(frame.row_policy.size() == state.row_actions.size());
         assert(frame.col_policy.size() == state.col_actions.size());
 
+        // print formatted actions after they've been reconstructed by above
+        const uint8_t *row_side = frame.battle.data();
+        const uint8_t *col_side = frame.battle.data() + SIZE_SIDE;
+
         std::cout << "row actions:" << std::endl;
-        for (const auto action : state.row_actions) {
-            std::cout << decode_action(frame.battle.data(), action) << ", ";
+        for (int row_idx{}; row_idx < state.row_actions.size(); ++row_idx) {
+            std::cout << decode_action(row_side, state.row_actions[row_idx]) << " : " << frame.row_policy[row_idx] << ", ";
         }
         std::cout << std::endl;
+        std::cout << "row selected action:" << decode_action(row_side, frame.row_action) << std::endl;
 
         std::cout << "col actions:" << std::endl;
-        for (const auto action : state.col_actions) {
-            std::cout << decode_action(frame.battle.data() + SIZE_SIDE, action) << ", ";
+        for (int col_idx{}; col_idx < state.col_actions.size(); ++col_idx) {
+            std::cout << decode_action(col_side, state.col_actions[col_idx]) << " : " << frame.col_policy[col_idx] << ", ";
         }
         std::cout << std::endl;
+        std::cout << "col selected action:" << decode_action(col_side, frame.col_action) << std::endl;
+
+        std::cout << "search value: " << frame.value << std::endl;
 
         ++frame_index;
     }
+    std::cout << "terminal value: " << trajectory.terminal_value << std::endl;
+
     return 0;
 }
