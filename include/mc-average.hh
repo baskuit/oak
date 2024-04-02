@@ -74,7 +74,6 @@ struct MonteCarloModelAverage : Types {
                 const int col_idx = device.random_int(state.col_actions.size());
                 const auto row_action = state.row_actions[row_idx];
                 const auto col_action = state.col_actions[col_idx];
-                std::cout << (int)(row_action & 3) << ' ' << (int)(col_action & 3) << std::endl;
                 state.apply_actions(row_action, col_action);
                 if constexpr (no_switch) {
                     state.get_actions_no_switch();

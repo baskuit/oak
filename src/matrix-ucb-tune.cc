@@ -36,6 +36,17 @@ int main() {
 
     prng seed_device{4012024};
 
+    // {
+    //     float c = 1.5;
+    //     float e = .1;
+    //     size_t t = 4;
+
+    //     models.emplace_back(W::make_model<U>(
+    //         U::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, t}, {c, e}}));
+    //     models.emplace_back(W::make_model<USlow>(
+    //         USlow::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, t}, {c, e}}));
+    // };
+
     models.emplace_back(W::make_model<V>(V::Model{ms, prng{0}, {prng{0}, 1 << 0}, {0.1}}));
     models.emplace_back(W::make_model<V>(V::Model{ms, prng{0}, {prng{0}, 1 << 1}, {0.1}}));
     models.emplace_back(W::make_model<V>(V::Model{ms, prng{0}, {prng{0}, 1 << 2}, {0.1}}));
@@ -49,18 +60,15 @@ int main() {
         }
     }
 
-    models.emplace_back(W::make_model<U>(U::Model{ms, prng{0}, {prng{0}, 1 << 3}, {2.5, 0.1}}));
-    models.emplace_back(W::make_model<U>(U::Model{ms, prng{0}, {prng{0}, 1 << 3}, {1.5, 0.1}}));
-
-    const size_t threads = 8;
+    const size_t threads = 16;
     const size_t vs_rounds = 1;
-    ModelBanditTypes::PRNG device{0};
+    ModelBanditTypes::PRNG device{seed_device.uniform_64()};
     ModelBanditTypes::State arena_state{&generator_function, models, vs_rounds};
     ModelBanditTypes::Model arena_model{1337};
     ModelBanditTypes::Search search{ModelBanditTypes::BanditAlgorithm{.10}, threads};
     ModelBanditTypes::MatrixNode node{};
 
-    const size_t arena_search_iterations = 1 << 6;
+    const size_t arena_search_iterations = 1 << 7;
     const size_t n_prints = 50;
 
     {
