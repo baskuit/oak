@@ -1,53 +1,40 @@
 #pragma once
 
-#include <state/state.hh>
 #include <model/model.hh>
+#include <state/state.hh>
 
-namespace MonteCarloModelAverageDetail
-{
-    template <typename Types, bool has_policy>
-    struct ModelOutputImpl;
+namespace MonteCarloModelAverageDetail {
+template <typename Types, bool has_policy>
+struct ModelOutputImpl;
 
-    template <typename Types>
-    struct ModelOutputImpl<Types, false>
-    {
-        Types::Value value;
-    };
-
-    template <typename Types>
-    struct ModelOutputImpl<Types, true>
-    {
-        Types::Value value;
-        Types::VectorReal row_policy, col_policy;
-    };
+template <typename Types>
+struct ModelOutputImpl<Types, false> {
+    Types::Value value;
 };
 
-template <CONCEPT(IsPerfectInfoStateTypes, Types), bool has_policy = false>
-struct MonteCarloModelAverage : Types
-{
+template <typename Types>
+struct ModelOutputImpl<Types, true> {
+    Types::Value value;
+    Types::VectorReal row_policy, col_policy;
+};
+};  // namespace MonteCarloModelAverageDetail
 
+template <CONCEPT(IsPerfectInfoStateTypes, Types), bool has_policy = false, bool no_switch = false>
+struct MonteCarloModelAverage : Types {
     using ModelOutput = MonteCarloModelAverageDetail::ModelOutputImpl<Types, has_policy>;
 
     using ModelBatchInput = std::vector<typename Types::State>;
     using ModelBatchOutput = std::vector<ModelOutput>;
 
-    class Model
-    {
-    public:
+    class Model {
+       public:
         Types::PRNG device;
         const size_t tries = 1;
 
-        Model(
-            const Types::PRNG &device,
-            const size_t tries = 1)
-            : device{device}, tries{tries} {}
+        Model(const Types::PRNG &device, const size_t tries = 1) : device{device}, tries{tries} {}
 
-        void inference(
-            Types::State &&state,
-            ModelOutput &output)
-        {
-            if constexpr (has_policy)
-            {
+        void inference(Types::State &&state, ModelOutput &output) {
+            if constexpr (has_policy) {
                 const size_t rows = state.row_actions.size();
                 const size_t cols = state.col_actions.size();
                 const typename Types::Real row_uniform{Rational{1, static_cast<int>(rows)}};
@@ -67,43 +54,33 @@ struct MonteCarloModelAverage : Types
             output.value = typename Types::Value{cum_row_payoff};
         }
 
-        void inference(
-            ModelBatchInput &batch_input,
-            ModelBatchOutput &batch_output)
-        {
+        void inference(ModelBatchInput &batch_input, ModelBatchOutput &batch_output) {
             batch_output.resize(batch_input.size());
-            for (int i = 0; i < batch_input.size(); ++i)
-            {
+            for (int i = 0; i < batch_input.size(); ++i) {
                 inference(std::move(batch_input[i]), batch_output[i]);
             }
         }
 
-        void add_to_batch_input(
-            Types::State &&state,
-            ModelBatchInput &input) const
-        {
-            input.push_back(state);
-        }
+        void add_to_batch_input(Types::State &&state, ModelBatchInput &input) const { input.push_back(state); }
 
-        void get_output(
-            ModelOutput &model_output,
-            ModelBatchOutput &model_batch_output,
-            const long int index) const
-        {
+        void get_output(ModelOutput &model_output, ModelBatchOutput &model_batch_output, const long int index) const {
             model_output = model_batch_output[index];
         }
 
-    protected:
-        void rollout(Types::State &state)
-        {
-            while (!state.is_terminal())
-            {
+       protected:
+        void rollout(Types::State &state) {
+            while (!state.is_terminal()) {
                 const int row_idx = device.random_int(state.row_actions.size());
                 const int col_idx = device.random_int(state.col_actions.size());
                 const auto row_action = state.row_actions[row_idx];
                 const auto col_action = state.col_actions[col_idx];
+                std::cout << (int)(row_action & 3) << ' ' << (int)(col_action & 3) << std::endl;
                 state.apply_actions(row_action, col_action);
-                state.get_actions();
+                if constexpr (no_switch) {
+                    state.get_actions_no_switch();
+                } else {
+                    state.get_actions();
+                }
             }
         }
     };

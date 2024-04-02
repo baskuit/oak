@@ -343,6 +343,22 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
                                                         col_actions.data(), PKMN_MAX_CHOICES));
         }
 
+        void get_actions_no_switch() {
+            this->row_actions.resize(pkmn_gen1_battle_choices_no_switch(&this->battle, PKMN_PLAYER_P1,
+                                                              pkmn_result_p1(this->result), this->row_actions.data(),
+                                                              PKMN_MAX_CHOICES));
+            this->col_actions.resize(pkmn_gen1_battle_choices_no_switch(&this->battle, PKMN_PLAYER_P2,
+                                                              pkmn_result_p2(this->result), this->col_actions.data(),
+                                                              PKMN_MAX_CHOICES));
+        }
+
+        void get_actions_no_switch(TypeList::VectorAction &row_actions, TypeList::VectorAction &col_actions) const {
+            row_actions.resize(pkmn_gen1_battle_choices_no_switch(&this->battle, PKMN_PLAYER_P1, pkmn_result_p1(this->result),
+                                                        row_actions.data(), PKMN_MAX_CHOICES));
+            col_actions.resize(pkmn_gen1_battle_choices_no_switch(&this->battle, PKMN_PLAYER_P2, pkmn_result_p2(this->result),
+                                                        col_actions.data(), PKMN_MAX_CHOICES));
+        }
+
         void apply_actions(pkmn_choice row_action, pkmn_choice col_action) {
             // Only 2, 3, 20, and 39 are supported as Roll values
             // TODO use 'high quality' bits of the showdown seed
