@@ -4,7 +4,7 @@
 #include "../include/battle.hh"
 #include "../include/sides.hh"
 
-const size_t duration_ms = 5000;
+const size_t duration_ms = 500;
 const int row_team_idx = 3;
 const int col_team_idx = 4;
 
@@ -15,6 +15,7 @@ void benchmark_st_()
     typename Types::State state{sides[row_team_idx], sides[col_team_idx]};
     state.apply_actions(0, 0);
     state.get_actions();
+    state.clamped = true;
     typename Types::Model model{0};
     typename Types::MatrixNode root{};
     typename Types::Search search{};
@@ -71,14 +72,14 @@ void benchmark_mtp(std::tuple<SearchTypes...> search_type_tuple)
 
 int main()
 {
-    auto bandit_type_pack = TypePack<Exp3<MonteCarloModel<Battle<64, 0, ChanceObs, float, float>>>>{};
+    auto bandit_type_pack = TypePack<Exp3<MonteCarloModel<Battle<0, 3, ChanceObs, float, float>>>>{};
     auto node_template_pack = NodeTemplatePack<DefaultNodes, LNodes, DebugNodes, FlatNodes>{};
 
     auto st_search_type_tuple = search_type_generator<TreeBandit>(bandit_type_pack, node_template_pack);
-    auto mt_search_type_tuple = search_type_generator<TreeBanditThreaded>(bandit_type_pack, node_template_pack);
-    auto mtp_search_type_tuple = search_type_generator<TreeBanditThreadPool>(bandit_type_pack, node_template_pack);
+    // auto mt_search_type_tuple = search_type_generator<TreeBanditThreaded>(bandit_type_pack, node_template_pack);
+    // auto mtp_search_type_tuple = search_type_generator<TreeBanditThreadPool>(bandit_type_pack, node_template_pack);
 
     benchmark_st(st_search_type_tuple);
-    benchmark_mt(mt_search_type_tuple);
-    benchmark_mtp(mtp_search_type_tuple);
+    // benchmark_mt(mt_search_type_tuple);
+    // benchmark_mtp(mtp_search_type_tuple);
 }

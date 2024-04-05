@@ -27,18 +27,20 @@ void print_matrix(typename Types::MatrixNode *node) {
 
 int main() {
     using MatrixUCBTypes = TreeBandit<MatrixUCB<MonteCarloModelAverage<BattleTypes, false, true>>>;
-    using Exp3Types = TreeBandit<Exp3<MonteCarloModelAverage<BattleTypes, false, true>>>;
+    using Exp3Types = TreeBandit<UCB<MonteCarloModelAverage<BattleTypes, false, true>>>;
+    using UCBTypes = TreeBandit<UCB<MonteCarloModelAverage<BattleTypes, false, true>>>;
+
     // iter, tree bandit, policy ,value, empirical
-    using T = Clamped<SearchModel<MatrixUCBTypes, false, true, true, false, true>>;
-    using U = Clamped<SearchModel<MatrixUCBTypes, false, true, true, false, false>>;
-    using V = Clamped<SearchModel<Exp3Types, false, true, true, true, false>>;
+    using M = Clamped<SearchModel<MatrixUCBTypes, false, true, true, false, true>>;
+    using U = Clamped<SearchModel<UCBTypes, false, true, true, false, true>>;
+    using E = Clamped<SearchModel<Exp3Types, false, true, true, false, false>>;
 
     // Model type that treats search output as its inference
     using ModelBanditTypes = TreeBanditThreaded<Exp3Fat<MonteCarloModel<ModelBandit>>>;
     // Type list for multithreaded exp3 over ModelBandit state
 
     std::vector<W::Types::Model> models{};
-    const size_t ms = 15000;
+    const size_t ms = 500;
     std::vector<float> cuct{.5, 1.0, 1.7, 2.0};
     std::vector<size_t> mc_avg{1, 2, 4, 8};
     std::vector<float> expl{0.05, 0.1, .2};
@@ -46,16 +48,17 @@ int main() {
     prng seed_device{4753498573498};
 
     {
-        models.emplace_back(W::make_model<U>(
-            U::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {.5, .1}}));
-        models.emplace_back(W::make_model<U>(
-            U::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {1, .1}}));
-        models.emplace_back(W::make_model<U>(
-            U::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {1.5, .1}}));
         models.emplace_back(
-            W::make_model<V>(V::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {.1}}));
+            W::make_model<U>(U::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {2}}));
+        // models.emplace_back(W::make_model<T>(
+        //     T::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {1, .1}}));
+        // models.emplace_back(W::make_model<T>(
+        //     T::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {1.5, .1}}));
         models.emplace_back(
-            W::make_model<V>(V::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {.02}}));
+            W::make_model<E>(E::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1}, {.1}}));
+        // models.emplace_back(
+        //     W::make_model<U>(U::Model{ms, prng{seed_device.uniform_64()}, {prng{seed_device.uniform_64()}, 1},
+        //     {.02}}));
     };
 
     // models.emplace_back(W::make_model<V>(V::Model{ms, prng{0}, {prng{0}, 1 << 0}, {0.1}}));
@@ -71,7 +74,7 @@ int main() {
     //     }
     // }
 
-    const size_t threads = 8;
+    const size_t threads = 4;
     const size_t vs_rounds = 1;
     ModelBanditTypes::PRNG device{seed_device.uniform_64()};
     ModelBanditTypes::State arena_state{&generator_function, models, vs_rounds};

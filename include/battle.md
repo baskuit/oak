@@ -10,6 +10,12 @@ At the time of writing this library, libpkmn has experimental support for identi
 
 Because this support is experimental, `oak` is pinned to a fork which begins at a fixed commit on the main repo. The fork also has a patch to the probability measuring mode and a chance to the debug log binary procol to support the encoding/decoding of model values, policies, and (TODO) data matrices.
 
+## Zig
+
+Zig frequently undergoes breaking changes. This fork of lipkmn will compile with
+
+> "version": "0.12.0-dev.2990+31763d28c"
+
 # Template
 
 The wrapper for the battle object has several template parameters.

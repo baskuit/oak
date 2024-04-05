@@ -28,9 +28,9 @@ add_executable(main ./src/main.cc)
 target_link_libraries(main pinyon)
 target_link_libraries(main ${libpkmn})
 
-add_executable(matrix-ucb-tune ./src/matrix-ucb-tune.cc)
-target_link_libraries(matrix-ucb-tune pinyon)
-target_link_libraries(matrix-ucb-tune ${libpkmn})
+add_executable(tune ./src/tune.cc)
+target_link_libraries(tune pinyon)
+target_link_libraries(tune ${libpkmn})
 
 add_executable(ab-mpq ./src/ab-mpq.cc)
 target_link_libraries(ab-mpq pinyon)
