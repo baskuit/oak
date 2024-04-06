@@ -32,6 +32,10 @@ add_executable(tune ./src/tune.cc)
 target_link_libraries(tune pinyon)
 target_link_libraries(tune ${libpkmn})
 
+add_executable(four ./src/four.cc)
+target_link_libraries(four pinyon)
+target_link_libraries(four ${libpkmn})
+
 add_executable(ab-mpq ./src/ab-mpq.cc)
 target_link_libraries(ab-mpq pinyon)
 target_link_libraries(ab-mpq ${libpkmn})
