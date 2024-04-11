@@ -238,6 +238,8 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
 
     class State : public BattleDataImpl::BattleData<LOG_SIZE, ROLLS, Real, Prob, Obs> {
        public:
+        State() {}
+
         State(const uint8_t *row_side, const uint8_t *col_side) {
             // init: copy sides onto battle and zero initialize certain bits
             // PRNG bytes are left uninitialized (zero initializing is no better, terrible seed)

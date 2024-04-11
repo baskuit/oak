@@ -52,6 +52,10 @@ add_executable(eval-log ./src/eval-log.cc)
 target_link_libraries(eval-log pinyon)
 target_link_libraries(eval-log ${libpkmn})
 
+add_executable(actor-pool-test ./src/actor-pool-test.cc)
+target_link_libraries(actor-pool-test pinyon)
+target_link_libraries(actor-pool-test ${libpkmn})
+
 add_executable(parse-self-play ./src/parse-self-play.cc)
 target_link_libraries(parse-self-play ${libpkmn})
 

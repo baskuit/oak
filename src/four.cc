@@ -43,7 +43,8 @@ State generator(prng &device, const int max_alive_side, const float use_prob = .
 }
 
 int main() {
-    using AB = AlphaBetaForce<MonteCarloModel<Battle<0, 3, ChanceObs, float, float>>>;
+    using M = SearchModel<AlphaBetaForce<MonteCarloModel<Battle<0, 3, ChanceObs, float, float>>>, false, false, false>;
+    using AB = AlphaBetaForce<M>;
 
     prng device{1121256};
 
@@ -51,10 +52,10 @@ int main() {
 
     std::cout << "rows: " << state.row_actions.size() << " cols: " << state.col_actions.size() << std::endl;
 
-    AB::Model model{device.uniform_64()};
+    AB::Model model{2, prng{device.uniform_64()}, {device.uniform_64()}, {1, 1 << 8, 0.0}};
     AB::Search search{1, 1 << 8, 0.1f};
     AB::MatrixNode node{};
-    search.run(4, device, state, model, node);
+    search.run(2, device, state, model, node);
 
     std::cout << node.count_matrix_nodes() << std::endl;
     return 0;
