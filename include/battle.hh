@@ -151,6 +151,10 @@ struct BattleDataBase {
         return {Real{Rational<>(1, 2)}};
     }
 
+    const Prob& get_prob () const {
+        return prob;
+    }
+
     void randomize_transition(prng &device) {
         uint8_t *battle_prng_bytes = battle.bytes + SIZE_BATTLE_NO_PRNG;
         *(reinterpret_cast<uint64_t *>(battle_prng_bytes)) = device.uniform_64();
@@ -283,6 +287,30 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
             }
         }
 
+        State& operator=(const State& other) {
+            // std::cout << "normal copy constr invoked" << std::endl;
+            this->prob = other.prob;
+            this->row_actions = other.row_actions;
+            this->col_actions = other.col_actions;
+            memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
+            this->options = other.options;
+            this->result = other.result;
+            this->result_kind = other.result_kind;
+            if constexpr (State::dlog) {
+                this->log_options = {this->log_buffer.data(), LOG_SIZE};
+                pkmn_gen1_battle_options_set(&this->options, &this->log_options, NULL, NULL);
+            } else {
+                pkmn_gen1_battle_options_set(&this->options, NULL, NULL, NULL);
+            }
+            if constexpr (State::dchance) {
+                this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
+            }
+            if constexpr (State::dcalc) {
+                this->clamped = other.clamped;
+            }
+            return *this;
+        }
+
         template <typename State_>
             requires(!std::is_same_v<State_, State>)
         State(const State_ &other) {
@@ -389,15 +417,17 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
             }
 
             if constexpr (ROLLS != 0) {
-                // TODO clean up static_cast nonsense
-                const auto &obs_ref = this->get_obs();
-                if (obs_ref[1] & 2 && obs_ref[0]) {
-                    this->prob *= static_cast<Prob>(typename TypeList::Q{static_cast<int>(39 / ROLLS), 1});
-                    math::canonicalize(this->prob);
-                }
-                if (obs_ref[9] & 2 && obs_ref[8]) {
-                    this->prob *= static_cast<Prob>(typename TypeList::Q{static_cast<int>(39 / ROLLS), 1});
-                    math::canonicalize(this->prob);
+                if (this->clamped) {
+                    // TODO clean up static_cast nonsense
+                    const auto &obs_ref = this->get_obs();
+                    if ((obs_ref[1] & 2) && obs_ref[0]) {
+                        this->prob *= static_cast<Prob>(typename TypeList::Q{static_cast<int>(39 / ROLLS), 1});
+                        math::canonicalize(this->prob);
+                    }
+                    if ((obs_ref[9] & 2) && obs_ref[8]) {
+                        this->prob *= static_cast<Prob>(typename TypeList::Q{static_cast<int>(39 / ROLLS), 1});
+                        math::canonicalize(this->prob);
+                    }
                 }
             }
 

@@ -39,24 +39,68 @@ State generator(prng &device, const int max_alive_side, const float use_prob = .
         }
     }
 
+    // std::cout << "rows: " << state.row_actions.size() << " cols: " << state.col_actions.size() << std::endl;
+
     return generator<State>(device, max_alive_side);
 }
 
-int main() {
-    using M = SearchModel<AlphaBetaForce<MonteCarloModel<Battle<0, 3, ChanceObs, float, float>>>, false, false, false>;
-    using AB = AlphaBetaForce<M>;
+int foo(prng &device) {
+    using Types = AlphaBetaRefactor<MonteCarloModel<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, true>;
 
-    prng device{1121256};
+    Types::State state = generator<Types::State>(device, 3);
 
-    AB::State state = generator<AB::State>(device, 3);
+    // for (const auto r : state.row_actions) {
+    //     std::cout << (int) r << ", ";
+    // }
+    // std::cout << std::endl;
+    // for (const auto r : state.col_actions) {
+    //     std::cout << (int) r << ", ";
+    // }
+    // std::cout << std::endl;
 
-    std::cout << "rows: " << state.row_actions.size() << " cols: " << state.col_actions.size() << std::endl;
+    // const int r = device.random_int(state.row_actions.size());
+    // const int c = device.random_int(state.col_actions.size());
+    // state.apply_actions(
+    //     state.row_actions[2],
+    //     state.col_actions[0]
+    // );
 
-    AB::Model model{2, prng{device.uniform_64()}, {device.uniform_64()}, {1, 1 << 8, 0.0}};
-    AB::Search search{1, 1 << 8, 0.1f};
-    AB::MatrixNode node{};
-    search.run(2, device, state, model, node);
+    std::cout << "outer prob: " << state.get_prob().get_str() << std::endl;
+    const auto obs = state.get_obs();
 
-    std::cout << node.count_matrix_nodes() << std::endl;
+    for (const uint8_t x : obs) {
+        std::cout << (int)x << ", ";
+    }
+    std::cout << std::endl;
+
+    // std::cout << state.get_prob().get_d() << " = " << state.get_prob().get_str() << std::endl;
+    // assert(state.get_prob() <= 1);
+    Types::Model model{device.uniform_64()};
+    Types::MatrixNode node{};
+    Types::Search search{1, 1 << 8};
+
+    const auto output = search.run(1, device, state, model, node);
+
+    std::cout << "alpha: " << output.alpha.get_d() << " beta: " << output.beta.get_d() << std::endl;
+    std::cout << "counts: ";
+    for (const auto c : output.counts) {
+        std::cout << c << ", ";
+    } 
+    std::cout << std::endl;
+    std::cout << "times: ";
+    for (const auto c : output.times) {
+        std::cout << c << ", ";
+    } 
+    std::cout << std::endl;
+
     return 0;
+}
+
+int main () {
+    prng device{11213409256};
+
+    std::vector<char> x(3);
+    for (const auto y : x) {
+        foo(device);
+    }
 }

@@ -19,7 +19,7 @@ struct ModelOutputImpl<Types, true> {
 };
 };  // namespace MonteCarloModelAverageDetail
 
-template <CONCEPT(IsPerfectInfoStateTypes, Types), bool has_policy = false, bool no_switch = false>
+template <IsPerfectInfoStateTypes Types, bool has_policy = false, bool no_switch = false>
 struct MonteCarloModelAverage : Types {
     using ModelOutput = MonteCarloModelAverageDetail::ModelOutputImpl<Types, has_policy>;
 
