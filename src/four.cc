@@ -1,6 +1,6 @@
 #include "../include/battle.hh"
 #include "../include/sides.hh"
-
+#include "../include/mc-average.hh"
 /*
 
 Is depth 4 alpha beta possible?
@@ -10,19 +10,34 @@ Is depth 4 alpha beta possible?
 template <typename State, typename Output>
 void print_output (const State& state, const Output& output) {
     std::cout << "alpha: " << output.alpha.get_d() << " beta: " << output.beta.get_d() << std::endl;
+    std::cout << "terminal: ";
+    for (const auto c : output.terminal_count) {
+        std::cout << c << ", ";
+    } 
+    std::cout << std::endl;
+    std::cout << "inference: ";
+    for (const auto c : output.inference_count) {
+        std::cout << c << ", ";
+    } 
+    std::cout << std::endl;
+    std::cout << "alpha_beta: ";
+    for (const auto c : output.alpha_beta_count) {
+        std::cout << c << ", ";
+    } 
+    std::cout << std::endl;
     std::cout << "counts: ";
-    for (const auto c : output.counts) {
+    for (const auto c : output.matrix_node_count) {
         std::cout << c << ", ";
     } 
     std::cout << std::endl;
     std::cout << "times: ";
     for (const auto c : output.times) {
-        std::cout << c << ", ";
+        std::cout << (double)c/1000 << ", ";
     } 
     std::cout << std::endl;
     std::cout << "times w.o.i: ";
     for (const auto c : output.times_without_inference) {
-        std::cout << c << ", ";
+        std::cout << (double)c/1000 << ", ";
     } 
     std::cout << std::endl;
 
@@ -39,13 +54,13 @@ void print_output (const State& state, const Output& output) {
     }
     std::cout << std::endl;
 
-    std::cout << "total_solves: " << std::endl;
-    for (int i = 0; i < 9; ++i) {
-        for (int j = 0; j <= i; ++j) {
-            std::cout << i + 1 << "," << j + 1 << " = " << output.total_solves[i][j] << " | ";
-        }
-        std::cout << std::endl;
-    }
+    // std::cout << "total_solves: " << std::endl;
+    // for (int i = 0; i < 9; ++i) {
+    //     for (int j = 0; j <= i; ++j) {
+    //         std::cout << i + 1 << "," << j + 1 << " = " << output.total_solves[i][j] << " | ";
+    //     }
+    //     std::cout << std::endl;
+    // }
     std::cout << "total_solves_raw: " << output.total_solves_raw << std::endl;
 }
 
@@ -115,6 +130,7 @@ State generator(prng &device, const int max_alive_side, const float use_prob = .
     return generator<State>(device, max_alive_side);
 }
 
+const size_t depth = 4;
 
 template <typename Types>
 void bar (const prng& device_) {
@@ -122,11 +138,41 @@ void bar (const prng& device_) {
     typename Types::State state = generator<typename Types::State>(device, 3);
     typename Types::Model model{device.uniform_64()};
     typename Types::MatrixNode node{};
-    typename Types::Search search{1, 1 << 5};
+    typename Types::Search search{1, 1 << 4};
 
-    const size_t depth = 4;
     const auto output = search.run(depth, device, state, model, node);
     print_output(state, output);
+}
+
+template <typename Types>
+void bar2 (const prng& device_) {
+    prng device{device_};
+    typename Types::State state = generator<typename Types::State>(device, 3);
+    typename Types::Model model{device.uniform_64(), 1 << 5};
+    typename Types::MatrixNode node{};
+    typename Types::Search search{1, 1 << 4};
+
+    const auto output = search.run(depth, device, state, model, node);
+    print_output(state, output);
+}
+
+void test () {
+    prng device{95035674564600};
+
+    using T = AlphaBetaRefactor<MonteCarloModel<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, false>;
+    typename T::State state = generator<typename T::State>(device, 3);
+    typename T::Model model{device.uniform_64()};
+
+    const auto start = std::chrono::high_resolution_clock::now();
+    typename T::ModelOutput output{};
+    model.inference(std::move(state), output);
+    const auto end = std::chrono::high_resolution_clock::now();
+    const size_t time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    // const size_t time_iter = search_iter.run(max_depth, device, state, model, node_iter);
+    // below uses vector input for depths
+    // const size_t time_iter = search_iter.run({max_depth/2, max_depth}, device, state, model, node_iter);
+    std::cout << time << std::endl;
+   
 }
 
 int state_count = 0;
@@ -135,23 +181,27 @@ int foo(prng &device) {
     constexpr bool debug_print = false;
     using T = AlphaBetaRefactor<MonteCarloModel<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, debug_print>;
     using U = AlphaBetaRefactor<BattleSearchModel<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, debug_print>;
+    using V = AlphaBetaRefactor<MonteCarloModelAverage<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, debug_print>;
     std::cout << "\nPOSITION: " << (++state_count) << std::endl;
     prng foo_device{device.uniform_64()};
+
+    // std::cout << "Tree Search at leaf nodes:" << std::endl;
+    // bar<U>(foo_device);
     std::cout << "Monte Carlo at leaf nodes:" << std::endl;
     bar<T>(foo_device);
-    std::cout << "Tree Search at leaf nodes:" << std::endl;
-    bar<U>(foo_device);
+    std::cout << "Monte Carlo ABF at leaf nodes:" << std::endl;
+    bar2<V>(foo_device);
+
 
     return 0;
 }
 
 int main () {
-    prng device{9503469734600};
+    prng device{950356747984600};
 
     std::vector<char> x(10);
     for (const auto y : x) {
         foo(device);
     }
-
     return 0;
 }
