@@ -265,7 +265,6 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
         }
 
         State(const State &other) {
-            // std::cout << "normal copy constr invoked" << std::endl;
             this->prob = other.prob;
             this->row_actions = other.row_actions;
             this->col_actions = other.col_actions;
@@ -288,7 +287,6 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
         }
 
         State& operator=(const State& other) {
-            // std::cout << "normal copy constr invoked" << std::endl;
             this->prob = other.prob;
             this->row_actions = other.row_actions;
             this->col_actions = other.col_actions;
@@ -314,8 +312,7 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
         template <typename State_>
             requires(!std::is_same_v<State_, State>)
         State(const State_ &other) {
-            std::cout << "templated copy constr invoked" << std::endl;
-            this->prob = other.prob;
+            this->prob = other.prob.get_d();
             this->row_actions = other.row_actions;
             this->col_actions = other.col_actions;
             memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
