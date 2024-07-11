@@ -130,7 +130,7 @@ State generator(prng &device, const int max_alive_side, const float use_prob = .
     return generator<State>(device, max_alive_side);
 }
 
-const size_t depth = 4;
+const size_t depth = 5;
 
 template <typename Types>
 void bar (const prng& device_) {
@@ -156,25 +156,6 @@ void bar2 (const prng& device_) {
     print_output(state, output);
 }
 
-void test () {
-    prng device{95035674564600};
-
-    using T = AlphaBetaRefactor<MonteCarloModel<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, false>;
-    typename T::State state = generator<typename T::State>(device, 3);
-    typename T::Model model{device.uniform_64()};
-
-    const auto start = std::chrono::high_resolution_clock::now();
-    typename T::ModelOutput output{};
-    model.inference(std::move(state), output);
-    const auto end = std::chrono::high_resolution_clock::now();
-    const size_t time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    // const size_t time_iter = search_iter.run(max_depth, device, state, model, node_iter);
-    // below uses vector input for depths
-    // const size_t time_iter = search_iter.run({max_depth/2, max_depth}, device, state, model, node_iter);
-    std::cout << time << std::endl;
-   
-}
-
 int state_count = 0;
 
 int foo(prng &device) {
@@ -185,10 +166,10 @@ int foo(prng &device) {
     std::cout << "\nPOSITION: " << (++state_count) << std::endl;
     prng foo_device{device.uniform_64()};
 
-    // std::cout << "Tree Search at leaf nodes:" << std::endl;
-    // bar<U>(foo_device);
     std::cout << "Monte Carlo at leaf nodes:" << std::endl;
     bar<T>(foo_device);
+    std::cout << "Tree Search at leaf nodes:" << std::endl;
+    bar<U>(foo_device);
     std::cout << "Monte Carlo ABF at leaf nodes:" << std::endl;
     bar2<V>(foo_device);
 
