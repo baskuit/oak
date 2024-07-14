@@ -4,3 +4,7 @@
 [submodule "extern/engine"]
 	path = extern/engine
 	url = https://github.com/baskuit/engine
+[submodule "extern/lrslib"]
+	path = extern/lrslib
+	url = https://github.com/baskuit/lrslib
+	branch = contiguous
