@@ -9,6 +9,10 @@ target_include_directories(pinyon INTERFACE extern/pinyon/src)
 include_directories(extern/engine/zig-out/include)
 set(libpkmn ${PROJECT_SOURCE_DIR}/extern/engine/zig-out/lib/libpkmn-showdown.a)
 
+add_subdirectory(extern/lrslib)
+target_include_directories(lrslib64 INTERFACE extern/lrslib/src)
+target_include_directories(lrslib128 INTERFACE extern/lrslib/src)
+
 add_executable(bull ./src/bull.cc)
 target_link_libraries(bull pinyon)
 
@@ -34,6 +38,7 @@ target_link_libraries(tune ${libpkmn})
 
 add_executable(four ./src/four.cc)
 target_link_libraries(four pinyon)
+target_link_libraries(four lrslib128)
 target_link_libraries(four ${libpkmn})
 
 add_executable(ab-mpq ./src/ab-mpq.cc)

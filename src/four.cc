@@ -1,6 +1,7 @@
 #include "../include/battle.hh"
 #include "../include/sides.hh"
 #include "../include/mc-average.hh"
+
 /*
 
 Is depth 4 alpha beta possible?
@@ -9,7 +10,7 @@ Is depth 4 alpha beta possible?
 
 template <typename State, typename Output>
 void print_output (const State& state, const Output& output) {
-    std::cout << "alpha: " << output.alpha.get_d() << " beta: " << output.beta.get_d() << std::endl;
+    std::cout << "alpha: " << output.alpha << " beta: " << output.beta << std::endl;
     std::cout << "terminal: ";
     for (const auto c : output.terminal_count) {
         std::cout << c << ", ";
@@ -44,13 +45,13 @@ void print_output (const State& state, const Output& output) {
     std::cout << "row strategy:";
     for (int i = 0; i < state.row_actions.size(); ++i) {
         int x = state.row_actions[i];
-        std::cout << "( " << int(x /4) << "|" << x % 4 << ") = " << output.row_strategy[i].get_d() << ", ";
+        std::cout << "( " << int(x /4) << "|" << x % 4 << ") = " << output.row_strategy[i] << ", ";
     }
     std::cout << std::endl;
     std::cout << "col strategy:";
     for (int i = 0; i < state.col_actions.size(); ++i) {
         int x = state.col_actions[i];
-        std::cout << "( " << int(x /4) << "|" << x % 4 << ") = " << output.col_strategy[i].get_d() << ", ";
+        std::cout << "( " << int(x /4) << "|" << x % 4 << ") = " << output.col_strategy[i] << ", ";
     }
     std::cout << std::endl;
 
@@ -77,15 +78,12 @@ struct BattleSearchModel : Types {
 
         prng device;
         T::Search search{};
+        T::Model model;
 
-        Model (const prng &device) : device{device} {}
+        Model (const prng &device) : device{device}, model{this->device.uniform_64()} {}
 
         void inference (Types::State &&state, ModelOutput &output) {
-            S::State state_float{state};
-            typename T::Model model{device.uniform_64()};
-            // typename T::Search search{};
-            // typename T::MatrixNode node{};
-            search.run_for_iterations(1 << 7, device, state_float, model);
+            search.run_for_iterations(1 << 7, device, state, model);
             search.get_empirical_value(search.matrix_data[0].stats, output.value);
         }
 
@@ -103,8 +101,6 @@ State generator(prng &device, const int max_alive_side, const float use_prob = .
     State state{sides[r], sides[c]};
     state.randomize_transition(device);
 
-    int m = 6;
-    int n = 6;
     int rows = 1;
     int cols = 1;
 
@@ -118,8 +114,8 @@ State generator(prng &device, const int max_alive_side, const float use_prob = .
 
         rows = state.row_actions.size();
         cols = state.col_actions.size();
-        m = n_alive_side(state.battle.bytes, 0);
-        n = n_alive_side(state.battle.bytes, 1);
+        int m = n_alive_side(state.battle.bytes, 0);
+        int n = n_alive_side(state.battle.bytes, 1);
 
         if (m <= max_alive_side && n <= max_alive_side && (rows > 1 && cols > 1) && device.uniform() < use_prob) {
             state.clamped = true;
@@ -130,30 +126,67 @@ State generator(prng &device, const int max_alive_side, const float use_prob = .
     return generator<State>(device, max_alive_side);
 }
 
-const size_t depth = 5;
+template <typename T>
+void print_matrix_data (const T& matrix_data) {
+    const int rows = matrix_data.rows;
+    const int cols = matrix_data.cols;
+
+    const auto tostring = [](int x) {
+        if (x == 1000) {
+            --x;
+        } 
+        std::string a = std::to_string(x);
+        while (a.size() < 3) {
+            a = "0" + a;
+        }
+        return a;
+    };
+
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            const auto [a, b, c, d] = matrix_data.data[i][j];
+            const int x = a * 1000;
+            const int y = b * 1000;
+            const int z = c * 1000;
+            std::cout << "(" << tostring(x) << " " << tostring(y) << "|" << tostring(z) << " " << tostring(d) << ") ";
+        }
+        std::cout << std::endl;
+    }
+}
+
+const int max_alive = 5;
+const size_t depth = 3;
+const size_t min_tries = 1;
+const size_t max_tries = 1 << 8;
+const double max_unexplored = .01;
+const double min_chance_prob = 0;
 
 template <typename Types>
 void bar (const prng& device_) {
     prng device{device_};
-    typename Types::State state = generator<typename Types::State>(device, 3);
+    typename Types::State state = generator<typename Types::State>(device, max_alive);
     typename Types::Model model{device.uniform_64()};
     typename Types::MatrixNode node{};
-    typename Types::Search search{1, 1 << 4};
+    typename Types::Search search{min_tries, max_tries, max_unexplored, min_chance_prob};
 
     const auto output = search.run(depth, device, state, model, node);
     print_output(state, output);
+
+    print_matrix_data(output.matrix_print_data);
 }
 
 template <typename Types>
 void bar2 (const prng& device_) {
     prng device{device_};
-    typename Types::State state = generator<typename Types::State>(device, 3);
-    typename Types::Model model{device.uniform_64(), 1 << 5};
+    typename Types::State state = generator<typename Types::State>(device, max_alive);
+    typename Types::Model model{device.uniform_64(), 1 << 7};
     typename Types::MatrixNode node{};
-    typename Types::Search search{1, 1 << 4};
+    typename Types::Search search{min_tries, max_tries, max_unexplored, min_chance_prob};
 
     const auto output = search.run(depth, device, state, model, node);
     print_output(state, output);
+
+    print_matrix_data(output.matrix_print_data);
 }
 
 int state_count = 0;
@@ -164,13 +197,13 @@ int foo(prng &device) {
     using U = AlphaBetaRefactor<BattleSearchModel<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
     using V = AlphaBetaRefactor<MonteCarloModelAverage<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
     std::cout << "\nPOSITION: " << (++state_count) << std::endl;
-    prng foo_device{device.uniform_64()};
+    prng foo_device{device.uniform_64()};   
 
-    std::cout << "Monte Carlo at leaf nodes:" << std::endl;
-    bar<T>(foo_device);
-    std::cout << "Tree Search at leaf nodes:" << std::endl;
-    bar<U>(foo_device);
-    std::cout << "Monte Carlo ABF at leaf nodes:" << std::endl;
+    // std::cout << "Monte Carlo at leaf nodes:" << std::endl;
+    // bar<T>(foo_device);
+    // std::cout << "Tree Search at leaf nodes:" << std::endl;
+    // bar<U>(foo_device);
+    std::cout << "Monte Carlo Average at leaf nodes:" << std::endl;
     bar2<V>(foo_device);
 
 
@@ -180,7 +213,7 @@ int foo(prng &device) {
 int main () {
     prng device{950356747984600};
 
-    std::vector<char> x(10);
+    std::vector<char> x(3);
     for (const auto y : x) {
         foo(device);
     }
