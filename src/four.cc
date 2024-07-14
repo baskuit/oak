@@ -160,9 +160,9 @@ int state_count = 0;
 
 int foo(prng &device) {
     constexpr bool debug_print = false;
-    using T = AlphaBetaRefactor<MonteCarloModel<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, debug_print>;
-    using U = AlphaBetaRefactor<BattleSearchModel<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, debug_print>;
-    using V = AlphaBetaRefactor<MonteCarloModelAverage<Battle<0, 3, ChanceObs, mpq_class, mpq_class>>, debug_print>;
+    using T = AlphaBetaRefactor<MonteCarloModel<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
+    using U = AlphaBetaRefactor<BattleSearchModel<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
+    using V = AlphaBetaRefactor<MonteCarloModelAverage<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
     std::cout << "\nPOSITION: " << (++state_count) << std::endl;
     prng foo_device{device.uniform_64()};
 
