@@ -4,3 +4,6 @@
 [submodule "extern/engine"]
 	path = extern/engine
 	url = https://github.com/baskuit/engine
+[submodule "lrslib"]
+	path = lrslib
+	url = ./extern/lrslib
