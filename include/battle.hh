@@ -604,7 +604,8 @@ template <typename State> void get_active_hp(const State &state) {
 
 // pmariglia eval code
 
-template <typename Types, bool debug = false> struct PModel {
+template <typename Types, bool debug = false> 
+struct PModel : Types {
 
   static constexpr float POKEMON_ALIVE{30.0};
   static constexpr float POKEMON_HP{100.0};
@@ -642,41 +643,44 @@ template <typename Types, bool debug = false> struct PModel {
     // }
 
     // don't make burn as punishing for special attackers
-    if pokemon
-      .special_attack > pokemon.attack { multiplier /= 2.0; }
+    const uint32_t spc = (uint32_t)pokemon[8] + 256 * (uint32_t)pokemon[9]; 
+    const uint32_t atk = (uint32_t)pokemon[2] + 256 * (uint32_t)pokemon[3]; 
+    // std::cout << "spc: " << spc << " atk: " << atk << std::endl;
+    if (spc > atk) { multiplier /= 2.0; }
     return multiplier * POKEMON_BURNED;
   }
 
   static float get_boost_multiplier(int8_t boost) {
     assert(boost >= -6 && boost <= 6);
+    // std::cout << "boost mul: " << pokemon_boost_multipliers[boost + 6] << std::endl;
     return pokemon_boost_multipliers[boost + 6];
   }
 
   static float evaluate_pokemon(const uint8_t *pokemon) {
     float score = 0.0;
     score += POKEMON_ALIVE;
-    score += POKEMON_HP * (256 * pokemon[18] + pokemon[19]) / (256 * pokemon[0] + pokemon[1]);
+    const float ratio = ((float)pokemon[18] + 256 * (float)pokemon[19]) / ((float)pokemon[0] + 256 * (float)pokemon[1]);
+    // std::cout << "pokemon hp ratio: " << ratio << std::endl;
+    score += POKEMON_HP * ratio;
 
-    switch (pokemon.status) {
-    case PokemonStatus::Burn:
+    const uint8_t status = pokemon[20];
+    switch (status) {
+    case 4:
       score += evaluate_burned(pokemon);
       break;
-    case PokemonStatus::Freeze:
+    case 5:
       score += POKEMON_FROZEN;
       break;
-    case PokemonStatus::Sleep:
+    case 2:
       score += POKEMON_ASLEEP;
       break;
-    case PokemonStatus::Paralyze:
+    case 6:
       score += POKEMON_PARALYZED;
       break;
-    case PokemonStatus::Toxic:
-      score += POKEMON_TOXIC;
-      break;
-    case PokemonStatus::Poison:
+    case 3:
       score += POKEMON_POISONED;
       break;
-    case PokemonStatus::None:
+    case 0:
       break;
     }
 
@@ -686,14 +690,14 @@ template <typename Types, bool debug = false> struct PModel {
   static float evaluate_active(const uint8_t *pokemon) {
     float score = evaluate_pokemon(pokemon);
 
-    score += get_boost_multiplier(pokemon.attack_boost) * POKEMON_ATTACK_BOOST;
-    score +=
-        get_boost_multiplier(pokemon.defense_boost) * POKEMON_DEFENSE_BOOST;
-    score += get_boost_multiplier(pokemon.special_attack_boost) *
-             POKEMON_SPECIAL_ATTACK_BOOST;
-    score += get_boost_multiplier(pokemon.special_defense_boost) *
-             POKEMON_SPECIAL_DEFENSE_BOOST;
-    score += get_boost_multiplier(pokemon.speed_boost) * POKEMON_SPEED_BOOST;
+    // score += get_boost_multiplier(pokemon.attack_boost) * POKEMON_ATTACK_BOOST;
+    // score +=
+    //     get_boost_multiplier(pokemon.defense_boost) * POKEMON_DEFENSE_BOOST;
+    // score += get_boost_multiplier(pokemon.special_attack_boost) *
+    //          POKEMON_SPECIAL_ATTACK_BOOST;
+    // score += get_boost_multiplier(pokemon.special_defense_boost) *
+    //          POKEMON_SPECIAL_DEFENSE_BOOST;
+    // score += get_boost_multiplier(pokemon.speed_boost) * POKEMON_SPEED_BOOST;
 
     // for
     //   vs in pokemon.volatile_statuses.iter() {
@@ -712,43 +716,46 @@ template <typename Types, bool debug = false> struct PModel {
   }
 
   struct ModelOutput {
-    float value;
+    Types::Value value;
   };
 
   class Model {
   public:
     float tune = -0.0125;
 
-    void inference(Types::State &&state, ModelOutput &) const {
+    void inference(Types::State &&state, ModelOutput &output) const {
       float score = 0.0;
       float side_one_alive_count = 0.0;
       float side_two_alive_count = 0.0;
 
-      let iter = state.side_one.pokemon.into_iter();
       for (int i = 0; i < 6; ++i) {
-        const uint8_t *pokemon = state.battle.bytes[i * 24];
+        const uint8_t *pokemon = state.battle.bytes + (i * 24);
         if (pokemon[0] || pokemon[1]) {
           side_one_alive_count += 1;
           score += evaluate_pokemon(pokemon);
         }
       }
       for (int i = 0; i < 6; ++i) {
-        const uint8_t *pokemon = state.battle.bytes[184 + i * 24];
+        const uint8_t *pokemon = state.battle.bytes + (184 + i * 24);
         if (pokemon[0] || pokemon[1]) {
           side_two_alive_count += 1;
           score -= evaluate_pokemon(pokemon);
         }
       }
 
-      score += state.side_one.side_conditions.reflect * REFLECT;
-      score += state.side_one.side_conditions.light_screen * LIGHT_SCREEN;
-      score += state.side_one.side_conditions.safeguard * SAFE_GUARD;
+      // std::cout << "score: " << score << std::endl;
 
-      score -= state.side_two.side_conditions.reflect * REFLECT;
-      score -= state.side_two.side_conditions.light_screen * LIGHT_SCREEN;
-      score -= state.side_two.side_conditions.safeguard * SAFE_GUARD;
+      // score += state.side_one.side_conditions.reflect * REFLECT;
+      // score += state.side_one.side_conditions.light_screen * LIGHT_SCREEN;
+      // score += state.side_one.side_conditions.safeguard * SAFE_GUARD;
+
+      // score -= state.side_two.side_conditions.reflect * REFLECT;
+      // score -= state.side_two.side_conditions.light_screen * LIGHT_SCREEN;
+      // score -= state.side_two.side_conditions.safeguard * SAFE_GUARD;
 
       output.value = sigmoid(score, tune);
+      // std::cout << "value: " << output.value.get_row_value() << std::endl;
+
     }
   };
 };

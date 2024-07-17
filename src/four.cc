@@ -154,20 +154,24 @@ void print_matrix_data (const T& matrix_data) {
     }
 }
 
-const int max_alive = 5;
+const int max_alive = 6;
 const size_t depth = 3;
 const size_t min_tries = 1;
-const size_t max_tries = 1 << 8;
-const double max_unexplored = .01;
-const double min_chance_prob = 0;
+const size_t max_tries = 1 << 7;
+const float max_unexplored = .01;
+const float min_reach_prob_initial = 1;
+const float min_reach_prob_base = 1 / 4.0;
 
 template <typename Types>
 void bar (const prng& device_) {
     prng device{device_};
     typename Types::State state = generator<typename Types::State>(device, max_alive);
-    typename Types::Model model{device.uniform_64()};
+    typename Types::Model model{};
     typename Types::MatrixNode node{};
-    typename Types::Search search{min_tries, max_tries, max_unexplored, min_chance_prob};
+    typename Types::Search search{min_tries, max_tries, max_unexplored, min_reach_prob_initial, min_reach_prob_base};
+
+    // typename Types::ModelOutput output{};
+    // model.inference(std::move(state), output);
 
     const auto output = search.run(depth, device, state, model, node);
     print_output(state, output);
@@ -181,7 +185,7 @@ void bar2 (const prng& device_) {
     typename Types::State state = generator<typename Types::State>(device, max_alive);
     typename Types::Model model{device.uniform_64(), 1 << 7};
     typename Types::MatrixNode node{};
-    typename Types::Search search{min_tries, max_tries, max_unexplored, min_chance_prob};
+    typename Types::Search search{min_tries, max_tries, max_unexplored, min_reach_prob_initial, min_reach_prob_base};
 
     const auto output = search.run(depth, device, state, model, node);
     print_output(state, output);
@@ -193,19 +197,21 @@ int state_count = 0;
 
 int foo(prng &device) {
     constexpr bool debug_print = false;
+    using P = AlphaBetaRefactor<PModel<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
     using T = AlphaBetaRefactor<MonteCarloModel<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
     using U = AlphaBetaRefactor<BattleSearchModel<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
     using V = AlphaBetaRefactor<MonteCarloModelAverage<Battle<0, 3, ChanceObs, float, float>>, debug_print>;
     std::cout << "\nPOSITION: " << (++state_count) << std::endl;
     prng foo_device{device.uniform_64()};   
 
+    std::cout << "P Model at leaf nodes:" << std::endl;
+    bar<P>(foo_device);
     // std::cout << "Monte Carlo at leaf nodes:" << std::endl;
     // bar<T>(foo_device);
     // std::cout << "Tree Search at leaf nodes:" << std::endl;
     // bar<U>(foo_device);
-    std::cout << "Monte Carlo Average at leaf nodes:" << std::endl;
-    bar2<V>(foo_device);
-
+    // std::cout << "Monte Carlo Average at leaf nodes:" << std::endl;
+    // bar2<V>(foo_device);
 
     return 0;
 }
