@@ -336,7 +336,7 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
     template <typename State_>
       requires(!std::is_same_v<State_, State>)
     State(const State_ &other) {
-      this->prob = other.prob.get_d();
+      this->prob = other.prob;
       this->row_actions = other.row_actions;
       this->col_actions = other.col_actions;
       memcpy(this->battle.bytes, other.battle.bytes, SIZE_BATTLE_NO_PRNG);
