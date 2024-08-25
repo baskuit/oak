@@ -1,7 +1,8 @@
 
 const client = require("@pkmn/client");
 const data = require("@pkmn/data");
-const de = require("@pkmn/dex");
+const dex = require("@pkmn/dex");
+const engine = require("@pkmn/engine")
 
 const https = require('https');
 
@@ -33,19 +34,27 @@ function loadReplay (url) {
         try {
             const log = await getUrlContent(url);
             const lines = log.split("\n");
-            let battle = new client.Battle(new data.Generations(de.Dex));
+            let battle = new client.Battle(new data.Generations(dex.Dex));
             for (let i = 0; i < lines.length; i = i + 1) {
                 const line = lines[i];
                 battle.add(line);
-                // console.log(line);
             }
-            
-            
+
+            const gens = new data.Generations(dex.Dex);
+            const gen = gens.get(1);
+            const options =  {
+                seed : [0,0,0,0,0,0],
+                showdown : true,
+                p1 : {name : "p1", team : battle.p1.team},
+                p2 : {name : "p2", team : battle.p2.team},           
+            };
+
+            engine.Battle.create(gen, options);
+
         } catch (error) {
             console.error(error);
         }
-    })();
-    
+    })();    
 }
 
 loadReplay("https://replay.pokemonshowdown.com/smogtours-gen1ou-742822");
