@@ -604,8 +604,7 @@ template <typename State> void get_active_hp(const State &state) {
 
 // pmariglia eval code
 
-template <typename Types, bool debug = false> 
-struct PModel : Types {
+template <typename Types, bool debug = false> struct PModel : Types {
 
   static constexpr float POKEMON_ALIVE{30.0};
   static constexpr float POKEMON_HP{100.0};
@@ -643,23 +642,27 @@ struct PModel : Types {
     // }
 
     // don't make burn as punishing for special attackers
-    const uint32_t spc = (uint32_t)pokemon[8] + 256 * (uint32_t)pokemon[9]; 
-    const uint32_t atk = (uint32_t)pokemon[2] + 256 * (uint32_t)pokemon[3]; 
+    const uint32_t spc = (uint32_t)pokemon[8] + 256 * (uint32_t)pokemon[9];
+    const uint32_t atk = (uint32_t)pokemon[2] + 256 * (uint32_t)pokemon[3];
     // std::cout << "spc: " << spc << " atk: " << atk << std::endl;
-    if (spc > atk) { multiplier /= 2.0; }
+    if (spc > atk) {
+      multiplier /= 2.0;
+    }
     return multiplier * POKEMON_BURNED;
   }
 
   static float get_boost_multiplier(int8_t boost) {
     assert(boost >= -6 && boost <= 6);
-    // std::cout << "boost mul: " << pokemon_boost_multipliers[boost + 6] << std::endl;
+    // std::cout << "boost mul: " << pokemon_boost_multipliers[boost + 6] <<
+    // std::endl;
     return pokemon_boost_multipliers[boost + 6];
   }
 
   static float evaluate_pokemon(const uint8_t *pokemon) {
     float score = 0.0;
     score += POKEMON_ALIVE;
-    const float ratio = ((float)pokemon[18] + 256 * (float)pokemon[19]) / ((float)pokemon[0] + 256 * (float)pokemon[1]);
+    const float ratio = ((float)pokemon[18] + 256 * (float)pokemon[19]) /
+                        ((float)pokemon[0] + 256 * (float)pokemon[1]);
     // std::cout << "pokemon hp ratio: " << ratio << std::endl;
     score += POKEMON_HP * ratio;
 
@@ -690,8 +693,8 @@ struct PModel : Types {
   static float evaluate_active(const uint8_t *pokemon) {
     float score = evaluate_pokemon(pokemon);
 
-    // score += get_boost_multiplier(pokemon.attack_boost) * POKEMON_ATTACK_BOOST;
-    // score +=
+    // score += get_boost_multiplier(pokemon.attack_boost) *
+    // POKEMON_ATTACK_BOOST; score +=
     //     get_boost_multiplier(pokemon.defense_boost) * POKEMON_DEFENSE_BOOST;
     // score += get_boost_multiplier(pokemon.special_attack_boost) *
     //          POKEMON_SPECIAL_ATTACK_BOOST;
@@ -755,7 +758,6 @@ struct PModel : Types {
 
       output.value = sigmoid(score, tune);
       // std::cout << "value: " << output.value.get_row_value() << std::endl;
-
     }
   };
 };

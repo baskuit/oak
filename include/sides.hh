@@ -1,3 +1,3 @@
 #pragma once
 
-constexpr uint8_t sides[184][1] = {}; 
+constexpr uint8_t sides[184][1] = {};

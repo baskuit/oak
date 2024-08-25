@@ -11,7 +11,7 @@ template <typename State, size_t N_GAMES> struct ActorPool {
     env_pool.reserve(N_GAMES);
     for (size_t i{}; i < N_GAMES; ++i) {
       env_pool.emplace_back(sides[device.random_int(n_sides)],
-                          sides[device.random_int(n_sides)]);
+                            sides[device.random_int(n_sides)]);
     }
   }
 
