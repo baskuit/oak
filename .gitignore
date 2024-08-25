@@ -6,3 +6,5 @@
 #logs
 /logs/*.log
 /logs/*.html
+#ts
+*.js

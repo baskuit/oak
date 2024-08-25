@@ -27,13 +27,13 @@ async function getUrlContent(url: string): Promise<string> {
     });
 }
 
-function convert(replay: client.Battle): engine.Data<engine.Gen1.Battle> {
+function convert(replay: client.Battle, finished: client.Battle): engine.Data<engine.Gen1.Battle> {
 
     let sides: engine.Gen1.Side[] = [];
 
     const slots: engine.Slot[] = [1, 2, 3, 4, 5, 6];
 
-    for (const player of replay.sides) {
+    for (const player of finished.sides) {
 
         const active_species = player.active[0]?.baseSpecies;
 
@@ -51,10 +51,9 @@ function convert(replay: client.Battle): engine.Data<engine.Gen1.Battle> {
 
                 active_index = i;
             }
-            const ttt : readonly [data.TypeName, data.TypeName] = [p.types[0], p.types[1] || p.types[0]];
             const stored = {
                 species: p.baseSpecies.id,
-                types: ttt,
+                types: [p.types[0], p.types[1] || p.types[0]] as readonly [data.TypeName, data.TypeName],
                 stats: p.baseSpecies.baseStats,
                 moves: p.moveSlots.map(ms => {return {id: ms.id, pp: ms.ppUsed}}),
             };
@@ -62,7 +61,7 @@ function convert(replay: client.Battle): engine.Data<engine.Gen1.Battle> {
             const max_hp = p.maxhp;
             const pokemon: engine.Gen1.Pokemon = {
                 species: p.baseSpecies.id,
-                types: ttt,
+                types: stored.types,
                 level: p.level,
                 hp: max_hp * p.hp / 100,
                 status: p.status,
@@ -139,7 +138,7 @@ async function getBattleFromReplayTurn(url: string, turn: number = 1000) {
 
         const linter_battle = engine.Battle.create(gens.get(1), options);
 
-        const converted_battle = convert(current);
+        const converted_battle = convert(current, finished);
 
         const retore_options = {}
 
