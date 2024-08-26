@@ -1,9 +1,9 @@
-#include <pinyon.hh>
+#include <pinyon.h>
 
-#include "../include/battle.hh"
-#include "../include/clamp.hh"
-#include "../include/mc-average.hh"
-#include "../include/sides.hh"
+#include "../include/battle.h"
+#include "../include/clamp.h"
+#include "../include/mc-average.h"
+#include "../include/sides.h"
 
 void q_value() {
   // depth-2 alpha beta solve with MC-AVG at leafs. damage rolls are clamped at

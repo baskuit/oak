@@ -2,7 +2,7 @@
 
 #include <pkmn.h>
 
-#include "./sides.hh"
+#include "./sides.h"
 
 #include <filesystem>
 #include <fstream>

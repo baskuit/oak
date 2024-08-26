@@ -1,6 +1,6 @@
-#include "../include/battle.hh"
-#include "../include/mc-average.hh"
-#include "../include/sides.hh"
+#include "../include/battle.h"
+#include "../include/mc-average.h"
+#include "../include/sides.h"
 
 /*
 

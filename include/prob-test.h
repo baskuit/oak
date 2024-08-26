@@ -2,7 +2,7 @@
 
 #include <pkmn.h>
 
-#include <pinyon.hh>
+#include <pinyon.h>
 
 /*
 

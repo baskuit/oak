@@ -3,7 +3,7 @@
 #include <pkmn.h>
 
 #include <limits>
-#include <pinyon.hh>
+#include <pinyon.h>
 
 /*
 

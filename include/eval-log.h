@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include "./battle.hh"
+#include "./battle.h"
 
 template <typename State> struct EvalLog {
   static constexpr size_t header_size = SIZE_BATTLE_WITH_PRNG + 4;

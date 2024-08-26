@@ -1,7 +1,7 @@
-#include "../include/prob-test.hh"
+#include "../include/prob-test.h"
 
-#include "../include/battle.hh"
-#include "../include/sides.hh"
+#include "../include/battle.h"
+#include "../include/sides.h"
 
 // normal rollout but also performs prob_test on each update
 template <typename Types>
@@ -22,7 +22,7 @@ bool rollout_battle_with_prob_test(const size_t tries, typename Types::PRNG &dev
     return true;
 }
 
-// generates random 6v6's from secret sides.hh; clamps if possible
+// generates random 6v6's from secret sides.h; clamps if possible
 template <typename Types>
 typename Types::State generator(typename Types::PRNG &device) {
     // typename Types::State state{sides[1 + device.random_int(20)], sides[1 + device.random_int(20)]};

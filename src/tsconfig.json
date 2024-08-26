@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+    //   "downlevelIteration": true,
+    //   "outDir": "build",
+    //   "rootDir": ".",
+    //   "sourceMap": true,
+      "lib": ["ESNext"],
+      "strict": true,
+    }
+}
+  

@@ -1,5 +1,5 @@
-#include "./battle.hh"
-#include "./sides.hh"
+#include "./battle.h"
+#include "./sides.h"
 
 template <typename State, size_t N_GAMES> struct ActorPool {
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <model/model.hh>
-#include <state/state.hh>
+#include <model/model.h>
+#include <state/state.h>
 
 namespace MonteCarloModelAverageDetail {
 template <typename Types, bool has_policy> struct ModelOutputImpl;

@@ -1,8 +1,8 @@
-#include <pinyon.hh>
+#include <pinyon.h>
 
-#include "../include/old-battle.hh"
-#include "../include/battle.hh"
-#include "../include/sides.hh"
+#include "../include/old-battle.h"
+#include "../include/battle.h"
+#include "../include/sides.h"
 
 const size_t duration_ms = 5000;
 const int row_team_idx = 3;

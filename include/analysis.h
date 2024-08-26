@@ -1,8 +1,8 @@
 #include <filesystem>
 #include <fstream>
-#include <pinyon.hh>
+#include <pinyon.h>
 
-#include "./battle.hh"
+#include "./battle.h"
 
 struct AnalysisData {
   // row + cols + value + policy
