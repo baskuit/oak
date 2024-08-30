@@ -22,6 +22,8 @@ target_link_libraries(bull-pinyon ${libpkmn})
 
 add_executable(main ./src/io.cc)
 target_link_libraries(main pinyon)
+target_link_libraries(main ${libpkmn})
+target_link_libraries(main lrslib128)
 
 add_executable(a ./benchmark/a.cc)
 target_link_libraries(a pinyon)

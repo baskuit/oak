@@ -140,7 +140,7 @@ async function getBattleFromReplayTurn(url: string, turn: number = 1000) {
 
         const converted_battle = convert(current, finished);
 
-        const retore_options = {}
+        const retore_options = {};
 
         const engine_battle = engine.Battle.restore(gens.get(1), linter_battle, restore_options);
 
