@@ -14,7 +14,8 @@ void q_value() {
                           false, false>>;
 
   // the bull 1v1 exhaustively explored up to depth 1. at 'terminal' nodes, we
-  // apply the above value estimation
+  // apply the above value estimation. This is produces the same output as a
+  // depth 3 alpha beta, but without pruning the root node
   using Types = FullTraversal<NullModel<MappedState<LeafModel, true>>>;
 
   prng device{22524};
