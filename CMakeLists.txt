@@ -20,7 +20,7 @@ add_executable(bull-pinyon ./src/bull-pinyon.cc)
 target_link_libraries(bull-pinyon pinyon)
 target_link_libraries(bull-pinyon ${libpkmn})
 
-add_executable(main ./src/io.cc)
+add_executable(main ./src/ab-vs-mcts.cc)
 target_link_libraries(main pinyon)
 target_link_libraries(main ${libpkmn})
 target_link_libraries(main lrslib128)
