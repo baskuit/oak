@@ -14,12 +14,16 @@ using MCTSTypes = TreeBanditRootMatrix<Exp3<ModelTypes>>;
 
 static constexpr int battle_size{384};
 
-void read_battle_bytes(std::array<uint8_t, battle_size> &bytes) {
+void read_battle_bytes(std::array<uint8_t, battle_size> &bytes, pkmn_result& result) {
   uint32_t byte;
   for (int i = 0; i < battle_size; ++i) {
     std::cin >> byte;
     bytes[i] = static_cast<uint8_t>(byte);
   }
+  uint32_t result_int;
+  std::cin >> result_int;
+  result = static_cast<uint8_t>(result_int);
+  std::cout << "!result: " << result_int << std::endl;
 }
 
 struct DualSearchOutput {
@@ -103,12 +107,16 @@ DualSearchOutput dual_search(const ModelTypes::State &state) {
 int main() {
 
   std::array<uint8_t, battle_size> bytes{};
+  pkmn_result result{};
 
   while (true) {
-    read_battle_bytes(bytes);
+    std::cout << "!newloop" << std::endl;
+    read_battle_bytes(bytes, result);
 
     ModelTypes::State state{bytes.data(), bytes.data() + 184};
-    state.apply_actions(0, 0);
+    state.result = result;
+    state.result_kind = pkmn_result_type(result);
+    state.clamped = true;
     state.get_actions();
 
     const auto output = dual_search(state);

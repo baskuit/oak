@@ -1,9 +1,9 @@
 import 'source-map-support/register';
 
-import {Generations} from '@pkmn/data';
-import {Dex} from '@pkmn/dex';
-import {Battle, Choice, Log, Lookup, Result} from '@pkmn/engine';
-import {Team} from '@pkmn/sets';
+import { Generations } from '@pkmn/data';
+import { Dex } from '@pkmn/dex';
+import { Battle, Choice, Log, Lookup, Result } from '@pkmn/engine';
+import { Team } from '@pkmn/sets';
 
 import { spawn } from 'child_process';
 import { decode } from 'punycode';
@@ -15,8 +15,7 @@ const TEAMS = readFileSync('rby.tsv', 'utf8').split('\n');
 const N_TEAMS = TEAMS.length;
 
 // Sorry lol
-function result_to_byte(result : Result) : number
-{
+function result_to_byte(result: Result): number {
   let b = 0;
   switch (result.type) {
     case undefined:
@@ -38,7 +37,7 @@ function result_to_byte(result : Result) : number
     case 'pass':
       break;
     case 'move':
-      b += 16;  
+      b += 16;
       break;
     case 'switch':
       b += 32;
@@ -48,7 +47,7 @@ function result_to_byte(result : Result) : number
     case 'pass':
       break;
     case 'move':
-      b += 64;  
+      b += 64;
       break;
     case 'switch':
       b += 128;
@@ -57,10 +56,9 @@ function result_to_byte(result : Result) : number
   return b;
 }
 
-function battle_bytes_string(battle : Battle, result : Result) : string 
-{
-  const data : DataView = battle.data;
-  let str :string = "";
+function battle_bytes_string(battle: Battle, result: Result): string {
+  const data: DataView = battle.data;
+  let str: string = "";
   for (let i = 0; i < 384; ++i) {
     str += (data.getUint8(i).toString() + " ");
   }
@@ -68,21 +66,21 @@ function battle_bytes_string(battle : Battle, result : Result) : string
   return str;
 }
 
-function read_policies (res : string) : number[][] {
-  const get_policy = (line : string) => {
-    let p : number[] = [];
-    const words : string[] = line.split(' ');
+function read_policies(res: string): number[][] {
+  const get_policy = (line: string) => {
+    let p: number[] = [];
+    const words: string[] = line.split(' ');
     for (const word of words) {
       if (word === "") {
         continue
       }
-      const x : number = Number(word);
+      const x: number = Number(word);
       console.assert(0 <= x && x <= 1);
       p.push(x);
     }
     return p;
   };
-  const lines : string[] = res.split('\n').filter(x => (x !== ""));
+  const lines: string[] = res.split('\n').filter(x => (x !== ""));
   return lines.map(line => get_policy(line));
 }
 
@@ -103,20 +101,39 @@ class Random {
   }
 }
 
-async function compare_teams_via_main(p1: number, p2: number)
-{
+async function compare_teams_via_main(p1: number, p2: number) {
 
-  const executablePath = './build/main'; 
+  const P1 = Team.unpack(TEAMS[0], Dex)!.team;
+  const P2 = Team.unpack(TEAMS[1], Dex)!.team;
+
+  const gens = new Generations(Dex);
+  const gen = gens.get(1);
+  const options = {
+    p1: { name: 'Player A', team: P1 },
+    p2: { name: 'Player B', team: P2 },
+    seed: [1, 2, 3, 4],
+    showdown: true,
+    log: true,
+  };
+  const log = new Log(gen, Lookup.get(gen), options);
+
+  let battle = Battle.create(gen, options);
+  let result = battle.update(Choice.pass(), Choice.pass());
+
+  const executablePath = './build/main';
   let child = spawn(executablePath);
+
+  let ended = false;
+
   child.stdout.on('data', (data) => {
-    const res : string = `${data}`;
-  
+    const res: string = `${data}`;
+
     if (res[0] === '!') {
       console.log(res);
     } else {
-      const policies : number[][] = read_policies(res);
-      const actions = policies.map(policy =>
-      {
+      console.log("policies rec'd")
+      const policies: number[][] = read_policies(res);
+      const actions = policies.map(policy => {
         let p = 1;
         for (let i = 0; i < policy.length; i++) {
           p -= policy[i];
@@ -127,35 +144,37 @@ async function compare_teams_via_main(p1: number, p2: number)
         return 0;
       }
       );
-      return [actions[0], actions[3]];
+
+      console.log("policies: ", policies[0], policies[3]);
+      console.log("actions: ", actions[0], actions[3]);
+
+      const c1: Choice = battle.choices('p1', result)[actions[0]];
+      const c2: Choice = battle.choices('p2', result)[actions[3]];
+
+      result = battle.update(c1, c2);
+
+      if (result.type) {
+        child.kill();
+        ended = true;
+        return;
+      }
+
+      const input: string = battle_bytes_string(battle, result);
+
+      child.stdin.write(input);
     }
+
   });
-  
-  const P1 = Team.unpack(TEAMS[0], Dex)!.team;
-  const P2 = Team.unpack(TEAMS[1], Dex)!.team;
 
-  const gens = new Generations(Dex);
-  const gen = gens.get(1);
-  const options = {
-    p1: {name: 'Player A', team: P1},
-    p2: {name: 'Player B', team: P2},
-    seed: [1, 2, 3, 4],
-    showdown: true,
-    log: true,
-  };
-  const log = new Log(gen, Lookup.get(gen), options);
+  const initial_input = battle_bytes_string(battle, result);
+  console.log(initial_input);
+  child.stdin.write(initial_input);
 
-  let battle = Battle.create(gen, options);
-
-  let result: Result, c1 = Choice.pass(), c2 = Choice.pass();
-  while (!(result = battle.update(c1, c2)).type) {
-    const input : string =  battle_bytes_string(battle, result);
-    child.stdin.write(input);
-    break;
+  while (!ended) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
-
 }
 
-(async function() {
+(async function () {
   await compare_teams_via_main(0, 1);
 })();
