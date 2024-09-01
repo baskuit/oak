@@ -62,7 +62,7 @@ function battle_bytes_string(battle: Battle, result: Result): string {
   for (let i = 0; i < 384; ++i) {
     str += (data.getUint8(i).toString() + " ");
   }
-  str += result_to_byte(result);
+  str += result_to_byte(result) + " ";
   return str;
 }
 
@@ -154,6 +154,7 @@ async function compare_teams_via_main(p1: number, p2: number) {
       result = battle.update(c1, c2);
 
       if (result.type) {
+        console.log("battle ended");
         child.kill();
         ended = true;
         return;

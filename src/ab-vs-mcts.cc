@@ -23,7 +23,7 @@ void read_battle_bytes(std::array<uint8_t, battle_size> &bytes, pkmn_result& res
   uint32_t result_int;
   std::cin >> result_int;
   result = static_cast<uint8_t>(result_int);
-  std::cout << "!result: " << result_int << std::endl;
+  // std::cout << "!result: " << result_int << std::endl;
 }
 
 struct DualSearchOutput {
@@ -51,7 +51,7 @@ DualSearchOutput dual_search(const ModelTypes::State &state) {
   size_t ab_search_matrix_node_count{};
 
   DualSearchOutput ds_output{};
-
+  // std::cout << "!start alpha beta" << std::endl;
   {
     ABTypes::Search search{1 << 3, 1 << 7};
     ABTypes::MatrixNode node{};
@@ -65,8 +65,10 @@ DualSearchOutput dual_search(const ModelTypes::State &state) {
     ds_output.ab_row_policy = std::move(output.row_strategy);
     ds_output.ab_col_policy = std::move(output.col_strategy);
   }
+  // std::cout << "!end alpha beta" << std::endl;
 
-  std::cout << '!' << ab_search_time / 1000000.0 << std::endl;
+  // std::cout << '!' << ab_search_time / 1000000.0 << std::endl;
+  // std::cout << "!start mcts" << std::endl;
 
   {
     MCTSTypes::Search search{};
@@ -100,6 +102,7 @@ DualSearchOutput dual_search(const ModelTypes::State &state) {
     output.col_strategy = ds_output.mcts_col_policy.data();
     solve_fast(&input, &output);
   }
+  // std::cout << "!end mcts" << std::endl;
 
   return ds_output;
 }
@@ -110,7 +113,7 @@ int main() {
   pkmn_result result{};
 
   while (true) {
-    std::cout << "!newloop" << std::endl;
+    // std::cout << "!newloop" << std::endl;
     read_battle_bytes(bytes, result);
 
     ModelTypes::State state{bytes.data(), bytes.data() + 184};
