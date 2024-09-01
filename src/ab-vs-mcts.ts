@@ -8,15 +8,63 @@ import {Team} from '@pkmn/sets';
 import { spawn } from 'child_process';
 import { decode } from 'punycode';
 
+import { readFileSync } from 'fs';
 
-function battle_bytes_string(battle : Battle, result : Result | null) : string 
+// Globals
+const TEAMS = readFileSync('rby.tsv', 'utf8').split('\n');
+const N_TEAMS = TEAMS.length;
+
+// Sorry lol
+function result_to_byte(result : Result) : number
+{
+  let b = 0;
+  switch (result.type) {
+    case undefined:
+      break;
+    case 'win':
+      b += 1;
+      break;
+    case 'lose':
+      b += 2;
+      break;
+    case 'tie':
+      b += 3;
+      break;
+    case 'error':
+      b += 4;
+      break;
+  }
+  switch (result.p1) {
+    case 'pass':
+      break;
+    case 'move':
+      b += 16;  
+      break;
+    case 'switch':
+      b += 32;
+      break;
+  }
+  switch (result.p2) {
+    case 'pass':
+      break;
+    case 'move':
+      b += 64;  
+      break;
+    case 'switch':
+      b += 128;
+      break;
+  }
+  return b;
+}
+
+function battle_bytes_string(battle : Battle, result : Result) : string 
 {
   const data : DataView = battle.data;
   let str :string = "";
   for (let i = 0; i < 384; ++i) {
     str += (data.getUint8(i).toString() + " ");
   }
-  // str += result.data.getUint8(0);
+  str += result_to_byte(result);
   return str;
 }
 
@@ -55,89 +103,59 @@ class Random {
   }
 }
 
-const P1 = Team.unpack(
-  'Fushigidane|Bulbasaur||-|SleepPowder,SwordsDance,RazorLeaf,BodySlam|||||||]' +
-  'Hitokage|Charmander||-|FireBlast,FireSpin,Slash,Counter|||||||]' +
-  'Zenigame|Squirtle||-|Surf,Blizzard,BodySlam,Rest|||||||]' +
-  'Pikachuu|Pikachu||-|Thunderbolt,ThunderWave,Surf,SeismicToss|||||||]' +
-  'Koratta|Rattata||-|SuperFang,BodySlam,Blizzard,Thunderbolt|||||||]' +
-  'Poppo|Pidgey||-|DoubleEdge,QuickAttack,WingAttack,MirrorMove|||||||', Dex
-)!.team;
+async function compare_teams_via_main(p1: number, p2: number)
+{
 
-const P2 = Team.unpack(
-  'Kentarosu|Tauros||-|BodySlam,HyperBeam,Blizzard,Earthquake|||||||]' +
-  'Rakkii|Chansey||-|Reflect,SeismicToss,SoftBoiled,ThunderWave|||||||]' +
-  'Kabigon|Snorlax||-|BodySlam,Reflect,Rest,IceBeam|||||||]' +
-  'Nasshii|Exeggutor||-|SleepPowder,Psychic,Explosion,DoubleEdge|||||||]' +
-  'Sutaamii|Starmie||-|Recover,ThunderWave,Blizzard,Thunderbolt|||||||]' +
-  'Fuudin|Alakazam||-|Psychic,SeismicToss,ThunderWave,Recover|||||||', Dex
-)!.team;
+  const executablePath = './build/main'; 
+  let child = spawn(executablePath);
+  child.stdout.on('data', (data) => {
+    const res : string = `${data}`;
+  
+    if (res[0] === '!') {
+      console.log(res);
+    } else {
+      const policies : number[][] = read_policies(res);
+      const actions = policies.map(policy =>
+      {
+        let p = 1;
+        for (let i = 0; i < policy.length; i++) {
+          p -= policy[i];
+          if (p <= 0) {
+            return i;
+          }
+        }
+        return 0;
+      }
+      );
+      return [actions[0], actions[3]];
+    }
+  });
+  
+  const P1 = Team.unpack(TEAMS[0], Dex)!.team;
+  const P2 = Team.unpack(TEAMS[1], Dex)!.team;
 
-const gens = new Generations(Dex);
-const gen = gens.get(1);
-const options = {
-  p1: {name: 'Player A', team: P1},
-  p2: {name: 'Player B', team: P2},
-  seed: [1, 2, 3, 4],
-  showdown: true,
-  log: true,
-};
-let battle = Battle.create(gen, options);
-// let result = battle.update(Choice.pass(), Choice.pass());
-// const p1_actions = battle.choices('p1', result);
-// console.log(p1_actions);
-const input : string =  battle_bytes_string(battle, null);
+  const gens = new Generations(Dex);
+  const gen = gens.get(1);
+  const options = {
+    p1: {name: 'Player A', team: P1},
+    p2: {name: 'Player B', team: P2},
+    seed: [1, 2, 3, 4],
+    showdown: true,
+    log: true,
+  };
+  const log = new Log(gen, Lookup.get(gen), options);
 
+  let battle = Battle.create(gen, options);
 
-const executablePath = './build/main'; 
-let child = spawn(executablePath);
-child.stdout.on('data', (data) => {
-  const res : string = `${data}`;
-
-  if (res[0] === '!') {
-    console.log(res);
-  } else {
-    const policies : number[][] = read_policies(res);
-    console.log(policies);
+  let result: Result, c1 = Choice.pass(), c2 = Choice.pass();
+  while (!(result = battle.update(c1, c2)).type) {
+    const input : string =  battle_bytes_string(battle, result);
+    child.stdin.write(input);
+    break;
   }
-});
 
+}
 
-
-
-child.stdin.write(input);
-console.log(input);
-// const log = new Log(gen, Lookup.get(gen), options);
-// const display = () => {
-//   for (const line of log.parse(battle.log!)) {
-//     console.log(line);
-//   }
-// };
-
-// const random = new Random();
-// const choose = random.next.bind(random);
-
-// // For convenience the engine actually is written so that passing in undefined
-// // is equivalent to Choice.pass() but to appease the TypeScript compiler we're
-// // going to be explicit here
-// let result: Result, c1 = Choice.pass(), c2 = Choice.pass();
-// while (!(result = battle.update(c1, c2)).type) {
-
-//   display();
-
-//   // special-cased choose method instead
-//   c1 = battle.choose('p1', result, choose);
-//   c2 = battle.choose('p2', result, choose);
-// }
-// // Remember to display any logs that were produced during the last update
-// display();
-
-// // The result is from the perspective of P1
-// const msg = {
-//   win: 'won by Player A',
-//   lose: 'won by Player B',
-//   tie: 'ended in a tie',
-//   error: 'encountered an error',
-// }[result.type];
-
-// console.log(`Battle ${msg} after ${battle.turn} turns`);
+(async function() {
+  await compare_teams_via_main(0, 1);
+})();

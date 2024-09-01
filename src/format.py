@@ -16,11 +16,12 @@ def fix_team(team):
     mons = "]".join(mons)
     return mons
 
-in_file = open("rby.tsv", "r")
-out_file = open("rby3.tsv", "w")
+in_file = open("gen1ou.tsv", "r")
+out_file = open("rby.tsv", "w")
 
 lines = in_file.read()
-for line in lines.strip().split('\n'):
+max_lines = 100
+for line in lines.strip().split('\n')[:max_lines]:
     r, team = line.split('\t') 
     # out_file.write(r + '\t' + fix_team(team))
-    out_file.write(fix_team(team))
+    out_file.write(fix_team(team) + '\n')
