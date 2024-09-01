@@ -53,10 +53,6 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
   const size_t rows = state.row_actions.size();
   const size_t cols = state.col_actions.size();
 
-  // if (rows == 1 && cols == 1) {
-  //   return {{1}, {1}, {1}, {1}};
-  // }
-
   ModelTypes::PRNG device{seed};
   ModelTypes::Model model{};
 
@@ -81,8 +77,6 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
     ds_output.mcts_row_policy = {1};
   }
 
-  // std::cout << '!' << ab_search_time / 1000000.0 << std::endl;
-  // std::cout << "!start mcts" << std::endl;
   if (cols > 1) {
     MCTSTypes::Search search{};
     MCTSTypes::MatrixNode node{};
@@ -143,6 +137,7 @@ void compare(int i, int j, uint64_t seed) {
     state.apply_actions(row_action, col_action);
     state.get_actions();
     ++turns;
+    break;
   }
   MUTEX.lock();
   N += 1;
@@ -158,16 +153,16 @@ void loop_compare(const uint64_t seed) {
     const int j = device.random_int(100);
     const uint64_t seed = device.uniform_64();
     compare(i, j, seed);
+    return;
     compare(j, i, seed);
   }
 }
 
 int main() {
-  std::mutex MUTEX{};
 
   ModelTypes::PRNG device{4293847239827395};
 
-  constexpr size_t threads = 24;
+  constexpr size_t threads = 1;
 
   std::thread thread_pool[threads];
   for (int i = 0; i < threads; ++i) {
