@@ -562,7 +562,6 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         output.col_strategy = temp_data.col_strategy.data();
         solve_fast(&input, &output);
         b = output.value;
-        a = b = .5;
       }
 
       const auto end = std::chrono::high_resolution_clock::now();
@@ -1003,12 +1002,12 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         output.alpha = temp_data.alpha;
         output.beta = temp_data.beta;
         output.row_strategy.resize(temp_data.rows);
-        for (uint8_t i = 0; i < temp_data.row_strategy.size(); ++i) {
+        for (uint8_t i = 0; i < temp_data.rows; ++i) {
           output.row_strategy[node.I.action_indices[i].idx] =
               temp_data.row_strategy[i];
         }
         output.col_strategy.resize(temp_data.cols);
-        for (uint8_t j = 0; j < temp_data.col_strategy.size(); ++j) {
+        for (uint8_t j = 0; j < temp_data.cols; ++j) {
           output.col_strategy[node.J.action_indices[j].idx] =
               temp_data.col_strategy[j];
         }
@@ -1020,16 +1019,16 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
         output.times.push_back(duration.count());
 
-        const int64_t time_without_inference =
-            static_cast<int64_t>(duration.count()) -
-            static_cast<int64_t>(base_data.total_inference_time);
-        output.times_without_inference.push_back(time_without_inference);
+        // const int64_t time_without_inference =
+        //     static_cast<int64_t>(duration.count()) -
+        //     static_cast<int64_t>(base_data.total_inference_time);
+        // output.times_without_inference.push_back(time_without_inference);
 
-        std::memcpy(output.total_solves, base_data.total_solves,
-                    sizeof(size_t) * 81);
-        output.total_solves_raw = base_data.total_solves_raw;
+        // std::memcpy(output.total_solves, base_data.total_solves,
+        //             sizeof(size_t) * 81);
+        // output.total_solves_raw = base_data.total_solves_raw;
 
-        output.matrix_print_data.init(temp_data, &node);
+        // output.matrix_print_data.init(temp_data, &node);
       }
 
       return output;
