@@ -305,12 +305,13 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
   struct Search {
 
-    const uint32_t min_tries;
-    const uint32_t max_tries;
+    uint32_t min_tries;
+    uint32_t max_tries;
 
     float max_unexplored = 0;
     float min_reach_prob_initial = 1;
     float min_reach_prob_base = .1;
+    float max_tries_base = 1.1;
 
     Search(const uint32_t min_tries, const uint32_t max_tries)
         : min_tries{min_tries}, max_tries{max_tries} {}
@@ -982,13 +983,14 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
         std::vector<uint32_t> max_tries_vec{};
         max_tries_vec.resize(depth);
-        const float factor = 1.1;
         uint32_t t = max_tries;
+        float e = max_tries;
         float min_reach_prob = min_reach_prob_initial;
         for (int i = depth - 1; i >= 0; --i) {
           max_tries_vec[i] = (t);
-          const float w = t * factor;
-          t = static_cast<uint32_t>(w);
+          e *= max_tries_base;
+          const float w = t * max_tries_base;
+          t = static_cast<uint32_t>(e);
           min_reach_prob *= min_reach_prob_base;
         }
 
