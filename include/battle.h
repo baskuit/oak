@@ -148,7 +148,8 @@ struct BattleDataBase {
         return {Real{0}};
       }
       case PKMN_RESULT_ERROR: {
-        std::exception();
+        std::cout << "pkmn battle error exception" << std::endl;
+        throw std::exception();
       }
       }
     }
