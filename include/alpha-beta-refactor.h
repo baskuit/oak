@@ -982,7 +982,7 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
         std::vector<uint32_t> max_tries_vec{};
         max_tries_vec.resize(depth);
-        const float factor = 1.414;
+        const float factor = 1.1;
         uint32_t t = max_tries;
         float min_reach_prob = min_reach_prob_initial;
         for (int i = depth - 1; i >= 0; --i) {

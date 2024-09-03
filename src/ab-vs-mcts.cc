@@ -64,8 +64,8 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
   if (rows > 1) {
     const size_t depth = 4;
     const size_t min_tries = 1;
-    const size_t max_tries = 1 << 7;
-    const float max_unexplored = .01;
+    const size_t max_tries = 1 << 3;
+    const float max_unexplored = .25;
     const float min_reach_prob_initial = 1;
     const float min_reach_prob_base = 1 / 4.0;
 
@@ -165,7 +165,7 @@ void loop_compare(const uint64_t seed) {
 
 int main() {
 
-  ModelTypes::PRNG device{4293847239827395};
+  ModelTypes::PRNG device{32847948763498673};
 
   constexpr size_t threads = 24;
 
