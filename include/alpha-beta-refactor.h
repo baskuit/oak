@@ -385,7 +385,9 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
       stats.unexplored -= prob;
       stats.alpha_explored += next_temp_data.alpha * prob;
       stats.beta_explored += next_temp_data.beta * prob;
-      ++base_data.matrix_node_count;
+      if ((++base_data.matrix_node_count) > max_nodes) {
+        throw std::exception();
+      };
     }
 
     // query a chance node given a joint action pair. first it returns the
@@ -855,6 +857,7 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
     void alpha_beta(MatrixNode *matrix_node, BaseData &base_data,
                     HeadData &head_data, TempData &temp_data) const {
+
       temp_data.state.get_actions();
       temp_data.rows = temp_data.state.row_actions.size();
       temp_data.cols = temp_data.state.col_actions.size();
@@ -950,6 +953,8 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
       // )/2;
     }
 
+    static constexpr size_t max_nodes{1 << 24};
+
     struct Output {
       float alpha;
       float beta;
@@ -993,33 +998,53 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         HeadData head_data{min_tries, max_tries};
         TempData temp_data{state};
 
-        const auto start = std::chrono::high_resolution_clock::now();
-        this->alpha_beta(&node, base_data, head_data, temp_data);
-        const auto end = std::chrono::high_resolution_clock::now();
-        const auto duration =
-            std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
-        output.alpha = temp_data.alpha;
-        output.beta = temp_data.beta;
         output.row_strategy.resize(temp_data.rows);
-        for (uint8_t i = 0; i < node.I.boundary; ++i) {
-          assert(node.I.action_indices[i].idx < temp_data.rows);
-          output.row_strategy[node.I.action_indices[i].idx] =
-              temp_data.row_strategy[i];
-        }
         output.col_strategy.resize(temp_data.cols);
-        for (uint8_t j = 0; j < node.J.boundary; ++j) {
-          assert(node.J.action_indices[j].idx < temp_data.cols);
-          output.col_strategy[node.J.action_indices[j].idx] =
-              temp_data.col_strategy[j];
+
+        const auto get_strategies = [&]() {
+          for (uint8_t i = 0; i < node.I.boundary; ++i) {
+            assert(node.I.action_indices[i].idx < temp_data.rows);
+            output.row_strategy[node.I.action_indices[i].idx] =
+                temp_data.row_strategy[i];
+          }
+          output.col_strategy.resize(temp_data.cols);
+          for (uint8_t j = 0; j < node.J.boundary; ++j) {
+            assert(node.J.action_indices[j].idx < temp_data.cols);
+            output.col_strategy[node.J.action_indices[j].idx] =
+                temp_data.col_strategy[j];
+          }
+        };
+        bool no_e = true;
+        const auto start = std::chrono::high_resolution_clock::now();
+        try {
+          this->alpha_beta(&node, base_data, head_data, temp_data);
+        } catch (...) {
+          no_e = false;
+          std::cout << "search crash - too many nodes" << std::endl;
+
+          if (output.times.empty()) {
+            output.row_strategy[0] = 1;
+            output.col_strategy[0] = 1;
+          } else {
+            // use last times strats and value
+          }
+          output.times.push_back(0);
+        }
+        if (no_e) {
+          const auto end = std::chrono::high_resolution_clock::now();
+          const auto duration =
+              std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                    start);
+          get_strategies();
+          output.times.push_back(duration.count());
+          output.alpha = temp_data.alpha;
+          output.beta = temp_data.beta;
         }
 
         output.matrix_node_count.push_back(base_data.matrix_node_count);
         output.alpha_beta_count.push_back(base_data.alpha_beta_count);
         output.terminal_count.push_back(base_data.terminal_count);
         output.inference_count.push_back(base_data.inference_count);
-
-        output.times.push_back(duration.count());
 
         // const int64_t time_without_inference =
         //     static_cast<int64_t>(duration.count()) -
@@ -1032,7 +1057,6 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
         // output.matrix_print_data.init(temp_data, &node);
       }
-
       return output;
     }
 
