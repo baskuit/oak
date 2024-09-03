@@ -998,8 +998,8 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         HeadData head_data{min_tries, max_tries};
         TempData temp_data{state};
 
-        output.row_strategy.resize(temp_data.rows);
-        output.col_strategy.resize(temp_data.cols);
+        output.row_strategy.resize(state.row_actions.size());
+        output.col_strategy.resize(state.col_actions.size());
 
         const auto get_strategies = [&]() {
           for (uint8_t i = 0; i < node.I.boundary; ++i) {
