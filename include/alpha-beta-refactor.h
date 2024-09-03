@@ -1008,7 +1008,7 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
               temp_data.row_strategy[i];
         }
         output.col_strategy.resize(temp_data.cols);
-        for (uint8_t j = 0; j < node.I.boundary; ++j) {
+        for (uint8_t j = 0; j < node.J.boundary; ++j) {
           assert(node.J.action_indices[j].idx < temp_data.cols);
           output.col_strategy[node.J.action_indices[j].idx] =
               temp_data.col_strategy[j];
