@@ -15,6 +15,7 @@
 std::mutex MUTEX{};
 size_t N = 0;
 size_t DOUBLE_Q = 0;
+bool STOP = false;
 
 std::ofstream OUTPUT_FILE{"ab-vs-mcts.txt", std::ios::out | std::ios::trunc};
 
@@ -22,7 +23,8 @@ using ModelTypes = PModel<Battle<0, 3, ChanceObs, float, float>>;
 using ABTypes = AlphaBetaRefactor<ModelTypes>;
 using MCTSTypes = TreeBanditRootMatrix<Exp3<ModelTypes>>;
 
-static constexpr int battle_size{384};
+constexpr int battle_size{384};
+constexpr int n_sides{100}; 
 
 void read_battle_bytes(std::array<uint8_t, battle_size> &bytes,
                        pkmn_result &result) {
@@ -60,7 +62,7 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
 
   DualSearchOutput ds_output{};
   if (rows > 1) {
-    const size_t depth = 2;
+    const size_t depth = 3;
     const size_t min_tries = 1;
     const size_t max_tries = 1 << 7;
     const float max_unexplored = .01;
@@ -102,15 +104,15 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
       if (n == 0) {
         n += 1;
       }
-      float q = pair.second / n;
-      int q_disc = 80 * q;
+      const float q = pair.second / n;
+      const int q_disc = 80 * q;
       solve_matrix_data[idx] = q_disc;
       ++idx;
     }
 
     FloatOneSumOutput output;
-    ds_output.mcts_row_policy.resize(rows);
-    ds_output.mcts_col_policy.resize(cols);
+    ds_output.mcts_row_policy.resize(rows + 2);
+    ds_output.mcts_col_policy.resize(cols + 2);
     input.data = solve_matrix_data.data();
     output.row_strategy = ds_output.mcts_row_policy.data();
     output.col_strategy = ds_output.mcts_col_policy.data();
@@ -131,7 +133,6 @@ void compare(int i, int j, uint64_t seed) {
   state.apply_actions(0, 0);
   state.randomize_transition(device);
   state.get_actions();
-  int turns = 0;
   while (!state.is_terminal()) {
     state.clamped = true;
     const auto output = dual_search(state, device.uniform_64());
@@ -143,8 +144,6 @@ void compare(int i, int j, uint64_t seed) {
     const auto col_action = state.col_actions[b];
     state.apply_actions(row_action, col_action);
     state.get_actions();
-    ++turns;
-    break;
   }
   MUTEX.lock();
   N += 1;
@@ -155,12 +154,11 @@ void compare(int i, int j, uint64_t seed) {
 void loop_compare(const uint64_t seed) {
   ModelTypes::PRNG device{seed};
 
-  while (true) {
-    const int i = device.random_int(100);
-    const int j = device.random_int(100);
+  while (!STOP) {
+    const int i = device.random_int(n_sides);
+    const int j = device.random_int(n_sides);
     const uint64_t seed = device.uniform_64();
     compare(i, j, seed);
-    return;
     compare(j, i, seed);
   }
 }
@@ -169,7 +167,7 @@ int main() {
 
   ModelTypes::PRNG device{4293847239827395};
 
-  constexpr size_t threads = 1;
+  constexpr size_t threads = 16;
 
   std::thread thread_pool[threads];
   for (int i = 0; i < threads; ++i) {
@@ -184,5 +182,11 @@ int main() {
     OUTPUT_FILE.flush();
   }
   OUTPUT_FILE.close();
+  STOP = true;  
+
+  for (int i = 0; i < threads; ++i) {
+    thread_pool[i].join();
+  }
+
   return 0;
 }
