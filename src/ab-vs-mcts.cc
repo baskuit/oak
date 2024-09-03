@@ -118,7 +118,10 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
     input.data = solve_matrix_data.data();
     output.row_strategy = ds_output.mcts_row_policy.data();
     output.col_strategy = ds_output.mcts_col_policy.data();
+
     solve_fast(&input, &output);
+    ds_output.mcts_row_policy.resize(rows);
+    ds_output.mcts_col_policy.resize(cols);
   } else {
     ds_output.ab_col_policy = {1};
     ds_output.mcts_col_policy = {1};
@@ -143,7 +146,7 @@ void compare(int i, int j, uint64_t seed) {
     const int a = device.sample_pdf(output.ab_row_policy);
     const int b = device.sample_pdf(output.mcts_col_policy);
     MUTEX.lock();
-    std::cout << "policies:" << std::endl;
+    std::cout << "selected: " << a << ' ' << b << std::endl;
     math::print(output.ab_row_policy);
     math::print(output.mcts_col_policy);
     MUTEX.unlock();

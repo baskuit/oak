@@ -1,14 +1,16 @@
 #include <algorithm/algorithm.h>
 #include <libpinyon/math.h>
 #include <tree/tree.h>
+#include <type_traits>
 
 template <IsValueModelTypes Types>
 struct Exp3Oak : Types {
     using Real = typename Types::Real;
 
     struct MatrixStats {
-        std::array<Real,9> row_gains;
-        std::array<Real,9> col_gains;
+        typename Types::VectorReal row_gains;
+        typename Types::VectorReal col_gains;
+        static_assert(std::is_base_of_v<std::array<Real, 9>, typename Types::VectorReal>);
     };
     struct ChanceStats {};
     struct Outcome {
