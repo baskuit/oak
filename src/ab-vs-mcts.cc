@@ -62,7 +62,7 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
 
   DualSearchOutput ds_output{};
   if (rows > 1) {
-    const size_t depth = 3;
+    const size_t depth = 4;
     const size_t min_tries = 1;
     const size_t max_tries = 1 << 7;
     const float max_unexplored = .01;
@@ -177,7 +177,7 @@ int main() {
   for (int i = 0; i < 60 * 24 * 2; ++i) {
     sleep(60);
     const float v = DOUBLE_Q / 2.0 / (N == 0 ? 1 : N);
-    std::cout << "v: " << v << std::endl;
+    std::cout << "(v: " << v << " N: " << N << " Q: " << DOUBLE_Q / 2.0 << ")" << std::endl;
     OUTPUT_FILE << std::to_string(v);
     OUTPUT_FILE.flush();
   }
