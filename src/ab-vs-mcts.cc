@@ -65,8 +65,8 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
   if (rows > 1) {
     const size_t depth = 3;
     const size_t min_tries = 1;
-    const size_t max_tries = 80;
-    const float max_unexplored = .2;
+    const size_t max_tries = 1 << 7;
+    const float max_unexplored = .1;
     const float min_reach_prob_initial = 1;
     const float min_reach_prob_base = 1 / 4.0;
 
