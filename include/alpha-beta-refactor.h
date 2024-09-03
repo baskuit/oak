@@ -1002,12 +1002,14 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         output.alpha = temp_data.alpha;
         output.beta = temp_data.beta;
         output.row_strategy.resize(temp_data.rows);
-        for (uint8_t i = 0; i < temp_data.rows; ++i) {
+        for (uint8_t i = 0; i < node.I.boundary; ++i) {
+          assert(node.I.action_indices[i].idx < temp_data.rows);
           output.row_strategy[node.I.action_indices[i].idx] =
               temp_data.row_strategy[i];
         }
         output.col_strategy.resize(temp_data.cols);
-        for (uint8_t j = 0; j < temp_data.cols; ++j) {
+        for (uint8_t j = 0; j < node.I.boundary; ++j) {
+          assert(node.J.action_indices[j].idx < temp_data.cols);
           output.col_strategy[node.J.action_indices[j].idx] =
               temp_data.col_strategy[j];
         }
