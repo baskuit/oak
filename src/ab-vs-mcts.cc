@@ -167,7 +167,7 @@ int main() {
 
   ModelTypes::PRNG device{4293847239827395};
 
-  constexpr size_t threads = 16;
+  constexpr size_t threads = 30;
 
   std::thread thread_pool[threads];
   for (int i = 0; i < threads; ++i) {
