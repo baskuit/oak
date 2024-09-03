@@ -953,7 +953,7 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
       // )/2;
     }
 
-    static constexpr size_t max_nodes{1 << 24};
+    static constexpr size_t max_nodes{1 << 25};
 
     struct Output {
       float alpha;
