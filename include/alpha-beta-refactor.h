@@ -386,9 +386,9 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
       stats.unexplored -= prob;
       stats.alpha_explored += next_temp_data.alpha * prob;
       stats.beta_explored += next_temp_data.beta * prob;
-      if ((++base_data.matrix_node_count) > max_nodes) {
-        throw std::exception();
-      };
+      // if ((++base_data.matrix_node_count) > max_nodes) {
+      //   throw std::exception();
+      // };
     }
 
     // query a chance node given a joint action pair. first it returns the
