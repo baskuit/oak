@@ -998,10 +998,11 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         HeadData head_data{min_tries, max_tries};
         TempData temp_data{state};
 
-        output.row_strategy.resize(state.row_actions.size());
-        output.col_strategy.resize(state.col_actions.size());
-
         const auto get_strategies = [&]() {
+          output.row_strategy.clear();
+          output.col_strategy.clear();
+          output.row_strategy.resize(state.row_actions.size());
+          output.col_strategy.resize(state.col_actions.size());
           for (uint8_t i = 0; i < node.I.boundary; ++i) {
             assert(node.I.action_indices[i].idx < temp_data.rows);
             output.row_strategy[node.I.action_indices[i].idx] =
@@ -1023,6 +1024,8 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
           std::cout << "search crash - too many nodes" << std::endl;
 
           if (output.times.empty()) {
+            output.row_strategy.resize(state.row_actions.size());
+            output.col_strategy.resize(state.col_actions.size());
             output.row_strategy[0] = 1;
             output.col_strategy[0] = 1;
           } else {
