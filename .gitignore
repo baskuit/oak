@@ -9,3 +9,6 @@
 /logs/*.html
 #ts
 *.js
+# annoying
+*.json
+*.txt
