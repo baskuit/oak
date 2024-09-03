@@ -1,10 +1,10 @@
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
 #include <vector>
-#include <fstream>
 
 #include <pinyon.h>
 
@@ -16,8 +16,7 @@ std::mutex MUTEX{};
 size_t N = 0;
 size_t DOUBLE_Q = 0;
 
-std::ofstream OUTPUT_FILE{"ab-vs-mcts.txt",
-                          std::ios::out | std::ios::trunc};
+std::ofstream OUTPUT_FILE{"ab-vs-mcts.txt", std::ios::out | std::ios::trunc};
 
 using ModelTypes = PModel<Battle<0, 3, ChanceObs, float, float>>;
 using ABTypes = AlphaBetaRefactor<ModelTypes>;
@@ -61,9 +60,17 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
 
   DualSearchOutput ds_output{};
   if (rows > 1) {
-    ABTypes::Search search{1 << 3, 1 << 7};
+    const size_t depth = 2;
+    const size_t min_tries = 1;
+    const size_t max_tries = 1 << 7;
+    const float max_unexplored = .01;
+    const float min_reach_prob_initial = 1;
+    const float min_reach_prob_base = 1 / 4.0;
+
+    ABTypes::Search search{min_tries, max_tries, max_unexplored,
+                           min_reach_prob_initial, min_reach_prob_base};
     ABTypes::MatrixNode node{};
-    const auto output = search.run(3, device, state, model, node);
+    const auto output = search.run(depth, device, state, model, node);
     for (const size_t t : output.times) {
       ab_search_time += t;
     }
@@ -171,7 +178,7 @@ int main() {
 
   for (int i = 0; i < 60 * 24 * 2; ++i) {
     sleep(60);
-    const float v = DOUBLE_Q / 2.0 / (N==0?1:N);
+    const float v = DOUBLE_Q / 2.0 / (N == 0 ? 1 : N);
     std::cout << "v: " << v << std::endl;
     OUTPUT_FILE << std::to_string(v);
     OUTPUT_FILE.flush();

@@ -25,6 +25,11 @@ target_link_libraries(main pinyon)
 target_link_libraries(main ${libpkmn})
 target_link_libraries(main lrslib128)
 
+add_executable(four ./src/four.cc)
+target_link_libraries(four pinyon)
+target_link_libraries(four ${libpkmn})
+target_link_libraries(four lrslib128)
+
 add_executable(a ./benchmark/a.cc)
 target_link_libraries(a pinyon)
 target_link_libraries(a ${libpkmn})

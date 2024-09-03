@@ -495,8 +495,8 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
       const auto start = std::chrono::high_resolution_clock::now();
 
       FloatOneSumOutput output;
-      temp_data.row_strategy.resize(r);
-      temp_data.col_strategy.resize(c);
+      temp_data.row_strategy.resize(r + 2);
+      temp_data.col_strategy.resize(c + 2);
       FastInput input;
       input.rows = r;
       input.cols = c;
@@ -551,7 +551,7 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
           debug_print_no_indent('\n');
         }
         std::vector<float> temp{};
-        temp.resize(r + c);
+        temp.resize(r + c + 2);
         input.data = temp_data.alpha_matrix.data();
         output.row_strategy = temp_data.row_strategy.data();
         output.col_strategy = temp.data();
@@ -562,6 +562,7 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         output.col_strategy = temp_data.col_strategy.data();
         solve_fast(&input, &output);
         b = output.value;
+        a = b = .5;
       }
 
       const auto end = std::chrono::high_resolution_clock::now();
