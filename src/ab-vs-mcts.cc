@@ -11,6 +11,7 @@
 #include "../include/alpha-beta-refactor.h"
 #include "../include/battle.h"
 #include "../include/exp3.h"
+#include "../include/ucb.h"
 #include "../include/sides.h"
 
 std::mutex MUTEX{};
@@ -22,7 +23,7 @@ std::ofstream OUTPUT_FILE{"ab-vs-mcts.txt", std::ios::out | std::ios::trunc};
 
 using ModelTypes = PModel<Battle<0, 3, ChanceObs, float, float>>;
 using ABTypes = AlphaBetaRefactor<ModelTypes>;
-using MCTSTypes = TreeBanditRootMatrix<Exp3Oak<ModelTypes>>;
+using MCTSTypes = TreeBanditRootMatrix<UCBOak<ModelTypes>>;
 
 constexpr int battle_size{384};
 constexpr int n_sides{100};
