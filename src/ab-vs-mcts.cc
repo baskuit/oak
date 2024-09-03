@@ -10,9 +10,8 @@
 
 #include "../include/alpha-beta-refactor.h"
 #include "../include/battle.h"
-#include "../include/sides.h"
 #include "../include/exp3.h"
-
+#include "../include/sides.h"
 
 std::mutex MUTEX{};
 size_t N = 0;
@@ -26,7 +25,7 @@ using ABTypes = AlphaBetaRefactor<ModelTypes>;
 using MCTSTypes = TreeBanditRootMatrix<Exp3Oak<ModelTypes>>;
 
 constexpr int battle_size{384};
-constexpr int n_sides{100}; 
+constexpr int n_sides{100};
 
 void read_battle_bytes(std::array<uint8_t, battle_size> &bytes,
                        pkmn_result &result) {
@@ -145,11 +144,11 @@ void compare(int i, int j, uint64_t seed) {
 
     const int a = device.sample_pdf(output.ab_row_policy);
     const int b = device.sample_pdf(output.mcts_col_policy);
-    MUTEX.lock();
-    std::cout << "selected: " << a << ' ' << b << std::endl;
-    math::print(output.ab_row_policy);
-    math::print(output.mcts_col_policy);
-    MUTEX.unlock();
+    // MUTEX.lock();
+    // std::cout << "selected: " << a << ' ' << b << std::endl;
+    // math::print(output.ab_row_policy);
+    // math::print(output.mcts_col_policy);
+    // MUTEX.unlock();
     const auto row_action = state.row_actions[a];
     const auto col_action = state.col_actions[b];
     state.apply_actions(row_action, col_action);
@@ -187,12 +186,13 @@ int main() {
   for (int i = 0; i < 60 * 24 * 2; ++i) {
     sleep(60);
     const float v = DOUBLE_Q / 2.0 / (N == 0 ? 1 : N);
-    std::cout << "(v: " << v << " N: " << N << " Q: " << DOUBLE_Q / 2.0 << ")" << std::endl;
+    std::cout << "(v: " << v << " N: " << N << " Q: " << DOUBLE_Q / 2.0 << ")"
+              << std::endl;
     OUTPUT_FILE << std::to_string(v);
     OUTPUT_FILE.flush();
   }
   OUTPUT_FILE.close();
-  STOP = true;  
+  STOP = true;
 
   for (int i = 0; i < threads; ++i) {
     thread_pool[i].join();
