@@ -64,7 +64,7 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
 
   DualSearchOutput ds_output{};
   if (rows > 1) {
-    const size_t depth = 2;
+    const size_t depth = 3;
     const size_t min_tries = 1;
     const size_t max_tries = 1 << 8;
     const float max_unexplored = .1;
@@ -145,11 +145,11 @@ void compare(int i, int j, uint64_t seed) {
 
     const int a = device.sample_pdf(output.ab_row_policy);
     const int b = device.sample_pdf(output.mcts_col_policy);
-    // MUTEX.lock();
-    // std::cout << "selected: " << a << ' ' << b << std::endl;
-    // math::print(output.ab_row_policy);
-    // math::print(output.mcts_col_policy);
-    // MUTEX.unlock();
+    MUTEX.lock();
+    std::cout << "selected: " << a << ' ' << b << std::endl;
+    math::print(output.ab_row_policy);
+    math::print(output.mcts_col_policy);
+    MUTEX.unlock();
     const auto row_action = state.row_actions[a];
     const auto col_action = state.col_actions[b];
     state.apply_actions(row_action, col_action);
