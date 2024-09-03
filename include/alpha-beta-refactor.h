@@ -1019,22 +1019,22 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         };
         bool no_e = true;
         const auto start = std::chrono::high_resolution_clock::now();
-        try {
+        // try {
           this->alpha_beta(&node, base_data, head_data, temp_data);
-        } catch (...) {
-          no_e = false;
-          std::cout << "search crash - too many nodes" << std::endl;
+        // } catch (...) {
+          // no_e = false;
+          // std::cout << "search crash - too many nodes" << std::endl;
 
-          if (output.times.empty()) {
-            output.row_strategy.resize(state.row_actions.size());
-            output.col_strategy.resize(state.col_actions.size());
-            output.row_strategy[0] = 1;
-            output.col_strategy[0] = 1;
-          } else {
-            // use last times strats and value
-          }
-          output.times.push_back(0);
-        }
+          // if (output.times.empty()) {
+          //   output.row_strategy.resize(state.row_actions.size());
+          //   output.col_strategy.resize(state.col_actions.size());
+          //   output.row_strategy[0] = 1;
+          //   output.col_strategy[0] = 1;
+          // } else {
+          //   // use last times strats and value
+          // }
+          // output.times.push_back(0);
+        // }
         if (no_e) {
           const auto end = std::chrono::high_resolution_clock::now();
           const auto duration =
