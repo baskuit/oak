@@ -11,6 +11,8 @@
 #include "../include/alpha-beta-refactor.h"
 #include "../include/battle.h"
 #include "../include/sides.h"
+#include "../include/exp3.h"
+
 
 std::mutex MUTEX{};
 size_t N = 0;
@@ -21,7 +23,7 @@ std::ofstream OUTPUT_FILE{"ab-vs-mcts.txt", std::ios::out | std::ios::trunc};
 
 using ModelTypes = PModel<Battle<0, 3, ChanceObs, float, float>>;
 using ABTypes = AlphaBetaRefactor<ModelTypes>;
-using MCTSTypes = TreeBanditRootMatrix<Exp3<ModelTypes>>;
+using MCTSTypes = TreeBanditRootMatrix<Exp3Oak<ModelTypes>>;
 
 constexpr int battle_size{384};
 constexpr int n_sides{100}; 
@@ -62,12 +64,12 @@ DualSearchOutput dual_search(const ModelTypes::State &state,
 
   DualSearchOutput ds_output{};
   if (rows > 1) {
-    const size_t depth = 4;
+    const size_t depth = 3;
     const size_t min_tries = 1;
     const size_t max_tries = 80;
     const float max_unexplored = .2;
     const float min_reach_prob_initial = 1;
-    const float min_reach_prob_base = 1 / 2.0;
+    const float min_reach_prob_base = 1 / 4.0;
 
     ABTypes::Search search{min_tries, max_tries, max_unexplored,
                            min_reach_prob_initial, min_reach_prob_base};
@@ -140,6 +142,11 @@ void compare(int i, int j, uint64_t seed) {
 
     const int a = device.sample_pdf(output.ab_row_policy);
     const int b = device.sample_pdf(output.mcts_col_policy);
+    MUTEX.lock();
+    std::cout << "policies:" << std::endl;
+    math::print(output.ab_row_policy);
+    math::print(output.mcts_col_policy);
+    MUTEX.unlock();
     const auto row_action = state.row_actions[a];
     const auto col_action = state.col_actions[b];
     state.apply_actions(row_action, col_action);
@@ -167,7 +174,7 @@ int main() {
 
   ModelTypes::PRNG device{32847948763498673};
 
-  constexpr size_t threads = 8;
+  constexpr size_t threads = 24;
 
   std::thread thread_pool[threads];
   for (int i = 0; i < threads; ++i) {
