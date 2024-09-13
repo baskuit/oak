@@ -1,14 +1,1 @@
 /build
-
-# no leaks
-# /include/sides.h
-*.tsv
-
-#logs
-/logs/*.log
-/logs/*.html
-#ts
-*.js
-# annoying
-*.json
-*.txt

@@ -3,32 +3,34 @@ project(oak VERSION 0.0.1)
 
 set(CMAKE_CXX_STANDARD 23)
 
+add_custom_command(
+  OUTPUT
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/lib/libpkmn-showdown.a
+  COMMAND
+    zig build -Dshowdown -Dpic -Dchance -Dcalc -Dlog -Doptimize=ReleaseSafe
+  WORKING_DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine
+  COMMENT
+    "Building libpkmn with the zig in PATH"
+)
+
+add_library(libpkmn STATIC IMPORTED)
+set_target_properties(libpkmn PROPERTIES
+  IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/lib/libpkmn-showdown.a
+)
+
+add_executable(main src/main.cc)
+
+add_custom_target(build_zig_lib ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/lib/libpkmn-showdown.a)
+
+add_dependencies(main build_zig_lib)
+
+target_include_directories(main PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
+)
+
 add_subdirectory(extern/pinyon)
-target_include_directories(pinyon INTERFACE extern/pinyon/src)
 
-include_directories(extern/engine/zig-out/include)
-set(libpkmn ${PROJECT_SOURCE_DIR}/extern/engine/zig-out/lib/libpkmn-showdown.a)
-
-add_subdirectory(extern/lrslib)
-target_include_directories(lrslib64 INTERFACE extern/lrslib/src)
-target_include_directories(lrslib128 INTERFACE extern/lrslib/src)
-
-add_executable(bull ./src/bull.cc)
-target_link_libraries(bull pinyon)
-
-add_executable(bull-pinyon ./src/bull-pinyon.cc)
-target_link_libraries(bull-pinyon pinyon)
-target_link_libraries(bull-pinyon ${libpkmn})
-
-add_executable(main ./src/ab-vs-mcts.cc)
-target_link_libraries(main pinyon)
-target_link_libraries(main ${libpkmn})
-target_link_libraries(main lrslib128)
-
-add_executable(a ./benchmark/a.cc)
-target_link_libraries(a pinyon)
-target_link_libraries(a ${libpkmn})
-
-add_executable(b ./benchmark/b.cc)
-target_link_libraries(b pinyon)
-target_link_libraries(b ${libpkmn})
+target_link_libraries(main PRIVATE libpkmn)
+target_link_libraries(main PRIVATE pinyon)
