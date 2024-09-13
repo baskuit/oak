@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstring>
 
 #include <pkmn.h>
 #include <sides.h>
