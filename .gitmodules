@@ -5,3 +5,6 @@
 	path = extern/lrslib
 	url = https://github.com/baskuit/lrslib
 	branch = contiguous
+[submodule "extern/engine"]
+	path = extern/engine
+	url = https://github.com/pkmn/engine
