@@ -101,79 +101,76 @@ class Random {
   }
 }
 
-async function compare_teams_via_main(p1: number, p2: number) {
+function init_battle(i: number, j: number, seed: number[] = [1, 2, 3, 4]): [Battle, Result] {
 
-  const P1 = Team.unpack(TEAMS[0], Dex)!.team;
-  const P2 = Team.unpack(TEAMS[1], Dex)!.team;
+  const P1 = Team.unpack(TEAMS[i], Dex)!.team;
+  const P2 = Team.unpack(TEAMS[j], Dex)!.team;
 
   const gens = new Generations(Dex);
   const gen = gens.get(1);
   const options = {
     p1: { name: 'Player A', team: P1 },
     p2: { name: 'Player B', team: P2 },
-    seed: [1, 2, 3, 4],
+    seed: seed,
     showdown: true,
     log: true,
   };
-  const log = new Log(gen, Lookup.get(gen), options);
 
   let battle = Battle.create(gen, options);
   let result = battle.update(Choice.pass(), Choice.pass());
+  return [battle, result];
+}
+
+async function search_once(battle: Battle, result: Result) {
+
+  const bytes = battle_bytes_string(battle, result);
 
   const executablePath = './build/main';
   let child = spawn(executablePath);
 
-  let ended = false;
+  child.stdin.write(bytes);
 
-  child.stdout.on('data', (data) => {
-    const res: string = `${data}`;
+  let data = "";
 
-    if (res[0] === '!') {
-      console.log(res);
-    } else {
-      console.log("policies rec'd")
-      const policies: number[][] = read_policies(res);
-      const actions = policies.map(policy => {
-        let p = 1;
-        for (let i = 0; i < policy.length; i++) {
-          p -= policy[i];
-          if (p <= 0) {
-            return i;
-          }
-        }
-        return 0;
-      }
-      );
+  for await (const chunk of child.stdout) {
+    console.log('stdout chunk: ' + chunk);
+    data += chunk;
+  }
 
-      console.log("policies: ", policies[0], policies[3]);
-      console.log("actions: ", actions[0], actions[3]);
-
-      const c1: Choice = battle.choices('p1', result)[actions[0]];
-      const c2: Choice = battle.choices('p2', result)[actions[3]];
-
-      result = battle.update(c1, c2);
-
-      if (result.type) {
-        console.log("battle ended");
-        child.kill();
-        ended = true;
-        return;
-      }
-
-      const input: string = battle_bytes_string(battle, result);
-
-      child.stdin.write(input);
-    }
-
+  const exitCode = await new Promise((resolve, reject) => {
+    child.on('close', resolve);
   });
 
-  const initial_input = battle_bytes_string(battle, result);
-  console.log(initial_input);
-  child.stdin.write(initial_input);
+  console.log("exit code: ", exitCode);
 
-  while (!ended) {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
+  const policies: number[][] = read_policies(data);
+
+  return policies;
+}
+
+async function compare_teams_via_main(p1: number, p2: number) {
+
+  const sample_policy = (policy: number[], x: number) => {
+    let index = 0;
+    for (const p of policy) {
+      x -= p;
+      if (x <= 0) {
+        break;
+      }
+      index += 1;
+    }
+    return index;
+  };
+
+  let [battle, result] = init_battle(p1, p2);
+
+  const policies = await search_once(battle, result);
+  const c1: Choice = battle.choices('p1', result)[sample_policy(policies[0], Math.random())];
+  const c2: Choice = battle.choices('p2', result)[sample_policy(policies[3], Math.random())];
+
+  console.log(c1.type, c1.data);
+  console.log(c2.type, c2.data);
+
 }
 
 (async function () {

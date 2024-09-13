@@ -33,11 +33,11 @@ struct DualSearchOutput {
   std::vector<float> ab_col_policy;
 };
 
-template <typename Vec> void print(const Vec &vec) {
+template <typename Vec> void write_policy_to_stdout(const Vec &vec) {
   for (const auto x : vec) {
     std::cout << x << ' ';
   }
-  std::cout << std::endl;
+  std::cout << '\n';
 }
 
 DualSearchOutput dual_search(const ModelTypes::State &state) {
@@ -112,23 +112,21 @@ int main() {
   std::array<uint8_t, battle_size> bytes{};
   pkmn_result result{};
 
-  while (true) {
-    // std::cout << "!newloop" << std::endl;
-    read_battle_bytes(bytes, result);
+  read_battle_bytes(bytes, result);
 
-    ModelTypes::State state{bytes.data(), bytes.data() + 184};
-    state.result = result;
-    state.result_kind = pkmn_result_type(result);
-    state.clamped = true;
-    state.get_actions();
+  ModelTypes::State state{bytes.data(), bytes.data() + 184};
+  state.result = result;
+  state.result_kind = pkmn_result_type(result);
+  state.clamped = true;
+  state.get_actions();
 
-    const auto output = dual_search(state);
+  const auto output = dual_search(state);
 
-    print(output.ab_row_policy);
-    print(output.ab_col_policy);
-    print(output.mcts_row_policy);
-    print(output.mcts_col_policy);
-  }
+  write_policy_to_stdout(output.ab_row_policy);
+  write_policy_to_stdout(output.ab_col_policy);
+  write_policy_to_stdout(output.mcts_row_policy);
+  write_policy_to_stdout(output.mcts_col_policy);
+  std::cout.flush();
 
   return 0;
 }
