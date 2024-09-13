@@ -15,7 +15,8 @@ using MCTSTypes = TreeBanditRootMatrix<UCB<ModelTypes>>;
 
 static constexpr int battle_size{384};
 
-void read_battle_bytes(std::array<uint8_t, battle_size> &bytes, pkmn_result& result) {
+void read_battle_bytes(std::array<uint8_t, battle_size> &bytes,
+                       pkmn_result &result) {
   uint32_t byte;
   for (int i = 0; i < battle_size; ++i) {
     std::cin >> byte;
@@ -24,7 +25,6 @@ void read_battle_bytes(std::array<uint8_t, battle_size> &bytes, pkmn_result& res
   uint32_t result_int;
   std::cin >> result_int;
   result = static_cast<uint8_t>(result_int);
-  // std::cout << "!result: " << result_int << std::endl;
 }
 
 struct DualSearchOutput {
@@ -41,7 +41,8 @@ template <typename Vec> void write_policy_to_stdout(const Vec &vec) {
   std::cout << '\n';
 }
 
-DualSearchOutput dual_search(const ModelTypes::State &state, const uint64_t seed = 13423546425745) {
+DualSearchOutput dual_search(const ModelTypes::State &state,
+                             const uint64_t seed = 13423546425745) {
   const size_t rows = state.row_actions.size();
   const size_t cols = state.col_actions.size();
 
@@ -52,11 +53,17 @@ DualSearchOutput dual_search(const ModelTypes::State &state, const uint64_t seed
   size_t ab_search_matrix_node_count{};
 
   DualSearchOutput ds_output{};
-  // std::cout << "!start alpha beta" << std::endl;
   {
-    ABTypes::Search search{1 << 3, 1 << 7};
-    ABTypes::MatrixNode node{};
     const size_t depth = 3;
+    const size_t min_tries = 1;
+    const size_t max_tries = 1 << 8;
+    const float max_unexplored = .1;
+    const float min_reach_prob_initial = 1;
+    const float min_reach_prob_base = 1 / 4.0;
+
+    ABTypes::Search search{min_tries, max_tries, max_unexplored,
+                           min_reach_prob_initial, min_reach_prob_base};
+    ABTypes::MatrixNode node{};
     const auto output = search.run(depth, device, state, model, node);
     for (const size_t t : output.times) {
       ab_search_time += t;
@@ -67,10 +74,6 @@ DualSearchOutput dual_search(const ModelTypes::State &state, const uint64_t seed
     ds_output.ab_row_policy = std::move(output.row_strategy);
     ds_output.ab_col_policy = std::move(output.col_strategy);
   }
-  // std::cout << "!end alpha beta" << std::endl;
-
-  // std::cout << '!' << ab_search_time / 1000000.0 << std::endl;
-  // std::cout << "!start mcts" << std::endl;
 
   {
     MCTSTypes::Search search{};
@@ -104,7 +107,6 @@ DualSearchOutput dual_search(const ModelTypes::State &state, const uint64_t seed
     output.col_strategy = ds_output.mcts_col_policy.data();
     solve_fast(&input, &output);
   }
-  // std::cout << "!end mcts" << std::endl;
 
   return ds_output;
 }
