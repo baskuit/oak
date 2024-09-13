@@ -305,12 +305,13 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
   struct Search {
 
-    const uint32_t min_tries;
-    const uint32_t max_tries;
+    uint32_t min_tries;
+    uint32_t max_tries;
 
     float max_unexplored = 0;
     float min_reach_prob_initial = 1;
     float min_reach_prob_base = .1;
+    float max_tries_base = 1.1;
 
     Search(const uint32_t min_tries, const uint32_t max_tries)
         : min_tries{min_tries}, max_tries{max_tries} {}
@@ -385,7 +386,9 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
       stats.unexplored -= prob;
       stats.alpha_explored += next_temp_data.alpha * prob;
       stats.beta_explored += next_temp_data.beta * prob;
-      ++base_data.matrix_node_count;
+      // if ((++base_data.matrix_node_count) > max_nodes) {
+      //   throw std::exception();
+      // };
     }
 
     // query a chance node given a joint action pair. first it returns the
@@ -495,8 +498,8 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
       const auto start = std::chrono::high_resolution_clock::now();
 
       FloatOneSumOutput output;
-      temp_data.row_strategy.resize(r);
-      temp_data.col_strategy.resize(c);
+      temp_data.row_strategy.resize(r + 2);
+      temp_data.col_strategy.resize(c + 2);
       FastInput input;
       input.rows = r;
       input.cols = c;
@@ -551,7 +554,7 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
           debug_print_no_indent('\n');
         }
         std::vector<float> temp{};
-        temp.resize(r + c);
+        temp.resize(r + c + 2);
         input.data = temp_data.alpha_matrix.data();
         output.row_strategy = temp_data.row_strategy.data();
         output.col_strategy = temp.data();
@@ -855,6 +858,7 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
     void alpha_beta(MatrixNode *matrix_node, BaseData &base_data,
                     HeadData &head_data, TempData &temp_data) const {
+
       temp_data.state.get_actions();
       temp_data.rows = temp_data.state.row_actions.size();
       temp_data.cols = temp_data.state.col_actions.size();
@@ -950,6 +954,8 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
       // )/2;
     }
 
+    static constexpr size_t max_nodes{1 << 25};
+
     struct Output {
       float alpha;
       float beta;
@@ -977,13 +983,14 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
 
         std::vector<uint32_t> max_tries_vec{};
         max_tries_vec.resize(depth);
-        const float factor = 1.414;
         uint32_t t = max_tries;
+        float e = max_tries;
         float min_reach_prob = min_reach_prob_initial;
         for (int i = depth - 1; i >= 0; --i) {
           max_tries_vec[i] = (t);
-          const float w = t * factor;
-          t = static_cast<uint32_t>(w);
+          e *= max_tries_base;
+          const float w = t * max_tries_base;
+          t = static_cast<uint32_t>(e);
           min_reach_prob *= min_reach_prob_base;
         }
 
@@ -993,23 +1000,50 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         HeadData head_data{min_tries, max_tries};
         TempData temp_data{state};
 
+        const auto get_strategies = [&]() {
+          output.row_strategy.clear();
+          output.col_strategy.clear();
+          output.row_strategy.resize(state.row_actions.size());
+          output.col_strategy.resize(state.col_actions.size());
+          for (uint8_t i = 0; i < node.I.boundary; ++i) {
+            assert(node.I.action_indices[i].idx < temp_data.rows);
+            output.row_strategy[node.I.action_indices[i].idx] =
+                temp_data.row_strategy[i];
+          }
+          output.col_strategy.resize(temp_data.cols);
+          for (uint8_t j = 0; j < node.J.boundary; ++j) {
+            assert(node.J.action_indices[j].idx < temp_data.cols);
+            output.col_strategy[node.J.action_indices[j].idx] =
+                temp_data.col_strategy[j];
+          }
+        };
+        bool no_e = true;
         const auto start = std::chrono::high_resolution_clock::now();
-        this->alpha_beta(&node, base_data, head_data, temp_data);
-        const auto end = std::chrono::high_resolution_clock::now();
-        const auto duration =
-            std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        try {
+          this->alpha_beta(&node, base_data, head_data, temp_data);
+        } catch (...) {
+          no_e = false;
+          std::cout << "search crash - too many nodes" << std::endl;
 
-        output.alpha = temp_data.alpha;
-        output.beta = temp_data.beta;
-        output.row_strategy.resize(temp_data.rows);
-        for (uint8_t i = 0; i < temp_data.row_strategy.size(); ++i) {
-          output.row_strategy[node.I.action_indices[i].idx] =
-              temp_data.row_strategy[i];
+          if (output.times.empty()) {
+            output.row_strategy.resize(state.row_actions.size());
+            output.col_strategy.resize(state.col_actions.size());
+            output.row_strategy[0] = 1;
+            output.col_strategy[0] = 1;
+          } else {
+            // use last times strats and value
+          }
+          output.times.push_back(0);
         }
-        output.col_strategy.resize(temp_data.cols);
-        for (uint8_t j = 0; j < temp_data.col_strategy.size(); ++j) {
-          output.col_strategy[node.J.action_indices[j].idx] =
-              temp_data.col_strategy[j];
+        if (no_e) {
+          const auto end = std::chrono::high_resolution_clock::now();
+          const auto duration =
+              std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                    start);
+          get_strategies();
+          output.times.push_back(duration.count());
+          output.alpha = temp_data.alpha;
+          output.beta = temp_data.beta;
         }
 
         output.matrix_node_count.push_back(base_data.matrix_node_count);
@@ -1017,20 +1051,17 @@ template <typename Types, bool debug = false> struct AlphaBetaRefactor : Types {
         output.terminal_count.push_back(base_data.terminal_count);
         output.inference_count.push_back(base_data.inference_count);
 
-        output.times.push_back(duration.count());
+        // const int64_t time_without_inference =
+        //     static_cast<int64_t>(duration.count()) -
+        //     static_cast<int64_t>(base_data.total_inference_time);
+        // output.times_without_inference.push_back(time_without_inference);
 
-        const int64_t time_without_inference =
-            static_cast<int64_t>(duration.count()) -
-            static_cast<int64_t>(base_data.total_inference_time);
-        output.times_without_inference.push_back(time_without_inference);
+        // std::memcpy(output.total_solves, base_data.total_solves,
+        //             sizeof(size_t) * 81);
+        // output.total_solves_raw = base_data.total_solves_raw;
 
-        std::memcpy(output.total_solves, base_data.total_solves,
-                    sizeof(size_t) * 81);
-        output.total_solves_raw = base_data.total_solves_raw;
-
-        output.matrix_print_data.init(temp_data, &node);
+        // output.matrix_print_data.init(temp_data, &node);
       }
-
       return output;
     }
 
