@@ -7,10 +7,11 @@
 
 #include "../include/alpha-beta-refactor.h"
 #include "../include/battle.h"
+#include "../include/ucb.h"
 
 using ModelTypes = PModel<Battle<0, 3, ChanceObs, float, float>>;
 using ABTypes = AlphaBetaRefactor<ModelTypes>;
-using MCTSTypes = TreeBanditRootMatrix<Exp3<ModelTypes>>;
+using MCTSTypes = TreeBanditRootMatrix<UCB<ModelTypes>>;
 
 static constexpr int battle_size{384};
 
@@ -40,11 +41,11 @@ template <typename Vec> void write_policy_to_stdout(const Vec &vec) {
   std::cout << '\n';
 }
 
-DualSearchOutput dual_search(const ModelTypes::State &state) {
+DualSearchOutput dual_search(const ModelTypes::State &state, const uint64_t seed = 13423546425745) {
   const size_t rows = state.row_actions.size();
   const size_t cols = state.col_actions.size();
 
-  ModelTypes::PRNG device{13423546425745};
+  ModelTypes::PRNG device{seed};
   ModelTypes::Model model{};
 
   size_t ab_search_time{};
@@ -55,7 +56,8 @@ DualSearchOutput dual_search(const ModelTypes::State &state) {
   {
     ABTypes::Search search{1 << 3, 1 << 7};
     ABTypes::MatrixNode node{};
-    const auto output = search.run(3, device, state, model, node);
+    const size_t depth = 3;
+    const auto output = search.run(depth, device, state, model, node);
     for (const size_t t : output.times) {
       ab_search_time += t;
     }
@@ -114,13 +116,10 @@ int main() {
 
   read_battle_bytes(bytes, result);
 
-  ModelTypes::State state{bytes.data(), bytes.data() + 184};
-  state.result = result;
-  state.result_kind = pkmn_result_type(result);
+  ModelTypes::State state{bytes.data(), result};
   state.clamped = true;
-  state.get_actions();
 
-  const auto output = dual_search(state);
+  const auto output = dual_search(state, 13423546425745);
 
   write_policy_to_stdout(output.ab_row_policy);
   write_policy_to_stdout(output.ab_col_policy);

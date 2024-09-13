@@ -265,6 +265,26 @@ struct Battle : BattleTypesImpl::BattleTypes<Real, Prob, Obs, LOG_SIZE> {
   public:
     State() {}
 
+    // Starting a battle at any point using all 384 bytes
+    State(const uint8_t *data, const uint8_t result) {
+      memcpy(this->battle.bytes, data, SIZE_BATTLE_WITH_PRNG);
+
+      if constexpr (State::dlog) {
+        this->log_options = {this->log_buffer.data(), LOG_SIZE};
+      }
+      if constexpr (State::dchance) {
+        pkmn_rational_init(&this->chance_options.probability);
+        this->p = pkmn_gen1_battle_options_chance_probability(&this->options);
+      }
+
+      this->set();
+
+      this->result = result;
+      this->result_kind = pkmn_result_type(result);
+
+      get_actions();
+    }
+
     State(const uint8_t *row_side, const uint8_t *col_side) {
       // init: copy sides onto battle and zero initialize certain bits
       // PRNG bytes are left uninitialized (zero initializing is no better,
