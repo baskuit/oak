@@ -10,33 +10,46 @@
 
 #include <exception>
 
-// stick to log and chance only
+// stick to log and chance only for now
 
-template <size_t _log_size, bool _chance> struct Flags {
-  static constexpr size_t log_size{_log_size};
-  static constexpr bool chance{_chance};
+template <size_t log_size, bool chance> struct OptionsData;
+
+template <> struct OptionsData<0, false> {
+  pkmn_gen1_battle_options options;
+  void set () {
+    pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
+  }
 };
 
-// template <size_t log_size, bool chance> struct OptionsData;
+template <> struct OptionsData<0, true> {
+  pkmn_gen1_battle_options options;
+  pkmn_gen1_chance_options chance_options;
+  void set () {
+    pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
+  }
+};
 
-// template <> struct OptionsData<0, false> {};
-
-// template <> struct OptionsData<0, true> {
-//   pkmn_gen1_chance_options chance_options;
-// };
-
-template <size_t log_size, bool asdf> struct OptionsData {
+template <size_t log_size> struct OptionsData<log_size, false> {
+  pkmn_gen1_battle_options options;
   uint8_t log_buffer[log_size];
+  void set() {
+    pkmn_gen1_log_options log_options = {.buf = log_buffer,
+                                         .len = log_size};
+    pkmn_gen1_battle_options_set(&options, &log_options, nullptr, nullptr);
+  }
 };
 
-// template <size_t log_size> struct OptionsData<log_size, true> {
-//   std::array<uint8_t, log_size> log_buffer;
-//   pkmn_gen1_chance_options chance_options;
-// };
+template <size_t log_size> struct OptionsData<log_size, true> {
+  pkmn_gen1_battle_options options;
+  uint8_t log_buffer[log_size];
+  pkmn_gen1_chance_options chance_options;
+  void set () {
+    pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
+  }
+};
 
 template <size_t log_size, bool chance> struct Battle {
   pkmn_gen1_battle battle;
-  pkmn_gen1_battle_options options;
   OptionsData<log_size, chance> options_data;
 
   pkmn_result result;
@@ -45,17 +58,11 @@ template <size_t log_size, bool chance> struct Battle {
   std::array<uint8_t, 9> row_actions;
   std::array<uint8_t, 9> col_actions;
 
-  void set() {
-    pkmn_gen1_log_options log_options = {.buf = options_data.log_buffer,
-                                         .len = log_size};
-    pkmn_gen1_battle_options_set(&options, &log_options, nullptr, nullptr);
-  }
-
   Battle(const uint8_t *p1_side, const uint8_t *p2_side) {
     std::memcpy(this->battle.bytes, p1_side, 184);
     std::memcpy(this->battle.bytes + 184, p2_side, 184);
     std::memset(this->battle.bytes + 2 * 184, 0, 376 - 2 * 184);
-    set();
+    options_data.set();
   }
 
   template <typename PRNG> void randomize_transition(PRNG &device) noexcept {
@@ -64,8 +71,8 @@ template <size_t log_size, bool chance> struct Battle {
   }
 
   void apply_actions(pkmn_choice p1_action, pkmn_choice p2_action) {
-    set();
-    result = pkmn_gen1_battle_update(&battle, p1_action, p2_action, &options);
+    options_data.set();
+    result = pkmn_gen1_battle_update(&battle, p1_action, p2_action, &options_data.options);
   };
 
   float payoff() const noexcept {
@@ -79,8 +86,9 @@ template <size_t log_size, bool chance> struct Battle {
     case PKMN_RESULT_LOSE: {
       return 0;
     }
-    case PKMN_RESULT_ERROR: {
-      throw std::exception();
+    default: {
+      std::cerr << "battle error" << std::endl;
+      std::terminate();
     }
     }
   }

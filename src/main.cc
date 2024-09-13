@@ -3,6 +3,7 @@
 #include <sides.h>
 #include <battle.h>
 #include <debug-log.h>
+#include <chance.h>
 
 struct Types {
   using Real = float;
@@ -37,8 +38,22 @@ int main (int argc, char** argv) {
 
   DebugLog debug_log;
 
-  debug_log.rollout_battle(std::move(battle), device);
+  battle.apply_actions(0, 0);
+  battle.get_actions();
 
-  debug_log.save_data_to_path("");
+  battle.apply_actions(battle.row_actions[8], battle.col_actions[8]);
+  const auto *actions = pkmn_gen1_battle_options_chance_actions(&battle.options_data.options);
+  for (int i = 0; i < 16; ++i) {
+    std::cout << (int)actions->bytes[i] << ' ';
+  }
+  std::cout << std::endl;
+
+
+
+  // debug_log.rollout_battle(std::move(battle), device);
+
+  // debug_log.save_data_to_path("");
+
+
 
 }
