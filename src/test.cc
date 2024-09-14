@@ -1,9 +1,9 @@
 #include <iostream>
 
 #include <battle.h>
-#include <chance.h>
 #include <debug-log.h>
 #include <sides.h>
+#include <tests.h>
 
 struct Types {
   using Real = float;
@@ -23,22 +23,14 @@ struct Types {
   };
 };
 
-int main(int argc, char **argv) {
-  if (argc != 4) {
-    std::cout << "Provide two team indices and a seed" << std::endl;
-    return 1;
-  }
+int main() {
 
-  int i = std::atoi(argv[1]);
-  int j = std::atoi(argv[2]);
-  int seed = std::atoi(argv[3]);
+  int i = 0;
+  int j = 1;
 
   Types::State state{sides[i], sides[j]};
-  Types::PRNG device{static_cast<uint64_t>(seed)};
+  Types::PRNG device{203492839};
 
-  DebugLog<Types::State::log_buffer_size> debug_log{};
-  debug_log.rollout_battle(std::move(state), device);
-  debug_log.save_data_to_path("");
-
-  return 0;
+  state.get_actions();
+  copy_rollout_test(device, state);
 }
