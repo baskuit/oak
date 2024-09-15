@@ -15,9 +15,9 @@ template <size_t log_size, bool chance> struct OptionsData;
 template <> struct OptionsData<0, false> {
   pkmn_gen1_battle_options options;
   void set() noexcept {
-    pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
+    // pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
   }
-  using Obs = pkmn_gen1_battle;
+  using Obs = std::array<uint8_t, PKMN_GEN1_BATTLE_SIZE>;
 };
 
 template <> struct OptionsData<0, true> {
@@ -26,9 +26,10 @@ template <> struct OptionsData<0, true> {
   void set() noexcept {
     pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
   }
-  using Obs = pkmn_gen1_chance_actions;
+  using Obs = std::array<uint8_t, PKMN_GEN1_CHANCE_ACTIONS_SIZE>;
   const Obs &obs() const noexcept {
-    return *pkmn_gen1_battle_options_chance_actions(&options);
+    return *reinterpret_cast<Obs *>(
+        pkmn_gen1_battle_options_chance_actions(&options)->bytes);
   }
 };
 
@@ -36,23 +37,29 @@ template <size_t log_size> struct OptionsData<log_size, false> {
   pkmn_gen1_battle_options options;
   uint8_t log_buffer[log_size];
   void set() noexcept {
-    pkmn_gen1_log_options log_options = {.buf = log_buffer, .len = log_size};
+    const pkmn_gen1_log_options log_options{.buf = log_buffer, .len = log_size};
     pkmn_gen1_battle_options_set(&options, &log_options, nullptr, nullptr);
   }
-  using Obs = uint8_t[log_size];
-  const Obs &obs() const noexcept { return log_buffer; }
+  using Obs = std::array<uint8_t, log_size>;
+  const Obs &obs() const noexcept {
+    return *reinterpret_cast<Obs *>(log_buffer);
+  }
 };
 
 template <size_t log_size> struct OptionsData<log_size, true> {
   pkmn_gen1_battle_options options;
   uint8_t log_buffer[log_size];
-  // pkmn_gen1_chance_options chance_options;
   void set() noexcept {
-    pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
+    const pkmn_gen1_log_options log_options{.buf = log_buffer, .len = log_size};
+    pkmn_gen1_chance_options chance_options{};
+    pkmn_rational_init(&chance_options.probability);
+    pkmn_gen1_battle_options_set(&options, &log_options, &chance_options,
+                                 nullptr);
   }
-  using Obs = pkmn_gen1_chance_actions;
+  using Obs = std::array<uint8_t, PKMN_GEN1_CHANCE_ACTIONS_SIZE>;
   const Obs &obs() const noexcept {
-    return *pkmn_gen1_battle_options_chance_actions(&options);
+    return *reinterpret_cast<Obs *>(
+        pkmn_gen1_battle_options_chance_actions(&options)->bytes);
   }
 };
 
@@ -72,9 +79,9 @@ public:
   std::array<uint8_t, 9> col_actions;
 
   Battle(const uint8_t *p1_side, const uint8_t *p2_side) {
-    std::memcpy(this->_battle.bytes, p1_side, 184);
-    std::memcpy(this->_battle.bytes + 184, p2_side, 184);
-    std::memset(this->_battle.bytes + 2 * 184, 0, 376 - 2 * 184);
+    std::memcpy(_battle.bytes, p1_side, 184);
+    std::memcpy(_battle.bytes + 184, p2_side, 184);
+    std::memset(_battle.bytes + 2 * 184, 0, 376 - 2 * 184);
     _options_data.set();
   }
 
@@ -93,9 +100,11 @@ public:
                 _options_data.log_buffer);
     }
     if constexpr (chance) {
-      pkmn_gen1_battle_options_set(&options, nullptr, &other.obs(), nullptr);
+      // pkmn_gen1_chance_options chance_options;
+      // pkmn_gen1_battle_options_set(&_options_data.options, nullptr,
+      // &other.obs(), nullptr);
     }
-    // _options_data.set();
+    _options_data.set();
   }
 
   Battle operator=(const Battle &other) {}
@@ -115,10 +124,18 @@ public:
   }
 
   void apply_actions(pkmn_choice p1_action, pkmn_choice p2_action) {
-    _options_data.set();
-    _result = pkmn_gen1_battle_update(&_battle, p1_action, p2_action,
-                                      &_options_data.options);
+    // _options_data.set();
+    pkmn_gen1_battle_options_set(&options(), nullptr, nullptr, nullptr);
+    _result =
+        pkmn_gen1_battle_update(&_battle, p1_action, p2_action, &options());
   };
+
+  std::pair<size_t, size_t> prob() const {
+    auto *rat = pkmn_gen1_battle_options_chance_probability(&options());
+    pkmn_rational_reduce(rat);
+    return {static_cast<size_t>(pkmn_rational_numerator(rat)),
+            static_cast<size_t>(pkmn_rational_denominator(rat))};
+  }
 
   float payoff() const noexcept {
     switch (pkmn_result_type(_result)) {
@@ -141,29 +158,30 @@ public:
   bool is_terminal() const noexcept { return pkmn_result_type(_result); }
 
   void get_actions() {
-    this->_rows = pkmn_gen1_battle_choices(
-        &_battle, PKMN_PLAYER_P1, pkmn_result_p1(_result), row_actions.data(),
-        PKMN_CHOICES_SIZE);
-    this->_cols = pkmn_gen1_battle_choices(
-        &_battle, PKMN_PLAYER_P2, pkmn_result_p2(_result), col_actions.data(),
-        PKMN_CHOICES_SIZE);
+    _rows = pkmn_gen1_battle_choices(&_battle, PKMN_PLAYER_P1,
+                                     pkmn_result_p1(_result),
+                                     row_actions.data(), PKMN_CHOICES_SIZE);
+    _cols = pkmn_gen1_battle_choices(&_battle, PKMN_PLAYER_P2,
+                                     pkmn_result_p2(_result),
+                                     col_actions.data(), PKMN_CHOICES_SIZE);
   }
 
   const auto &obs() const noexcept {
     if constexpr (log_size > 0 || chance) {
       return _options_data.obs();
     } else {
-      return _battle;
+      return *reinterpret_cast<OptionsData<log_size, chance>::Obs *>(
+          _battle.bytes);
     }
   }
 
-  auto rows() const noexcept { return this->_rows; }
-  auto cols() const noexcept { return this->_cols; }
+  auto rows() const noexcept { return _rows; }
+  auto cols() const noexcept { return _cols; }
   pkmn_gen1_battle_options &options() noexcept {
-    return this->_options_data.options;
+    return _options_data.options;
   };
   const pkmn_gen1_battle_options &options() const noexcept {
-    return this->_options_data.options;
+    return _options_data.options;
   };
   const auto &options_data() const noexcept { return _options_data; }
   auto &options_data() noexcept { return _options_data; }
@@ -171,6 +189,4 @@ public:
   const pkmn_gen1_battle &battle() const noexcept { return _battle; }
   pkmn_result &result() noexcept { return _result; }
   const pkmn_result &result() const noexcept { return _result; }
-  // uint8_t* log_buffer() noexcept { return _result; }
-  // const uint8_t*  log_buffer &result() const noexcept { return _result; }
 };

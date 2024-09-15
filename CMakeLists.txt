@@ -5,15 +5,25 @@ set(CMAKE_CXX_STANDARD 23)
 
 include(CTest)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(ZIG_BUILD_MODE "Debug")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(ZIG_BUILD_MODE "ReleaseFast")
+elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  set(ZIG_BUILD_MODE "ReleaseSafe")
+else()
+  set(ZIG_BUILD_MODE "ReleaseSafe")
+endif()
+
 add_custom_command(
   OUTPUT
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/lib/libpkmn-showdown.a
   COMMAND
-    zig build -Dshowdown -Dpic -Dchance -Dcalc -Dlog -Doptimize=ReleaseSafe
+    zig build -Dshowdown -Dpic -Dchance -Dcalc -Dlog -Doptimize=${ZIG_BUILD_MODE}
   WORKING_DIRECTORY
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine
   COMMENT
-    "Building libpkmn with the zig in PATH"
+    "Building libpkmn with Zig in PATH, using ${ZIG_BUILD_MODE} mode"
 )
 
 add_library(libpkmn STATIC IMPORTED)
