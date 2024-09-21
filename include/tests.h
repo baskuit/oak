@@ -7,7 +7,7 @@
 
 #include <vector>
 
-template <typename Key, typename Value> struct LinearScanSet {
+template <typename Key, typename Value> struct LinearScanMap {
   std::vector<std::pair<Key, Value>> data;
 
   Value &operator[](const Key &key) {
@@ -33,8 +33,9 @@ template <typename Key, typename Value> struct LinearScanSet {
 template <typename State, typename PRNG>
 auto actions_test(PRNG &device, const State &state, pkmn_choice p1_action,
                   pkmn_choice p2_action, int tries) {
-  using Data = std::tuple<size_t, float, float>;
-  LinearScanSet<std::array<uint8_t, 16>, Data> map{};
+  using Data = std::tuple<size_t, size_t, size_t>;
+  LinearScanMap<std::array<uint8_t, 16>, Data> map{};
+  double total_prob = 0;
   for (int i = 0; i < tries; ++i) {
     State state_copy{state};
     state_copy.randomize_transition(device);
@@ -50,6 +51,7 @@ auto actions_test(PRNG &device, const State &state, pkmn_choice p1_action,
     if (std::get<0>(data) == 0) {
       std::get<1>(data) = p.first;
       std::get<2>(data) = p.second;
+      total_prob += p.first / (double)p.second;
     } else {
       assert(std::get<1>(data) == p.first);
       assert(std::get<2>(data) == p.second);
@@ -68,8 +70,10 @@ void display_actions_test_map(const auto &map) {
     const size_t p = std::get<1>(data);
     const size_t q = std::get<2>(data);
     const double x = p / (double)q;
-    std::cout << buffer_to_string(buf, 16) << " : " << n << ", " << p << " / "
-              << q << " = " << x << std::endl;
+    pkmn_gen1_chance_actions actions;
+    std::memcpy(actions.bytes, buf, 16);
+    display(&actions);
+    std::cout << n << ", " << p << " / " << q << " = " << x << std::endl;
     total_prob += x;
   }
   std::cout << "number of branches: " << map.data.size() << std::endl;

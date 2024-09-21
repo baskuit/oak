@@ -96,6 +96,29 @@ void print_species(const uint8_t *pokemon) {
   std::cout << Names::species_name[pokemon[21]] << std::endl;
 }
 
+const uint8_t *get_pokemon_from_slot(const uint8_t *side, int index = 1) {
+  const int slot = side[175 + index] - 1;
+  return side + 24 * slot;
+}
+
+std::string side_choice_string(const uint8_t *side, pkmn_choice choice) {
+  const auto choice_type = choice & 3;
+  const auto choice_data = choice >> 2;
+  switch (choice_type) {
+  case 1: {
+    return Names::move_name[get_pokemon_from_slot(side,
+                                                  1)[8 + 2 * choice_data]];
+  }
+  case 2: {
+    return Names::species_name[get_pokemon_from_slot(side, choice_data)[21]];
+  }
+  default: {
+    std::cout << "bad choice data" << std::endl;
+    return "";
+  }
+  }
+}
+
 std::string buffer_to_string(const uint8_t *const buf, int n) {
   std::stringstream stream{};
   for (int i = 0; i < n - 1; ++i) {

@@ -1,12 +1,10 @@
 #pragma once
 
+#include <array>
 #include <cstring>
-#include <mutex>
+#include <exception>
 
 #include <pkmn.h>
-
-#include <types/random.h>
-#include <types/vector.h>
 
 // stick to log and chance only for now
 
@@ -137,7 +135,7 @@ public:
             static_cast<size_t>(pkmn_rational_denominator(rat))};
   }
 
-  float payoff() const noexcept {
+  float payoff() const {
     switch (pkmn_result_type(_result)) {
     case PKMN_RESULT_NONE: {
       return .5;
@@ -148,10 +146,14 @@ public:
     case PKMN_RESULT_LOSE: {
       return 0;
     }
+    case PKMN_RESULT_TIE: {
+      return .5;
+    }
     default: {
       std::cerr << "battle error" << std::endl;
-    }
+      throw std::exception();
       return .5;
+    }
     }
   }
 

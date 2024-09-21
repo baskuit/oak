@@ -1,4 +1,8 @@
 #include <iostream>
+#include <mutex>
+
+#include <types/random.h>
+#include <types/vector.h>
 
 #include <battle.h>
 #include <chance.h>

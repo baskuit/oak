@@ -108,11 +108,6 @@ template <typename Types> struct UCBOak : Types {
       outcome.col_idx =
           std::max_element(col_forecast.begin(), col_forecast.end()) -
           col_forecast.begin();
-
-      //   math::print(row_forecast);
-      //   std::cout << outcome.row_idx << std::endl;
-      //   math::print(col_forecast);
-      //   std::cout << outcome.col_idx << std::endl << std::endl;
     }
 
     void update_matrix_stats(MatrixStats &stats, const Outcome &outcome) const {
