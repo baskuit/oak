@@ -1,122 +1,102 @@
-#include <algorithm/algorithm.h>
-#include <libpinyon/math.h>
-#include <tree/tree.h>
-#include <type_traits>
+#include <types/matrix.h>
+#include <types/random.h>
+#include <types/vector.h>
 
-template <typename Types> struct UCBOak : Types {
-  using Real = typename Types::Real;
+namespace RBY_UCB {
 
-  template <template <typename...> typename Vector, typename T>
-  void print(const Vector<T> &input) {
-    for (int i = 0; i < input.size(); ++i) {
-      std::cout << input[i] << ", ";
-    }
-    std::cout << std::endl;
+struct Outcome {
+  uint16_t row_idx;
+  uint16_t col_idx;
+  float value;
+};
+
+struct UCBEntry {
+  uint32_t visits;
+  float value;
+  UCBEntry() : visits{1}, value{.5} {}
+};
+
+struct JointUCBDataGlobal {
+  float c_uct{2};
+  Matrix<UCBEntry, std::vector, uint16_t> empirical_matrix;
+
+  JointUCBDataGlobal(float c_uct) : c_uct{c_uct} {}
+
+  template <typename Battle> void init(const Battle &battle) {
+    empirical_matrix = {battle.rows(), battle.cols()};
   }
 
-  struct UCBEntry {
-    Real q{.5};
-    uint32_t n{1};
-
-    void update(Real x) {
-      q = q * n + x;
-      ++n;
-      q = q / n;
-    }
-  };
-
-  struct MatrixStats {
-    Types::template Vector<UCBEntry> row_ucb;
-    Types::template Vector<UCBEntry> col_ucb;
-    unsigned int N{1};
-  };
-  struct ChanceStats {};
-  struct Outcome {
-    int row_idx, col_idx;
-    Types::Value value;
-  };
-
-  class BanditAlgorithm {
-  public:
-    Real c{2};
-
-    constexpr BanditAlgorithm() {}
-
-    constexpr BanditAlgorithm(Real c) : c{c} {}
-
-    friend std::ostream &operator<<(std::ostream &os,
-                                    const BanditAlgorithm &search) {
-      os << "UCB; c: " << search.c;
-      return os;
-    }
-
-    void get_empirical_strategies(const MatrixStats &stats,
-                                  Types::VectorReal &row_strategy,
-                                  Types::VectorReal &col_strategy) const {}
-
-    void get_empirical_value(const MatrixStats &stats,
-                             Types::Value &value) const {}
-
-    void get_refined_strategies(const MatrixStats &stats,
-                                Types::VectorReal &row_strategy,
-                                Types::VectorReal &col_strategy) const {}
-
-    void get_refined_value(const MatrixStats &stats,
-                           Types::Value &value) const {}
-
-    // protected:
-    void initialize_stats(int iterations, const Types::State &state,
-                          Types::Model &model, MatrixStats &stats) const {}
-
-    void expand(MatrixStats &stats, const size_t &rows, const size_t &cols,
-                const Types::ModelOutput &output) const {
-      stats.row_ucb.resize(rows);
-      stats.col_ucb.resize(cols);
-    }
-
-    void select(Types::PRNG &device, const MatrixStats &stats,
-                Outcome &outcome) const {
-      const size_t rows = stats.row_ucb.size();
-      const size_t cols = stats.col_ucb.size();
-      typename Types::VectorReal row_forecast{};
-      typename Types::VectorReal col_forecast{};
-      row_forecast.resize(rows, 0);
-      col_forecast.resize(cols, 0);
-
-      const Real c = this->c;
-      const auto N = stats.N;
-
-      if (rows == 1) {
-        row_forecast[0] = Rational<>{1};
-      } else {
-        std::transform(stats.row_ucb.begin(), stats.row_ucb.begin() + rows,
-                       row_forecast.begin(), [N](const UCBEntry &entry) {
-                         return entry.q + sqrt(log(N) / entry.n);
-                       });
-      }
-      if (cols == 1) {
-        col_forecast[0] = Rational<>{1};
-      } else {
-        std::transform(stats.col_ucb.begin(), stats.col_ucb.begin() + cols,
-                       col_forecast.begin(), [N](const UCBEntry &entry) {
-                         return entry.q + sqrt(log(N) / entry.n);
-                       });
-      }
-      outcome.row_idx =
-          std::max_element(row_forecast.begin(), row_forecast.end()) -
-          row_forecast.begin();
-      outcome.col_idx =
-          std::max_element(col_forecast.begin(), col_forecast.end()) -
-          col_forecast.begin();
-    }
-
-    void update_matrix_stats(MatrixStats &stats, const Outcome &outcome) const {
-      ++stats.N;
-      stats.row_ucb[outcome.row_idx].update(outcome.value.get_row_value());
-      stats.col_ucb[outcome.col_idx].update(outcome.value.get_col_value());
-    }
-
-    void update_chance_stats(ChanceStats &stats, const Outcome &outcome) const {
-    }
-  };
+  template <typename Outcome> void update(const Outcome &outcome) {
+    auto &entry = empirical_matrix(outcome.row_idx, outcome.col_idx);
+    entry.value *= (entry.visits++);
+    entry.value += outcome.value;
+    entry.value /= row_entry.visits;
+  }
 };
+
+class JointUCBDataLocal {
+private:
+  using UCBData = ArrayBasedVector<9>::Vector<UCBEntry, uint16_t>;
+  uint32_t _n;
+  UCBData _row_ucb_data;
+  UCBData _col_ucb_data;
+
+public:
+  template <typename Outcome> void update(const Outcome &outcome) {
+    UCBEntry &row_entry = _row_ucb_data[outcome.row_idx];
+    row_entry.value *= (row_entry.visits++);
+    row_entry.value += outcome.value;
+    row_entry.value /= row_entry.visits;
+    UCBEntry &col_entry = _col_ucb_data[outcome.col_idx];
+    col_entry.value *= (col_entry.visits++);
+    col_entry.value += outcome.value;
+    col_entry.value /= col_entry.visits;
+    ++_n;
+  }
+
+  template <typename Outcome>
+  void select(const JointUCBDataGlobal &bandit, Outcome &outcome) {
+    using Vector = ArrayBasedVector<9>::Vector<float, uint16_t>;
+    Vector row_forecast{};
+    Vector col_forecast{};
+    const auto _rows = _row_ucb_data.size();
+    const auto _cols = _col_ucb_data.size();
+    row_forecast.resize(_rows);
+    col_forecast.resize(_cols);
+
+    const float c = bandit.c;
+    const auto log_n = log(_n);
+
+    if (_rows == 1) {
+      row_forecast[0] = 1.0;
+    } else {
+      std::transform(_row_ucb_data.begin(), _row_ucb_data.begin() + _rows,
+                     row_forecast.begin(), [_n, log_n](const UCBEntry &entry) {
+                       return entry.value + sqrt(log_n / entry.n);
+                     });
+    }
+    if (_cols == 1) {
+      col_forecast[0] = Rational<>{1};
+    } else {
+      std::transform(_col_ucb_data.begin(), _col_ucb_data.begin() + _cols,
+                     col_forecast.begin(), [_n, log_n](const UCBEntry &entry) {
+                       return entry.q + sqrt(log_n / entry.n);
+                     });
+    }
+
+    outcome.row_idx =
+        std::max_element(row_forecast.begin(), row_forecast.end()) -
+        row_forecast.begin();
+    outcome.col_idx =
+        std::max_element(col_forecast.begin(), col_forecast.end()) -
+        col_forecast.begin();
+  }
+
+  void init(const Battle &state) {
+    _n = 1;
+    _row_ucb_data.resize(state.rows());
+    _col_ucb_data.resize(state.cols());
+  }
+};
+
+} // namespace RBY_UCB

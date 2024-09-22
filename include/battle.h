@@ -76,7 +76,7 @@ public:
   std::array<uint8_t, 9> row_actions;
   std::array<uint8_t, 9> col_actions;
 
-  Battle(const uint8_t *p1_side, const uint8_t *p2_side) {
+  Battle(const uint8_t *p1_side, const uint8_t *p2_side) : _result{} {
     std::memcpy(_battle.bytes, p1_side, 184);
     std::memcpy(_battle.bytes + 184, p2_side, 184);
     std::memset(_battle.bytes + 2 * 184, 0, 376 - 2 * 184);
