@@ -38,14 +38,14 @@ private:
   // padded handle in case of collision. the top bits here dont matter - we can
   // increment normally and just mod/and to get the real handle
   uint32_t overflow;
-  // rows * cols with bit for whether rows > cols
-  uint8_t mn_flip;
+  // index in row_cols_map
+  uint8_t row_col_index;
 
 public:
   void init(uint8_t rows, uint8_t cols) {
     uint8_t prod = rows * cols;
     uint8_t flip = rows > cols;
-    mn_flip = (prod << 1) + 81 * flip;
+    row_col_index = (prod - 1) + 81 * flip;
   }
 
   // naive update function that uses float conversion
@@ -72,11 +72,7 @@ public:
 
   template <typename Outcome>
   void select(const RootUCBNode &root_node, Outcome &outcome) {
-    outcome.row_idx = 0;
-    outcome.col_idx = 0;
-    return;
-
-    const auto [rows, cols] = row_cols_map[mn_flip];
+    const auto [rows, cols] = row_cols_map[row_col_index];
 
     int N = 0;
     for (auto i = 0; i < rows; ++i) {
@@ -131,44 +127,5 @@ struct RootUCBNode {
 class UCBNodeTest {
   static_assert(sizeof(UCBNode) == 64);
 };
-
-void access(UCBNode)
-
-// using Vector = ArrayBasedVector<9>::Vector<float, uint16_t>;
-// Vector row_forecast{};
-// Vector col_forecast{};
-// const auto _rows = _row_ucb_data.size();
-// const auto _cols = col_ucb_data.size();
-// row_forecast.resize(_rows);
-// col_forecast.resize(_cols);
-
-// const float c = bandit.c;
-// const auto log_n = log(_n);
-
-// if (_rows == 1) {
-//   row_forecast[0] = 1.0;
-// } else {
-//   std::transform(_row_ucb_data.begin(), _row_ucb_data.begin() + _rows,
-//                  row_forecast.begin(), [_n, log_n](const UCBEntry &entry)
-//                  {
-//                    return entry.value + sqrt(log_n / entry.n);
-//                  });
-// }
-// if (_cols == 1) {
-//   col_forecast[0] = Rational<>{1};
-// } else {
-//   std::transform(col_ucb_data.begin(), col_ucb_data.begin() + _cols,
-//                  col_forecast.begin(), [_n, log_n](const UCBEntry &entry)
-//                  {
-//                    return entry.q + sqrt(log_n / entry.n);
-//                  });
-// }
-
-// outcome.row_idx =
-//     std::max_element(row_forecast.begin(), row_forecast.end()) -
-//     row_forecast.begin();
-// outcome.col_idx =
-//     std::max_element(col_forecast.begin(), col_forecast.end()) -
-//     col_forecast.begin();
 
 } // namespace RBY_UCB
