@@ -72,19 +72,16 @@ void rollout_hash(Types::PRNG &device, const uint64_t *const z, uint8_t *test) {
   state.get_actions();
 
   BaseHashData base_hash_data{&state.battle()};
-  compute_hash(&state.battle(),
-               pkmn_gen1_battle_options_chance_actions(&state.options()),
-               base_hash_data, z);
-  int turn = 0;
+
   while (!state.is_terminal()) {
     const auto p1_action = state.row_actions[device.random_int(state.rows())];
     const auto p2_action = state.col_actions[device.random_int(state.cols())];
 
-    const std::string p1_string =
-        side_choice_string(state.battle().bytes, p1_action);
-    const std::string p2_string =
-        side_choice_string(state.battle().bytes + 184, p2_action);
-    std::cout << p1_string << " - " << p2_string << std::endl;
+    // const std::string p1_string =
+    //     side_choice_string(state.battle().bytes, p1_action);
+    // const std::string p2_string =
+    //     side_choice_string(state.battle().bytes + 184, p2_action);
+    // std::cout << p1_string << " - " << p2_string << std::endl;
 
     state.apply_actions(p1_action, p2_action);
     state.get_actions();
@@ -93,12 +90,11 @@ void rollout_hash(Types::PRNG &device, const uint64_t *const z, uint8_t *test) {
         compute_hash(&state.battle(),
                      pkmn_gen1_battle_options_chance_actions(&state.options()),
                      base_hash_data, z);
-    std::cout << hash << std::endl;
-    uint8_t a = ++test[hash >> 44];
-    ++turn;
-
+    const auto top = hash >> 20;
+    const auto bottom = (hash << 44) >> 44;
+    std::cout << "top: " << top << " bottom: " << bottom << std::endl;
+    uint8_t a = ++test[bottom];
   }
-  std::cout << "turn: " << turn << '\n';
 }
 
 int main(int argc, char **argv) {
