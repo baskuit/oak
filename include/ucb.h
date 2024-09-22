@@ -162,8 +162,7 @@ class TT {
   // linearly scans overflow node handle path
   UCBNode *find_node_overflow(const uint64_t hash,
                               const OverflowHandle handle) noexcept {
-    UCBNode* current = overflow_table.data() + (handle % (1 << 22));
-
+    UCBNode *current = overflow_table.data() + (handle % (1 << 22));
   }
 
 public:
@@ -174,7 +173,6 @@ public:
     const bool match_collision = std::memcmp(first.collision, &hash, 5) == 0;
     return match_collision ? &first : find_node_overflow(hash, first.overflow);
   }
-
 };
 
 class TTTest {
