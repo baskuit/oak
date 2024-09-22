@@ -4,12 +4,11 @@
 
 #include "../include/util.h"
 
+// WIP clone of the official showdown random team generator
+
 namespace RandomBattles {
 
-using Helpers::Battle;
-using Helpers::Pokemon;
-using Helpers::Species;
-using Helpers::Moves;
+using namespace Helpers;
 
 Battle generate(uint64_t seed) {
     return {};
