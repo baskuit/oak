@@ -8,7 +8,6 @@ template <typename TT, typename State, typename Model, typename PRNG,
 void run_iteration(TT &tt, PRNG &device, Model &model, const State &state) {
 
   using UCBNode = decltype(TT::get_node(0));
-  
 
   if (state.is_terminal()) {
     state.payoff();
