@@ -1,161 +1,183 @@
-#pragma once
+#include <types/matrix.h>
+#include <types/random.h>
+#include <types/vector.h>
 
-#include <array>
-
-#include "util.h"
+#include <algorithm>
+#include <assert.h>
 #include <bit>
+#include <cstring>
+#include <memory>
 
-#include <pkmn.h>
+namespace RBY_UCB {
 
-// turn 0 base stats. We bucket the active pokemons' stats using the log of the
-// ration between the current and base stats
-struct BaseHashData {
-  std::array<std::array<uint16_t, 4>, 6> side0_stats;
-  std::array<std::array<uint16_t, 4>, 6> side1_stats;
+namespace Precomputed {
 
-  BaseHashData(const pkmn_gen1_battle *const battle) noexcept {
-    const auto set_poke = [](const uint8_t *pokemon,
-                             std::array<uint16_t, 4> &p) {
-      const auto stats = std::bit_cast<const uint16_t *>(pokemon + 2);
-      std::memcpy(p.data(), stats, 4 * 2);
-    };
-    for (int i = 0; i < 6; ++i) {
-      set_poke(battle->bytes + (24 * i), side0_stats[i]);
-      set_poke(battle->bytes + (24 * i + 184), side1_stats[i]);
+constexpr auto generate_row_col_map() {
+  std::array<std::array<uint8_t, 2>, 81 * 2> result{};
+  for (uint8_t i = 1; i <= 9; ++i) {
+    for (uint8_t j = 1; j <= 9; ++j) {
+      result[(i * j - 1) + 81 * (i > j)] = {i, j};
     }
   }
+  return result;
+}
 
-  void print() const noexcept {
-    for (const auto &stats : side1_stats) {
-      for (int i = 0; i < 4; ++i) {
-        std::cout << stats[i] << ' ';
+static constexpr std::array<std::array<uint8_t, 2>, 81 * 2> row_col_map{
+    generate_row_col_map()};
+
+}; // namespace Precomputed
+
+#pragma pack(1)
+struct UCBEntry {
+  uint16_t visits;
+  uint8_t value;
+};
+#pragma pop()
+
+struct RootUCBEntry {
+  uint64_t visits;
+  double value;
+};
+
+struct UCBEntryTest {
+  static_assert(sizeof(UCBEntry) == 3);
+  static_assert(sizeof(RootUCBEntry) == 16);
+};
+
+struct RootUCBNode;
+
+class UCBNode {
+public:
+  std::array<UCBEntry, 9> row_ucb_data;
+  std::array<UCBEntry, 9> col_ucb_data;
+  // top bits of hash not used for table index
+  uint8_t collision[5];
+  // padded handle in case of collision. the top bits here dont matter - we can
+  // increment normally and just mod/and to get the real handle
+  uint32_t overflow;
+  // index in row_cols_map
+  uint8_t row_col_index;
+
+public:
+  void init(uint8_t rows, uint8_t cols) {
+    uint8_t prod = rows * cols;
+    uint8_t flip = rows > cols;
+    row_col_index = (prod - 1) + 81 * flip;
+  }
+
+  // naive update function that uses float conversion
+  template <typename Outcome> void update(const Outcome &outcome) {
+    {
+      UCBEntry &entry = row_ucb_data[outcome.row_idx];
+      float value = entry.value / 255.0;
+      value *= entry.visits++;
+      value += outcome.value;
+      assert(entry.visits != 0);
+      value /= entry.visits;
+      entry.value = static_cast<uint8_t>(value * 255);
+    };
+    {
+      UCBEntry &entry = col_ucb_data[outcome.col_idx];
+      float value = entry.value / 255.0;
+      value *= entry.visits++;
+      value += outcome.value;
+      assert(entry.visits != 0);
+      value /= entry.visits;
+      entry.value = static_cast<uint8_t>(value * 255);
+    };
+  }
+
+  template <typename Outcome>
+  void select(const RootUCBNode &root_node, Outcome &outcome) {
+    const auto [rows, cols] = Precomputed::row_col_map[row_col_index];
+
+    int N = 0;
+    for (auto i = 0; i < rows; ++i) {
+      N += row_ucb_data[i].visits;
+    }
+    const float log_N = log(N);
+
+    float max_score = 0;
+    for (auto i = 0; i < rows; ++i) {
+      auto &entry = row_ucb_data[i];
+      // TODO probably remove divby0 hack
+      const float score =
+          entry.value * 255.0 + sqrt(log_N / (entry.visits + 1));
+      if (max_score < score) {
+        max_score = score;
+        outcome.row_idx = i;
       }
-      std::cout << std::endl;
+    }
+    max_score = 0;
+    for (auto j = 0; j < cols; ++j) {
+      auto &entry = col_ucb_data[j];
+      const float score =
+          entry.value * 255.0 + sqrt(log_N / (entry.visits + 1));
+      if (max_score < score) {
+        max_score = score;
+        outcome.col_idx = j;
+      }
     }
   }
 };
 
-uint64_t compute_hash(const pkmn_gen1_battle *const battle,
-                      const pkmn_gen1_chance_actions *const actions,
-                      const BaseHashData &base_hash_data,
-                      const uint64_t *const z) {
-  // missing durations
-  struct P {
-    float hp;
-    uint8_t hp_discrete;
-    uint8_t status_id;
-    uint8_t sleep_duration;
-    std::array<bool, 4> no_pp;
+class UCBNodeTest {
+  static_assert(sizeof(UCBNode) == 64);
+};
 
-    // 30
-    uint64_t get_hash(const uint64_t *const z) const {
-      auto index = 0;
-      auto result = 0;
-      result ^= z[index + hp_discrete];
-      index += 16;
-      result ^= z[index + status_id - 2];
-      index += 6;
-      result ^= z[index + no_pp[0]];
-      index += 2;
-      result ^= z[index + no_pp[1]];
-      index += 2;
-      result ^= z[index + no_pp[2]];
-      index += 2;
-      result ^= z[index + no_pp[3]];
-      return result;
-    }
-  };
+// This does MatrixUCB instead of joint UCB, also stores tree-wide data like 'c'
+struct RootUCBNode {
+  float c_uct{2};
 
-  struct A {
-    std::array<uint16_t, 4> stats;
-    std::array<int8_t, 4> boosts;
-    struct Durations {};
-    Durations durations;
+  Matrix<RootUCBEntry, std::vector> empirical_matrix;
 
-    uint64_t get_hash(const uint64_t *const z) const {
-      auto index = 0;
-      auto result = 0;
+  RootUCBNode(float c_uct) : c_uct{c_uct} {}
 
-      result ^= z[index + boosts[0]];
-      index += 2;
-      result ^= z[index + boosts[1]];
-      index += 2;
-      result ^= z[index + boosts[2]];
-      index += 2;
-      result ^= z[index + boosts[3]];
-      return result;
-    }
-  };
-
-  A a0;
-  A a1;
-  std::array<P, 6> side0{};
-  std::array<P, 6> side1{};
-
-  const auto &base_stats0 =
-      base_hash_data.side0_stats.at(order_bits(battle->bytes)[0] - 1);
-  const auto &base_stats1 =
-      base_hash_data.side1_stats.at(order_bits(battle->bytes + 184)[0] - 1);
-
-  const auto set_active = [](const auto &stats, const auto *active, A &a) {
-    const auto active_stats = std::bit_cast<const uint16_t *>(active + 2);
-
-    for (int i = 0; i < 4; ++i) {
-      a.stats[i] = active_stats[i];
-      float log_ratio = log(a.stats[i] / (float)stats[i]) / 1.35 * 2;
-      a.boosts[i] = 4 - static_cast<int>(log_ratio);
-      // std::cout << "( " << log_ratio << ", " << (int)a.boosts[i] << ")\t";
-      // std::cout << "( " << log_ratio << ")\t";
-    }
-    // std::cout << std::endl;
-  };
-
-  set_active(base_stats0, battle->bytes + 144, a0);
-  set_active(base_stats1, battle->bytes + 144 + 184, a1);
-
-  uint64_t hash = 0;
-  auto index = 0;
-
-  for (int i = 0; i < 6; ++i) {
-    P &p0 = side0[i];
-    P &p1 = side1[i];
-
-    const uint8_t *pokemon0 = battle->bytes + (24 * i);
-    const uint8_t *pokemon1 = battle->bytes + (24 * i + 184);
-
-    const auto set_poke = [&base_hash_data, i](const uint8_t *pokemon, P &p) {
-      float hp = 255 * pokemon[19] + pokemon[18];
-
-      float max_hp = 255 * pokemon[1] + pokemon[0];
-
-      p.hp = hp / max_hp;
-      p.hp_discrete = static_cast<uint8_t>(p.hp * 15);
-      p.status_id = pokemon[20] >> 3;
-      p.sleep_duration = 0;
-      for (int m = 0; m < 4; ++m) {
-        p.no_pp[m] = (pokemon[11 + 2 * m] == 0);
-      }
-
-      // std::cout << "hp: " << p.hp << " disc: " << (int)p.hp_discrete
-      //           << std::endl;
-      // std::cout << "status: " << (int)p.status_id << std::endl;
-      // std::cout << p.no_pp[0] << ' ' << p.no_pp[1] << ' ' << p.no_pp[2] << '
-      // '
-      //           << p.no_pp[3] << std::endl;
-    };
-    set_poke(pokemon0, p0);
-    set_poke(pokemon1, p1);
-
-    hash ^= p0.get_hash(z + index);
-    index += 30;
-    hash ^= p1.get_hash(z + index);
-    index += 30;
-
-    hash ^= z[index + order_bits(battle->bytes)[0] - 1];
-    index += 6;
-    hash ^= z[index + order_bits(battle->bytes + 184)[0] - 1];
-    index += 6;
+  template <typename Battle> void init(const Battle &battle) {
+    empirical_matrix = {battle.rows(), battle.cols()};
   }
 
-  return hash;
-}
+  template <typename Outcome> void update(const Outcome &outcome) {
+    auto &entry = empirical_matrix(outcome.row_idx, outcome.col_idx);
+    entry.value *= (entry.visits++);
+    entry.value += outcome.value;
+    assert(row_entry.visits != 0);
+    entry.value /= row_entry.visits;
+  }
+
+  template <typename Outcome> void select(Outcome &outcome) {}
+};
+
+// TODO template, right now its ~1.1 Gb in the main table with 2^24 entries
+// overflow can have up to 2^40 entries, but lets say 2^22 so its less than 2Gb
+// altogether;
+class TT {
+  using OverflowHandle = uint32_t;
+
+  RootUCBNode root_node;
+  std::array<UCBNode, 1 << 24> main_table;
+  std::array<UCBNode, 1 << 22> overflow_table;
+  OverflowHandle overflow{};
+
+  // linearly scans overflow node handle path
+  UCBNode *find_node_overflow(const uint64_t hash,
+                              const OverflowHandle handle) noexcept {
+    UCBNode *current = overflow_table.data() + (handle % (1 << 22));
+  }
+
+public:
+  // allocates if it does not find
+  // returns nullptr if and only iff it could not allocate
+  UCBNode *find_node(const uint64_t hash) noexcept {
+    auto &first = main_table[hash >> 40];
+    const bool match_collision = std::memcmp(first.collision, &hash, 5) == 0;
+    return match_collision ? &first : find_node_overflow(hash, first.overflow);
+  }
+};
+
+class TTTest {
+  // less than 2Gb
+  static_assert(sizeof(TT) < (1 << 31));
+};
+
+} // namespace RBY_UCB
