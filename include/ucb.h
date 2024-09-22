@@ -3,19 +3,36 @@
 #include <types/vector.h>
 
 #include <algorithm>
-#include <assert>
-#include <bits>
+#include <assert.h>
+#include <bit>
+#include <cstring>
 #include <memory>
 
 namespace RBY_UCB {
 
-// mostly for linter, but we will need to precompute this probably
-static std::array<uint8_t, 2> row_cols_map[81 * 2];
+namespace Precomputed {
 
+constexpr auto generate_row_col_map() {
+  std::array<std::array<uint8_t, 2>, 81 * 2> result{};
+  for (uint8_t i = 1; i <= 9; ++i) {
+    for (uint8_t j = 1; j <= 9; ++j) {
+      result[(i * j - 1) + 81 * (i > j)] = {i, j};
+    }
+  }
+  return result;
+}
+
+static constexpr std::array<std::array<uint8_t, 2>, 81 * 2> row_col_map{
+    generate_row_col_map()};
+
+}; // namespace Precomputed
+
+#pragma pack(1)
 struct UCBEntry {
   uint16_t visits;
   uint8_t value;
 };
+#pragma pop()
 
 struct RootUCBEntry {
   uint64_t visits;
@@ -30,7 +47,7 @@ struct UCBEntryTest {
 struct RootUCBNode;
 
 class UCBNode {
-private:
+public:
   std::array<UCBEntry, 9> row_ucb_data;
   std::array<UCBEntry, 9> col_ucb_data;
   // top bits of hash not used for table index
@@ -72,7 +89,7 @@ public:
 
   template <typename Outcome>
   void select(const RootUCBNode &root_node, Outcome &outcome) {
-    const auto [rows, cols] = row_cols_map[row_col_index];
+    const auto [rows, cols] = Precomputed::row_col_map[row_col_index];
 
     int N = 0;
     for (auto i = 0; i < rows; ++i) {
@@ -104,12 +121,17 @@ public:
   }
 };
 
+class UCBNodeTest {
+  static_assert(sizeof(UCBNode) == 64);
+};
+
+// This does MatrixUCB instead of joint UCB, also stores tree-wide data like 'c'
 struct RootUCBNode {
   float c_uct{2};
 
-  Matrix<RootUCBEntry, std::vector, uint16_t> empirical_matrix;
+  Matrix<RootUCBEntry, std::vector> empirical_matrix;
 
-  JointUCBDataGlobal(float c_uct) : c_uct{c_uct} {}
+  RootUCBNode(float c_uct) : c_uct{c_uct} {}
 
   template <typename Battle> void init(const Battle &battle) {
     empirical_matrix = {battle.rows(), battle.cols()};
@@ -119,13 +141,45 @@ struct RootUCBNode {
     auto &entry = empirical_matrix(outcome.row_idx, outcome.col_idx);
     entry.value *= (entry.visits++);
     entry.value += outcome.value;
-    assert(row_entry.visits != = 0);
+    assert(row_entry.visits != 0);
     entry.value /= row_entry.visits;
   }
+
+  template <typename Outcome> void select(Outcome &outcome) {}
 };
 
-class UCBNodeTest {
-  static_assert(sizeof(UCBNode) == 64);
+// TODO template, right now its ~1.1 Gb in the main table with 2^24 entries
+// overflow can have up to 2^40 entries, but lets say 2^22 so its less than 2Gb
+// altogether;
+class TT {
+  using OverflowHandle = uint32_t;
+
+  RootUCBNode root_node;
+  std::array<UCBNode, 1 << 24> main_table;
+  std::array<UCBNode, 1 << 22> overflow_table;
+  OverflowHandle overflow{};
+
+  // linearly scans overflow node handle path
+  UCBNode *find_node_overflow(const uint64_t hash,
+                              const OverflowHandle handle) noexcept {
+    UCBNode* current = overflow_table.data() + (handle % (1 << 22));
+
+  }
+
+public:
+  // allocates if it does not find
+  // returns nullptr if and only iff it could not allocate
+  UCBNode *find_node(const uint64_t hash) noexcept {
+    auto &first = main_table[hash >> 40];
+    const bool match_collision = std::memcmp(first.collision, &hash, 5) == 0;
+    return match_collision ? &first : find_node_overflow(hash, first.overflow);
+  }
+
+};
+
+class TTTest {
+  // less than 2Gb
+  static_assert(sizeof(TT) < (1 << 31));
 };
 
 } // namespace RBY_UCB
