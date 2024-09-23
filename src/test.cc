@@ -10,6 +10,8 @@
 #include <tt.h>
 #include <util.h>
 
+#include <randbat.h>
+
 struct Types {
   using Real = float;
   template <typename T> using Vector = ArrayBasedVector<9>::Vector<T, uint32_t>;

@@ -8,6 +8,8 @@
 #include <cstring>
 #include <memory>
 
+#include "hash.h"
+
 namespace RBY_UCB {
 
 namespace Precomputed {
@@ -137,13 +139,7 @@ struct RootUCBNode {
     empirical_matrix = {battle.rows(), battle.cols()};
   }
 
-  template <typename Outcome> void update(const Outcome &outcome) {
-    auto &entry = empirical_matrix(outcome.row_idx, outcome.col_idx);
-    entry.value *= (entry.visits++);
-    entry.value += outcome.value;
-    assert(row_entry.visits != 0);
-    entry.value /= row_entry.visits;
-  }
+  template <typename Outcome> void update(const Outcome &outcome) {}
 
   template <typename Outcome> void select(Outcome &outcome) {}
 };
@@ -163,6 +159,7 @@ class TT {
   UCBNode *find_node_overflow(const uint64_t hash,
                               const OverflowHandle handle) noexcept {
     UCBNode *current = overflow_table.data() + (handle % (1 << 22));
+    return nullptr;
   }
 
 public:

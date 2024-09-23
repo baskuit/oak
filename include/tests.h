@@ -7,29 +7,6 @@
 
 #include <vector>
 
-template <typename Key, typename Value> struct LinearScanMap {
-  std::vector<std::pair<Key, Value>> data;
-
-  Value &operator[](const Key &key) {
-    for (auto &pair : data) {
-      if (pair.first == key) {
-        return pair.second;
-      }
-    }
-    data.emplace_back(key, Value{});
-    return data.back().second;
-  }
-
-  const Value *at(const Key &key) const noexcept {
-    for (const auto &pair : data) {
-      if (pair.first == key) {
-        return &pair.second;
-      }
-    }
-    return nullptr;
-  }
-};
-
 template <typename State, typename PRNG>
 auto actions_test(PRNG &device, const State &state, pkmn_choice p1_action,
                   pkmn_choice p2_action, int tries) {

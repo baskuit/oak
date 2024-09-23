@@ -1,6 +1,10 @@
 #pragma once
 
 #include <array>
+#include <bit>
+
+#include <cstdint>
+#include <iostream>
 
 #include "../include/util.h"
 
@@ -8,21 +12,16 @@
 
 namespace RandomBattles {
 
-using namespace Helpers;
+bool RandbatObservationMatches(const Helpers::Battle &seen, const Helpers::Battle &omni) {
 
-Battle generate(uint64_t seed) {
-    return {};
-}
-
-bool RandbatObservationMatches(const Battle &seen, const Battle &omni) {
-
-  const auto pokemon_match_almost = [](const Pokemon &a, const Pokemon &b) {
+  const auto pokemon_match_almost = [](const Helpers::Pokemon &a, const Helpers::Pokemon &b)
+  {
     if (a.species != b.species) {
       return false;
     }
     // todo optimize?
     for (int i = 0; i < 4; ++i) {
-      if (a.moves[i] == Moves::None) {
+      if (a.moves[i] == Helpers::Moves::None) {
         continue;
       }
       bool seen = false;
@@ -36,9 +35,9 @@ bool RandbatObservationMatches(const Battle &seen, const Battle &omni) {
     return true;
   };
 
-  const auto sides_match_almost = [](const Side &a, const Side &b) {
+  const auto sides_match_almost = [](const Helpers::Side &a, const Helpers::Side &b) {
     for (const auto &pokemon : a) {
-      if (pokemon.species == Species::None) {
+      if (pokemon.species == Helpers::Species::None) {
         continue;
       }
       return false;
@@ -58,17 +57,70 @@ bool RandbatObservationMatches(const Battle &seen, const Battle &omni) {
   return seen == omni;
 }
 
-struct prng {
-  uint64_t _state;
+struct PRNG {
+  int64_t seed;
 
-  void next() {}
+  PRNG(int64_t seed) : seed{seed} {}
+
+  auto nextFrame(uint64_t seed, int framesToAdvance = 1) {
+    static constexpr uint64_t a{0x5D588B656C078965};
+    static constexpr uint64_t c{0x0000000000269EC3};
+    for (int i = 0; i < framesToAdvance; i++) {
+      seed = a * seed + c;
+    }
+    return seed;
+  }
+
+  double next() {
+    seed = nextFrame(seed);
+    const uint32_t top = seed >> 32; // Use the upper 32 bits
+    return (double)top / 0x100000000;
+  }
+
+  int next(int to) {
+    seed = nextFrame(seed);
+    const uint32_t top = seed >> 32; // Use the upper 32 bits
+    return to * ((double)top / 0x100000000);
+  }
+
+  int next(int from, int to) {
+    seed = nextFrame(seed);
+    const uint32_t top = seed >> 32; // Use the upper 32 bits
+    return from + (to - from) * ((double)top / 0x100000000);
+  }
+
+  template <typename Container, typename T>
+  void shuffle(Container &items, int start = 0, int end = -1) {
+    if (end < 0) {
+      end = items.size();
+    }
+    while (start < end - 1) {
+      const auto nextIndex = next(start, end);
+      if (start != nextIndex) {
+        std::swap(items[start], items[nextIndex]);
+      }
+      ++start;
+    }
+  }
+
+  template <typename Container, typename T>
+  const T& sample (const Container& items) {
+    assert(items.size() > 0);
+    return items[next(items.size())];
+  }
+
+  bool randomChance(int numerator, int denominator) {
+    return next(denominator) < numerator;
+  }
+
+  void display() {
+    const auto *data = reinterpret_cast<uint16_t *>(&seed);
+    std::cout << "[ ";
+    for (int i = 3; i >= 1; --i) {
+      std::cout << (int)data[i] << ", ";
+    }
+    std::cout << (int)data[0] << " ]\n";
+  }
 };
 
-Battle generate(prng device) { return {}; }
-
-bool test_generate(const uint64_t seed, const Battle &observed_battle) {
-  return RandbatObservationMatches(observed_battle, generate(prng{seed}));
-}
-
-
-};
+} // namespace RandomBattles

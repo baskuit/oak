@@ -48,6 +48,7 @@ add_executable(libpkmn_test src/test.cc)
 add_dependencies(libpkmn_test build_zig_lib)
 target_include_directories(libpkmn_test PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/cheats
   ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
 )
 target_link_libraries(libpkmn_test PRIVATE libpkmn)
