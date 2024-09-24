@@ -25,8 +25,8 @@ struct SampleNoReplacement : ArrayBasedVector<max_size>::Vector<T> {
   // uh, isn't this whole thing constexpr?
   constexpr T sampleNoReplacement(PRNG &prng) noexcept {
     --this->_size;
-    std::swap(this->_data[0], this->data[this->_size]); // TODO
-    return this->_data[this->_size];
+    std::swap(this->_storage[0], this->_storage[this->_size]); // TODO
+    return this->_storage[this->_size];
   }
 };
 }; // namespace SampleHelper
@@ -103,19 +103,68 @@ struct PRNG {
 
 struct Teams {
   PRNG prng;
+  bool battleHasDitto = false;
+  std::array<int, 15> typeCount{};
+  int numMaxLevelPokemon{};
 
-  Helpers::Battle randomTeam() {
+  Teams (PRNG prng) : prng{prng} {}
+
+  Helpers::Side randomTeam() {
+
+    Helpers::Side team{};
+    auto n_pokemon = 0;
 
     // clone the pool but now as an ArrayBaseVector derived struct with fast
     // sampling
     SampleHelper::SampleNoReplacement<159, Data::Species> pokemonPool{
         RandomBattlesData::pokemonPool};
 
+    while (n_pokemon < 6 && pokemonPool.size()) {
+      Helpers::Species species = pokemonPool.sampleNoReplacement(prng);
+
+      if (species == Helpers::Species::Ditto && battleHasDitto) {
+        continue;
+      }
+
+      bool skip = false;
+
+				// for (const typeName of species.types) {
+				// 	if (typeCount[typeName] >= 2) {
+				// 		skip = true;
+				// 		break;
+				// 	}
+				// }
+
+				// if (skip) {
+				// 	rejectedButNotInvalidPool.push(species.id);
+				// 	continue;
+				// }
+
+      if (RandomBattlesData::isLevel100(species) && numMaxLevelPokemon > 1) {
+        skip = true;
+      }
+
+      if (skip) {
+        // rejected but not invalid pool
+      }
+
+      // accept the set
+      team[n_pokemon++] = randomSet(species);
+
+      // only set down here, TODO maybe optimize
+      if (species == Helpers::Species::Ditto) {
+        battleHasDitto = true;
+      }
+    }
+
     return {};
   }
 
   Helpers::Pokemon randomSet(Helpers::Species species) {
     Helpers::Pokemon set{};
+
+
+    return set;
   }
 };
 

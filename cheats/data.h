@@ -84,4 +84,8 @@ static constexpr std::array<Species, 159> pokemonPool{
     Species::Dratini,    Species::Dragonair,  Species::Dragonite,
     Species::Mewtwo,     Species::Mew};
 
+constexpr bool isLevel100(Species species) noexcept {
+  return (species == Species::Ditto) || (species == Species::Zubat); 
+}
+
 }; // namespace RandomBattlesData
