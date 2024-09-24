@@ -83,24 +83,15 @@ struct PRNG {
   }
 };
 
-namespace SampleHelper {
-template <size_t max_size, typename T>
-struct SampleNoReplacement : public ArrayBasedVector<max_size>::Vector<T> {
-  using Base = typename ArrayBasedVector<max_size>::Vector<T>;
-  using Base::Base;
-  // uh, isn't this whole thing constexpr?
-  constexpr T sampleNoReplacement(PRNG &prng) noexcept {
-    int x = this->size();
-    const auto index = prng.next(x);
-    T val = this->_storage[index];
-    this->_storage[index] = this->_storage[this->size() - 1];
-    this->resize(x - 1);
-    return val;
-  }
-
-  T operator[](int i) { return this->_storage[i]; }
-};
-}; // namespace SampleHelper
+template <typename Container>
+auto sampleNoReplace(Container& container, PRNG& prng) {
+  const auto n = container.size();
+  const auto index = prng.next(n);
+  const auto val = container[index];
+  container[index] = container[n - 1];
+  container.resize(n - 1);
+  return val;
+}
 
 struct Teams {
   PRNG prng;
@@ -119,7 +110,8 @@ struct Teams {
 
     // clone the pool but now as an ArrayBaseVector derived struct with fast
     // sampling
-    SampleHelper::SampleNoReplacement<146, Data::Species> pokemonPool{
+    using Arr = ArrayBasedVector<146>::Vector<Data::Species>;
+    Arr pokemonPool{
         RandomBattlesData::pokemonPool};
     // std::cout << "pool size: " << pokemonPool.size() << std::endl;
     // for (int i = 0; i < 10; ++i) {
@@ -128,7 +120,7 @@ struct Teams {
     // }std::cout << std::endl;
 
     while (n_pokemon < 6 && pokemonPool.size()) {
-      Helpers::Species species = pokemonPool.sampleNoReplacement(prng);
+      Helpers::Species species = sampleNoReplace(pokemonPool, prng);
 
       auto name = Names::species_name[static_cast<int>(species)];
       std::cout << "sampled: " << static_cast<int>(species) << " : " << name
