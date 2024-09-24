@@ -1,0 +1,84 @@
+Worker 1 now listening on 0.0.0.0:8000
+Test your server at http://localhost:8000
+^Cuser@laptop:~/oak/extern/pokemon-showdown$ ./pokemon-showdown
+RESTORE CHATROOM: lobby
+RESTORE CHATROOM: staff
+Worker 1 now listening on 0.0.0.0:8000
+Test your server at http://localhost:8000
+seed:  [ 38054, 35039, 41077, 4652 ]
+pre species:  gengar
+final:  Gengar
+pre species:  meowth
+final:  Meowth
+pre species:  starmie
+final:  Starmie
+pre species:  mrmime
+final:  Mr. Mime
+pre species:  koffing
+final:  Koffing
+pre species:  mew
+slipped for type:  Psychic
+pre species:  marowak
+final:  Marowak
+end
+
+seed:  [ 57030, 23797, 9238, 2656 ]
+pre species:  kingler
+final:  Kingler
+pre species:  hypno
+final:  Hypno
+pre species:  zapdos
+final:  Zapdos
+pre species:  machamp
+final:  Machamp
+pre species:  chansey
+final:  Chansey
+pre species:  fearow
+final:  Fearow
+end
+
+{
+  formatid: 'gen1randombattle',
+  roomid: 'battle-gen1randombattle-45',
+  rated: '',
+  send: [Function (anonymous)]
+}
+p1 undefined
+p2 undefined
+seed:  [ 29436, 15437, 45340, 1359 ]
+pre species:  arcanine
+final:  Arcanine
+pre species:  moltres
+final:  Moltres
+pre species:  golduck
+final:  Golduck
+pre species:  zubat
+pre species:  primeape
+final:  Primeape
+pre species:  tentacool
+pre species:  scyther
+pre species:  weezing
+final:  Weezing
+pre species:  growlithe
+slipped for type:  Fire
+pre species:  nidorino
+pre species:  dewgong
+pre species:  rattata
+final:  Rattata
+end
+
+seed:  [ 5693, 48016, 14038, 20627 ]
+pre species:  rhyhorn
+final:  Rhyhorn
+pre species:  charmeleon
+final:  Charmeleon
+pre species:  hitmonlee
+final:  Hitmonlee
+pre species:  onix
+pre species:  clefairy
+final:  Clefairy
+pre species:  paras
+final:  Paras
+pre species:  blastoise
+final:  Blastoise
+end

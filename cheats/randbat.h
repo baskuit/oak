@@ -1,61 +1,39 @@
 #pragma once
 
+#include <types/vector.h>
+
 #include <array>
 #include <bit>
-
 #include <cstdint>
 #include <iostream>
 
+#include "data.h"
+
 #include "../include/util.h"
 
-// WIP clone of the official showdown random team generator
-
+// naive implementation of these showdown functions means resizing vectors,
+// which is slow uses Pinyon static vector to keep interface the same
 namespace RandomBattles {
 
-bool RandbatObservationMatches(const Helpers::Battle &seen, const Helpers::Battle &omni) {
+struct PRNG;
 
-  const auto pokemon_match_almost = [](const Helpers::Pokemon &a, const Helpers::Pokemon &b)
-  {
-    if (a.species != b.species) {
-      return false;
-    }
-    // todo optimize?
-    for (int i = 0; i < 4; ++i) {
-      if (a.moves[i] == Helpers::Moves::None) {
-        continue;
-      }
-      bool seen = false;
-      for (int j = 0; j < 4; ++j) {
-        seen = seen || (a.moves[i] == b.moves[j]);
-      }
-      if (!seen) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const auto sides_match_almost = [](const Helpers::Side &a, const Helpers::Side &b) {
-    for (const auto &pokemon : a) {
-      if (pokemon.species == Helpers::Species::None) {
-        continue;
-      }
-      return false;
-      // for (int i)
-      // if (!pokemon_match_almost)
-    }
-    return true;
-  };
-
-  bool observer_can_be_p1 = true;
-  bool observer_can_be_p2 = true;
-  for (int side = 0; side < 2; ++side) {
-    for (int pokemon = 0; pokemon < 6; ++pokemon) {
-    }
+namespace SampleHelper {
+template <size_t max_size, typename T>
+struct SampleNoReplacement : ArrayBasedVector<max_size>::Vector<T> {
+  using Base = typename ArrayBasedVector<max_size>::Vector<T>;
+  using Base::Base;
+  // uh, isn't this whole thing constexpr?
+  constexpr T sampleNoReplacement(PRNG &prng) noexcept {
+    --this->_size;
+    std::swap(this->_data[0], this->data[this->_size]); // TODO
+    return this->_data[this->_size];
   }
+};
+}; // namespace SampleHelper
+}; // namespace RandomBattles
 
-  return seen == omni;
-}
+// WIP clone of the official showdown random team generator
+namespace RandomBattles {
 
 struct PRNG {
   int64_t seed;
@@ -104,7 +82,7 @@ struct PRNG {
   }
 
   template <typename Container, typename T>
-  const T& sample (const Container& items) {
+  const T &sample(const Container &items) {
     assert(items.size() > 0);
     return items[next(items.size())];
   }
@@ -122,5 +100,70 @@ struct PRNG {
     std::cout << (int)data[0] << " ]\n";
   }
 };
+
+struct Teams {
+  PRNG prng;
+
+  Helpers::Battle randomTeam() {
+
+    // clone the pool but now as an ArrayBaseVector derived struct with fast
+    // sampling
+    SampleHelper::SampleNoReplacement<159, Data::Species> pokemonPool{
+        RandomBattlesData::pokemonPool};
+
+    return {};
+  }
+
+  Helpers::Pokemon randomSet(Helpers::Species species) {
+    Helpers::Pokemon set{};
+  }
+};
+
+bool RandbatObservationMatches(const Helpers::Battle &seen,
+                               const Helpers::Battle &omni) {
+
+  const auto pokemon_match_almost = [](const Helpers::Pokemon &a,
+                                       const Helpers::Pokemon &b) {
+    if (a.species != b.species) {
+      return false;
+    }
+    // todo optimize?
+    for (int i = 0; i < 4; ++i) {
+      if (a.moves[i] == Helpers::Moves::None) {
+        continue;
+      }
+      bool seen = false;
+      for (int j = 0; j < 4; ++j) {
+        seen = seen || (a.moves[i] == b.moves[j]);
+      }
+      if (!seen) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const auto sides_match_almost = [](const Helpers::Side &a,
+                                     const Helpers::Side &b) {
+    for (const auto &pokemon : a) {
+      if (pokemon.species == Helpers::Species::None) {
+        continue;
+      }
+      return false;
+      // for (int i)
+      // if (!pokemon_match_almost)
+    }
+    return true;
+  };
+
+  bool observer_can_be_p1 = true;
+  bool observer_can_be_p2 = true;
+  for (int side = 0; side < 2; ++side) {
+    for (int pokemon = 0; pokemon < 6; ++pokemon) {
+    }
+  }
+
+  return seen == omni;
+}
 
 } // namespace RandomBattles
