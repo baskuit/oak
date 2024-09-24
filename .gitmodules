@@ -8,3 +8,6 @@
 [submodule "extern/engine"]
 	path = extern/engine
 	url = https://github.com/pkmn/engine
+[submodule "extern/pokemon-showdown"]
+	path = extern/pokemon-showdown
+	url = https://github.com/baskuit/pokemon-showdown
