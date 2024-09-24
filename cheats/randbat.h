@@ -13,24 +13,6 @@
 
 // naive implementation of these showdown functions means resizing vectors,
 // which is slow uses Pinyon static vector to keep interface the same
-namespace RandomBattles {
-
-struct PRNG;
-
-namespace SampleHelper {
-template <size_t max_size, typename T>
-struct SampleNoReplacement : ArrayBasedVector<max_size>::Vector<T> {
-  using Base = typename ArrayBasedVector<max_size>::Vector<T>;
-  using Base::Base;
-  // uh, isn't this whole thing constexpr?
-  constexpr T sampleNoReplacement(PRNG &prng) noexcept {
-    --this->_size;
-    std::swap(this->_storage[0], this->_storage[this->_size]); // TODO
-    return this->_storage[this->_size];
-  }
-};
-}; // namespace SampleHelper
-}; // namespace RandomBattles
 
 // WIP clone of the official showdown random team generator
 namespace RandomBattles {
@@ -101,26 +83,56 @@ struct PRNG {
   }
 };
 
+namespace SampleHelper {
+template <size_t max_size, typename T>
+struct SampleNoReplacement : public ArrayBasedVector<max_size>::Vector<T> {
+  using Base = typename ArrayBasedVector<max_size>::Vector<T>;
+  using Base::Base;
+  // uh, isn't this whole thing constexpr?
+  constexpr T sampleNoReplacement(PRNG &prng) noexcept {
+    int x = this->size();
+    const auto index = prng.next(x);
+    T val = this->_storage[index];
+    this->_storage[index] = this->_storage[this->size() - 1];
+    this->resize(x - 1);
+    return val;
+  }
+
+  T operator[](int i) { return this->_storage[i]; }
+};
+}; // namespace SampleHelper
+
 struct Teams {
   PRNG prng;
   bool battleHasDitto = false;
   std::array<int, 15> typeCount{};
   int numMaxLevelPokemon{};
 
-  Teams (PRNG prng) : prng{prng} {}
+  Teams(PRNG prng) : prng{prng} {}
 
   Helpers::Side randomTeam() {
 
     Helpers::Side team{};
     auto n_pokemon = 0;
 
+    prng.next(); // for type sample call
+
     // clone the pool but now as an ArrayBaseVector derived struct with fast
     // sampling
-    SampleHelper::SampleNoReplacement<159, Data::Species> pokemonPool{
+    SampleHelper::SampleNoReplacement<146, Data::Species> pokemonPool{
         RandomBattlesData::pokemonPool};
+    // std::cout << "pool size: " << pokemonPool.size() << std::endl;
+    // for (int i = 0; i < 10; ++i) {
+    //   std::cout << Names::species_name[static_cast<int>(pokemonPool[i])] << '
+    //   ';
+    // }std::cout << std::endl;
 
     while (n_pokemon < 6 && pokemonPool.size()) {
       Helpers::Species species = pokemonPool.sampleNoReplacement(prng);
+
+      auto name = Names::species_name[static_cast<int>(species)];
+      std::cout << "sampled: " << static_cast<int>(species) << " : " << name
+                << std::endl;
 
       if (species == Helpers::Species::Ditto && battleHasDitto) {
         continue;
@@ -128,17 +140,17 @@ struct Teams {
 
       bool skip = false;
 
-				// for (const typeName of species.types) {
-				// 	if (typeCount[typeName] >= 2) {
-				// 		skip = true;
-				// 		break;
-				// 	}
-				// }
+      // for (const typeName of species.types) {
+      // 	if (typeCount[typeName] >= 2) {
+      // 		skip = true;
+      // 		break;
+      // 	}
+      // }
 
-				// if (skip) {
-				// 	rejectedButNotInvalidPool.push(species.id);
-				// 	continue;
-				// }
+      // if (skip) {
+      // 	rejectedButNotInvalidPool.push(species.id);
+      // 	continue;
+      // }
 
       if (RandomBattlesData::isLevel100(species) && numMaxLevelPokemon > 1) {
         skip = true;
@@ -152,6 +164,10 @@ struct Teams {
       team[n_pokemon++] = randomSet(species);
 
       // only set down here, TODO maybe optimize
+      if (RandomBattlesData::isLevel100(species) && numMaxLevelPokemon > 1) {
+        ++numMaxLevelPokemon;
+      }
+
       if (species == Helpers::Species::Ditto) {
         battleHasDitto = true;
       }
@@ -162,7 +178,6 @@ struct Teams {
 
   Helpers::Pokemon randomSet(Helpers::Species species) {
     Helpers::Pokemon set{};
-
 
     return set;
   }

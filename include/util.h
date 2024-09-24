@@ -6,6 +6,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <array>
+#include <vector>
 
 #include "data.h"
 
@@ -29,7 +31,7 @@ void init_battle(pkmn_gen1_battle *battle, const Battle &b) { return; }
 }; // namespace Helpers
 
 namespace Names {
-static constexpr std::string move_name[]{
+static constexpr std::string move_name[166]{
     "None",         "Pound",        "KarateChop",  "DoubleSlap",
     "CometPunch",   "MegaPunch",    "PayDay",      "FirePunch",
     "IcePunch",     "ThunderPunch", "Scratch",     "ViseGrip",
@@ -73,7 +75,7 @@ static constexpr std::string move_name[]{
     "Conversion",   "TriAttack",    "SuperFang",   "Slash",
     "Substitute",   "Struggle"};
 
-static constexpr std::string species_name[]{
+static constexpr std::string species_name[152]{
     "None",       "Bulbasaur",  "Ivysaur",    "Venusaur",   "Charmander",
     "Charmeleon", "Charizard",  "Squirtle",   "Wartortle",  "Blastoise",
     "Caterpie",   "Metapod",    "Butterfree", "Weedle",     "Kakuna",

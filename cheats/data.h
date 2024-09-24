@@ -2,38 +2,13 @@
 
 #include <util.h>
 
+#include "./random-set-data.h"
+
 namespace RandomBattlesData {
-
-struct RandomSetEntry {
-  static constexpr int max_moves{6};
-  static constexpr int max_exclusive_moves{6};
-  static constexpr int max_essential_moves{3};
-  static constexpr int max_combo_moves{4};
-
-  int n_moves;
-  int n_essential_moves;
-  int n_exclusive_moves;
-  int n_combo_moves;
-
-  Helpers::Moves moves[max_moves];
-  Helpers::Moves exclusive_moves[max_exclusive_moves];
-  Helpers::Moves essential_moves[max_essential_moves];
-  Helpers::Moves combo_moves[max_combo_moves];
-};
-
-constexpr std::array<RandomSetEntry, 1> RANDOM_SET_DATA{
-    {0,
-     0,
-     0,
-     0,
-     {Helpers::Moves::None},
-     {Helpers::Moves::None},
-     {Helpers::Moves::None},
-     {Helpers::Moves::None}}};
 
 using Helpers::Species;
 
-static constexpr std::array<Species, 159> pokemonPool{
+static constexpr std::array<Species, 146> pokemonPool{
     Species::Bulbasaur,  Species::Ivysaur,    Species::Venusaur,
     Species::Charmander, Species::Charmeleon, Species::Charizard,
     Species::Squirtle,   Species::Wartortle,  Species::Blastoise,
@@ -85,7 +60,7 @@ static constexpr std::array<Species, 159> pokemonPool{
     Species::Mewtwo,     Species::Mew};
 
 constexpr bool isLevel100(Species species) noexcept {
-  return (species == Species::Ditto) || (species == Species::Zubat); 
+  return (species == Species::Ditto) || (species == Species::Zubat);
 }
 
 }; // namespace RandomBattlesData

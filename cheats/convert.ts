@@ -379,14 +379,14 @@ struct RandomSetEntry {
 std::array<Moves, max_moves> moves;
 std::array<Moves, max_exclusive_moves> exclusive_moves;
 std::array<Moves, max_essential_moves> essential_moves;
-std::array<Moves, max_combo_moves> combo_moves;
+std::array<Moves, max_combo_moves> combo_moves; 
 };
 
-constexpr std::array<RandomSetEntry, 152> SET_DATA
+constexpr std::array<RandomSetEntry, 152> RANDOM_SET_DATA
 {
 `;
 
-// bun ./convert.ts >> data2.h
+// cd cheats && bun ./convert.ts > random-set-data.h
 
 function main() {
 
@@ -398,7 +398,7 @@ function main() {
         }
     }
 
-    console.log("};");
+    console.log("}; // RANDOM_SET_DATA \n}; // namespace RandomSetData");
     
 }
 
