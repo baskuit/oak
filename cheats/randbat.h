@@ -171,12 +171,19 @@ struct Teams {
 
   Helpers::Pokemon randomSet(Helpers::Species species) {
     Helpers::Pokemon set{};
+    
+    const auto print = [](const auto& x) {
+      std::cout << x << std::endl;
+    };
 
     auto data{RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
-
-    auto& movePool = data.moves;
-    // std::array clone, swap
-    auto maxMoveCount = 4;
+    const auto maxMoveCount = 4;
+    print("data:");
+    print(data.level);
+    print(data.n_moves);
+    print(data.n_essential_moves);
+    print(data.n_exclusive_moves);
+    print(data.n_combo_moves);
 
     using Map = std::unordered_map<Data::Moves, bool>;
     Map moves{};
@@ -201,7 +208,11 @@ struct Teams {
     }
 
     int m = 0;
-    assert(moves.size() >= 4);
+    print("moves:");
+    for (const auto pair : moves) {
+      print(pair.first);
+    }
+
     for (const auto& [ key, value ] : moves) {
         set.moves[m] = key;
         ++m;
