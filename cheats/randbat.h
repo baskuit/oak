@@ -172,7 +172,7 @@ struct Teams {
   Helpers::Pokemon randomSet(Helpers::Species species) {
     Helpers::Pokemon set{};
 
-    RandomBattlesData::RandomSetEntry data{RandomSetEntry[static_cast<int>(species)]};
+    auto data{RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
 
     auto& movePool = data.moves;
     // std::array clone, swap
