@@ -204,9 +204,13 @@ struct Teams {
     }
 
     auto it = moves.begin();
-    for (int m = 0; m < 4; ++m) {
-      set.moves[m] = (*it).first;
-      ++it;
+    int m = 0;
+    for (const auto& [ key, value ] : moves) {
+        set.moves[m] = key;
+        ++m;
+        if (m >= 4) {
+          break;
+        }
     }
     prng.shuffle(set.moves);
     set.species = species;
