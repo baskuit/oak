@@ -197,7 +197,7 @@ struct Teams {
 
     // exclusive moves
     if (moves.size() < maxMoveCount && data.n_exclusive_moves) {
-      moves[data.n_exclusive_moves[prng.next(data.n_exclusive_moves)]] = true;
+      moves[data.exclusive_moves[prng.next(data.n_exclusive_moves)]] = true;
     }
 
     // essential moves
