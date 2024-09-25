@@ -24,7 +24,10 @@ struct RandomSetEntry {
   std::array<Moves, max_moves> moves;
   std::array<Moves, max_exclusive_moves> exclusive_moves;
   std::array<Moves, max_essential_moves> essential_moves;
-  std::array<Moves, max_combo_moves> combo_moves; 
+  std::array<Moves, max_combo_moves> combo_moves;
+
+  std::array<, 6> weaknesses{};
+  std::array<Moves, 2> types{};
 };
 
 constexpr std::array<RandomSetEntry, 152> RANDOM_SET_DATA

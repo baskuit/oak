@@ -23,6 +23,8 @@ let max_exclusive_moves: number = 0;
 let max_essential_moves: number = 0;
 let max_combo_moves: number = 0;
 
+let n_important_types: number = 6;
+
 function get_all_max_counts(): void {
     for (let species in set_json) {
         const data = set_json[species];
@@ -208,7 +210,8 @@ function print_set_data_as_initializer(species: string): boolean {
     {${Array.from({ length: max_moves }, (_, x) => fixName(moves[x]))}},
     {${Array.from({ length: max_exclusive_moves }, (_, x) => fixName(exclusiveMoves[x]))}},
     {${Array.from({ length: max_essential_moves }, (_, x) => fixName(essentialMoves[x]))}},
-    {${Array.from({ length: max_combo_moves }, (_, x) => fixName(comboMoves[x]))}}},`;
+    {${Array.from({ length: max_combo_moves }, (_, x) => fixName(comboMoves[x]))}},
+    getImportantWeaknesses(Species::${species}), getTypes(Species::${species})}},`;
 
     console.log(s);
     return true;
@@ -369,12 +372,12 @@ const libpkmn_species: string[] = [
     "Mew"];
 
 const header_header: string =
-`
+    `
 #pragma once
 
 #include <array>
 
-#include <data.h>
+#include "data.h"
 
 namespace RandomBattlesData {
 
@@ -382,21 +385,24 @@ using Data::Moves;
 using Data::Species;
 
 struct RandomSetEntry {
-  static constexpr int max_moves{${max_moves}};
-  static constexpr int max_exclusive_moves{${max_exclusive_moves}};
-  static constexpr int max_essential_moves{${max_essential_moves}};
-  static constexpr int max_combo_moves{${max_combo_moves}};
+  static constexpr uint8_t max_moves{${max_moves}};
+  static constexpr uint8_t max_exclusive_moves{${max_exclusive_moves}};
+  static constexpr uint8_t max_essential_moves{${max_essential_moves}};
+  static constexpr uint8_t max_combo_moves{${max_combo_moves}};
 
-  int level;
-  int n_moves;
-  int n_exclusive_moves;
-  int n_essential_moves;
-  int n_combo_moves;
+  uint8_t level;
+  uint8_t n_moves;
+  uint8_t n_exclusive_moves;
+  uint8_t n_essential_moves;
+  uint8_t n_combo_moves;
 
   std::array<Moves, max_moves> moves;
   std::array<Moves, max_exclusive_moves> exclusive_moves;
   std::array<Moves, max_essential_moves> essential_moves;
-  std::array<Moves, max_combo_moves> combo_moves; 
+  std::array<Moves, max_combo_moves> combo_moves;
+
+  std::array<uint8_t, ${n_important_types}> weaknesses{};
+  std::array<Moves, 2> types{};
 };
 
 constexpr std::array<RandomSetEntry, 152> RANDOM_SET_DATA
@@ -416,7 +422,7 @@ function main() {
     }
 
     console.log("}; // RANDOM_SET_DATA \n}; // namespace RandomSetData");
-    
+
 }
 
 main();

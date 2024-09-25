@@ -8,12 +8,10 @@
 #include <iostream>
 #include <unordered_map>
 
-#include "data.h"
+// now includes ./data.h
+#include "random-set-data.h"
 
-#include "../include/util.h"
-
-// naive implementation of these showdown functions means resizing vectors,
-// which is slow uses Pinyon static vector to keep interface the same
+#include <util.h>
 
 // WIP clone of the official showdown random team generator
 namespace RandomBattles {
@@ -23,35 +21,25 @@ struct PRNG {
 
   PRNG(int64_t seed) : seed{seed} {}
 
-  auto nextFrame(uint64_t seed, int framesToAdvance = 1) {
-    static constexpr uint64_t a{0x5D588B656C078965};
-    static constexpr uint64_t c{0x0000000000269EC3};
-    for (int i = 0; i < framesToAdvance; i++) {
-      seed = a * seed + c;
-    }
+  int64_t nextFrame(int64_t seed) {
+    static constexpr int64_t a{0x5D588B656C078965};
+    static constexpr int64_t c{0x0000000000269EC3};
+    seed = a * seed + c;
     return seed;
   }
 
-  double next() {
+  void next() noexcept {
     seed = nextFrame(seed);
-    const uint32_t top = seed >> 32; // Use the upper 32 bits
-    return (double)top / 0x100000000;
   }
 
-  int next(int to) {
+  int next(int to) noexcept {
     seed = nextFrame(seed);
-    const uint32_t top = seed >> 32; // Use the upper 32 bits
+    const uint32_t top = seed >> 32;
     return to * ((double)top / 0x100000000);
   }
 
-  int next(int from, int to) {
-    seed = nextFrame(seed);
-    const uint32_t top = seed >> 32; // Use the upper 32 bits
-    return from + (to - from) * ((double)top / 0x100000000);
-  }
-
   template <typename Container>
-  void shuffle(Container &items, int start = 0, int end = -1) {
+  void shuffle(Container &items, int start = 0, int end = -1) noexcept {
     if (end < 0) {
       end = items.size();
     }
@@ -94,12 +82,12 @@ auto sampleNoReplace(Container& container, PRNG& prng) {
   return val;
 }
 
-struct Teams {
+class Teams {
+private:
   PRNG prng;
   bool battleHasDitto = false;
-  std::array<int, 15> typeCount{};
-  int numMaxLevelPokemon{};
 
+public:
   Teams(PRNG prng) : prng{prng} {}
 
   Helpers::Side randomTeam() {
@@ -109,14 +97,18 @@ struct Teams {
 
     prng.next(); // for type sample call
 
+    std::array<int, 15> typeCount{};
+    std::array<int, 6> weaknessCount{};
+    int numMaxLevelPokemon{};
+
     using Arr = ArrayBasedVector<146>::Vector<Data::Species>;
+
     Arr pokemonPool{
         RandomBattlesData::pokemonPool};
+    Arr rejectedButNotInvalidPool{};
 
     while (n_pokemon < 6 && pokemonPool.size()) {
-      Helpers::Species species = sampleNoReplace(pokemonPool, prng);
-
-      auto name = Names::species_name[static_cast<int>(species)];
+      auto species = sampleNoReplace(pokemonPool, prng);
 
       if (species == Helpers::Species::Ditto && battleHasDitto) {
         continue;
@@ -124,40 +116,71 @@ struct Teams {
 
       bool skip = false;
 
-      // for (const typeName of species.types) {
-      // 	if (typeCount[typeName] >= 2) {
-      // 		skip = true;
-      // 		break;
-      // 	}
-      // }
+      // types
+      const auto types = Data::get_types(species);
+      for (const Data::Types type : types) {
+        if (typeCount[static_cast<uint8_t>(type)] >= 2) {
+          skip = true;
+          break;
+        }
+      }
+      if (skip) {
+        rejectedButNotInvalidPool.push_back(species);
+        continue;
+      }
 
-      // if (skip) {
-      // 	rejectedButNotInvalidPool.push(species.id);
-      // 	continue;
-      // }
-
+      // weakness
+      const auto &w = RandomBattlesData::RANDOM_SET_DATA[static_cast<uint8_t>(species)].weakness;
+      for (int i = 0; i < 6; ++i) {
+        if (!w[i]) {
+          continue;
+        }
+        if (weaknessCount[i] >= 2) {
+          skip = true;
+          break;
+        }
+      }
+      if (skip) {
+        rejectedButNotInvalidPool.push_back(species);
+        continue;
+      }
+      
+      // lvl 100
       if (RandomBattlesData::isLevel100(species) && numMaxLevelPokemon > 1) {
         skip = true;
       }
-
       if (skip) {
-        // rejected but not invalid pool
+        rejectedButNotInvalidPool.push_back(species);
+        continue;
       }
 
       // accept the set
       team[n_pokemon++] = randomSet(species);
 
-      // only set down here, TODO maybe optimize
+
+      // update
+      typeCount[static_cast<uint8_t>(types[0])]++;
+      if (types[0] != types[1]) {
+        typeCount[static_cast<uint8_t>(types[1])]++;
+      }
+
+      for (int i = 0; i < 6; ++i) {
+        weaknessCount[i] += weakness[i];
+      }
       if (RandomBattlesData::isLevel100(species) && numMaxLevelPokemon > 1) {
         ++numMaxLevelPokemon;
       }
-
       if (species == Helpers::Species::Ditto) {
         battleHasDitto = true;
       }
     }
 
-    return {};
+    while (n_pokemon < 6 && rejectedButNotInvalidPool.size()) {
+      const auto species = sampleNoReplace(rejectedButNotInvalidPool, prng);
+      team[n_pokemon++] = randomSet(species);
+    }
+
+    return team;
   }
 
   Helpers::Pokemon randomSet(Helpers::Species species) {
@@ -174,6 +197,7 @@ struct Teams {
     const auto data{RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
     const auto maxMoveCount = 4;
 
+    // todo use something faster
     using Map = std::unordered_map<Data::Moves, bool>;
     Map moves{};
 
@@ -199,6 +223,8 @@ struct Teams {
       }
     }
 
+    // TODO this can be done without copying/using pinyon
+    // moves
     ArrayBasedVector<RandomBattlesData::RandomSetEntry::max_moves>::Vector<Data::Moves> movePool{data.moves};
     movePool.resize(data.n_moves);
     while ((moves.size() < maxMoveCount) && movePool.size()) {
@@ -216,62 +242,8 @@ struct Teams {
     }
     prng.shuffle(set.moves);
     set.species = species;
-
-    // print set
-    std::cout << Names::species_name[static_cast<int>(set.species)] << std::endl;
-    for (int i = 0; i < 4; ++i) {
-      std::cout << Names::move_name[static_cast<int>(set.moves[i])] << std::endl;
-    }
-
     return set;
   }
 };
-
-bool RandbatObservationMatches(const Helpers::Battle &seen,
-                               const Helpers::Battle &omni) {
-
-  const auto pokemon_match_almost = [](const Helpers::Pokemon &a,
-                                       const Helpers::Pokemon &b) {
-    if (a.species != b.species) {
-      return false;
-    }
-    // todo optimize?
-    for (int i = 0; i < 4; ++i) {
-      if (a.moves[i] == Helpers::Moves::None) {
-        continue;
-      }
-      bool seen = false;
-      for (int j = 0; j < 4; ++j) {
-        seen = seen || (a.moves[i] == b.moves[j]);
-      }
-      if (!seen) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const auto sides_match_almost = [](const Helpers::Side &a,
-                                     const Helpers::Side &b) {
-    for (const auto &pokemon : a) {
-      if (pokemon.species == Helpers::Species::None) {
-        continue;
-      }
-      return false;
-      // for (int i)
-      // if (!pokemon_match_almost)
-    }
-    return true;
-  };
-
-  bool observer_can_be_p1 = true;
-  bool observer_can_be_p2 = true;
-  for (int side = 0; side < 2; ++side) {
-    for (int pokemon = 0; pokemon < 6; ++pokemon) {
-    }
-  }
-
-  return seen == omni;
-}
 
 } // namespace RandomBattles
