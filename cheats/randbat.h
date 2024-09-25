@@ -16,6 +16,58 @@
 // WIP clone of the official showdown random team generator
 namespace RandomBattles {
 
+namespace Detail {
+  template <typename T, size_t n>
+  class OrderedArrayBasedSet {
+  private:
+    std::array<T, n> _data;
+  public:
+  template <typename T>
+  OrderedArrayBasedSet(T&& data) : _data{std::forward<T>(data)} {
+    // std::sort();
+  }
+
+  // TODO use comparison
+  bool subset(const OrderedArrayBasedSet &other) const noexcept {
+    int j = 0;
+    for (int i = 0; i < 4; ++i) {
+      if (moves[i] == Data::Moves::None) {
+        continue;
+      }
+      while (j < 4 && moves[i] != moves[j]) {
+        ++j;
+      }
+      if (j == 4) {
+        return false;
+      } else {
+        continue;
+      }
+    }
+    return true;
+  }
+};
+};
+
+using PartialSet = Detail::OrderedArrayBasedSet<Data::Moves, 4>;
+
+class PartialTeam {
+private:
+using SpeciesSlot = std::pair<Data::Species, uint8_t>;
+Detail::OrderedArrayBasedSet<SpeciesSlot, 6> species_slots;
+std::array<PartialSet, 6> sets;
+public:
+
+void init () {
+  // this is also what we store out results in for randomTeam()
+  // so we have to sort it after we are finished calling the prng
+}
+
+void matches () {
+
+}
+
+};
+
 struct PRNG {
   int64_t seed;
 
