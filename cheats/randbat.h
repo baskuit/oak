@@ -6,6 +6,7 @@
 #include <bit>
 #include <cstdint>
 #include <iostream>
+#include <unordered_map>
 
 #include "data.h"
 
@@ -168,9 +169,47 @@ struct Teams {
     return {};
   }
 
-  Helpers::Pokemon randomSet(Helpers::Species species) {
+  Helpers::Pokemon randomSet(Helpers::Species species, PRNG prng) {
     Helpers::Pokemon set{};
 
+    RandomBattlesData::RandomSetEntry data{RandomSetEntry[static_cast<int>(species)]};
+
+    auto& movePool = data.moves;
+    // std::array clone, swap
+    auto allPossibleMoves{RandomBattlesData::allPossibleMoves};
+    auto n_moves = 0;
+    auto maxMoveCount = 4;
+
+    using Map = std::unordered_map<Data::Moves, bool>;
+    Map moves{};
+
+    if (data.n_combo_moves && data.n_combo_moves <= maxMoveCount && prng.randomChance(1, 2)) {
+      for (int m = 0; m < data.n_combo_moves; ++m) {
+        moves[data.combo_moves[m]] = true;
+      }
+      n_moves = data.n_combo_moves;
+    }
+
+    if (n_moves < maxMoveCount && data.n_essential_moves) {
+      moves[data.essential_moves[prng.next(data.n_essential_moves)]] = true;
+      ++n_moves;
+    }
+
+    if (n_moves < maxMoveCount && data.n_essential_moves) {
+      for (int m = 0; m < data.n_essential_moves; ++m) {
+        moves[data.essential_moves[m]] true;
+        ++n_moves;
+        if (n_moves == maxMoveCount) {
+          break;
+        }
+      }
+    }
+
+    for (int m = 0; m < 4; ++m) {
+      set.moves[m] = *(moves.begin() + m);
+    }
+    prng.shuffle(set.moves);
+    set.species = species;
     return set;
   }
 };
