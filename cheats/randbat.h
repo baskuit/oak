@@ -176,7 +176,6 @@ struct Teams {
 
     auto& movePool = data.moves;
     // std::array clone, swap
-    auto n_moves = 0;
     auto maxMoveCount = 4;
 
     using Map = std::unordered_map<Data::Moves, bool>;
@@ -186,19 +185,19 @@ struct Teams {
       for (int m = 0; m < data.n_combo_moves; ++m) {
         moves[data.combo_moves[m]] = true;
       }
-      n_moves = data.n_combo_moves;
+      moves.size() = data.n_combo_moves;
     }
 
-    if (n_moves < maxMoveCount && data.n_essential_moves) {
+    if (moves.size() < maxMoveCount && data.n_essential_moves) {
       moves[data.essential_moves[prng.next(data.n_essential_moves)]] = true;
-      ++n_moves;
+      ++moves.size();
     }
 
-    if (n_moves < maxMoveCount && data.n_essential_moves) {
+    if (moves.size() < maxMoveCount && data.n_essential_moves) {
       for (int m = 0; m < data.n_essential_moves; ++m) {
         moves[data.essential_moves[m]] = true;
-        ++n_moves;
-        if (n_moves == maxMoveCount) {
+        ++moves.size();
+        if (moves.size() == maxMoveCount) {
           break;
         }
       }
