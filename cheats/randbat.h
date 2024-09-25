@@ -188,16 +188,19 @@ struct Teams {
     using Map = std::unordered_map<Data::Moves, bool>;
     Map moves{};
 
+    // combo moves
     if (data.n_combo_moves && data.n_combo_moves <= maxMoveCount && prng.randomChance(1, 2)) {
       for (int m = 0; m < data.n_combo_moves; ++m) {
         moves[data.combo_moves[m]] = true;
       }
     }
 
+    // exclusive moves
     if (moves.size() < maxMoveCount && data.n_exclusive_moves) {
-      moves[data.essential_moves[prng.next(data.n_exclusive_moves)]] = true;
+      moves[data.n_exclusive_moves[prng.next(data.n_exclusive_moves)]] = true;
     }
 
+    // essential moves
     if (moves.size() < maxMoveCount && data.n_essential_moves) {
       for (int m = 0; m < data.n_essential_moves; ++m) {
         moves[data.essential_moves[m]] = true;
@@ -206,6 +209,12 @@ struct Teams {
         }
       }
     }
+
+    ArrayBasedVector<6>::Vector<Data::Moves> movePool{data.moves};
+    while (moves.size() < maxMoveCount && movePool.size()) {
+      const auto move = sampleNoReplace(movePool, prng);
+      moves[move] = true;
+    } 
 
     int m = 0;
     print("moves:");
