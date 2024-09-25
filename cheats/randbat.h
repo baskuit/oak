@@ -210,7 +210,7 @@ struct Teams {
     int m = 0;
     print("moves:");
     for (const auto pair : moves) {
-      print(pair.first);
+      print(static_cast<int>(pair.first));
     }
 
     for (const auto& [ key, value ] : moves) {
