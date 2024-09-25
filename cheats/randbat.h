@@ -50,7 +50,7 @@ struct PRNG {
     return from + (to - from) * ((double)top / 0x100000000);
   }
 
-  template <typename Container, typename T>
+  template <typename Container>
   void shuffle(Container &items, int start = 0, int end = -1) {
     if (end < 0) {
       end = items.size();
@@ -176,7 +176,6 @@ struct Teams {
 
     auto& movePool = data.moves;
     // std::array clone, swap
-    auto allPossibleMoves{RandomBattlesData::allPossibleMoves};
     auto n_moves = 0;
     auto maxMoveCount = 4;
 
@@ -197,7 +196,7 @@ struct Teams {
 
     if (n_moves < maxMoveCount && data.n_essential_moves) {
       for (int m = 0; m < data.n_essential_moves; ++m) {
-        moves[data.essential_moves[m]] true;
+        moves[data.essential_moves[m]] = true;
         ++n_moves;
         if (n_moves == maxMoveCount) {
           break;
@@ -257,6 +256,8 @@ bool RandbatObservationMatches(const Helpers::Battle &seen,
     for (int pokemon = 0; pokemon < 6; ++pokemon) {
     }
   }
+
+  template <typename T>
 
   return seen == omni;
 }
