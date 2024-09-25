@@ -372,14 +372,14 @@ struct RandomSetEntry {
 
   int level;
   int n_moves;
-  int n_essential_moves;
   int n_exclusive_moves;
+  int n_essential_moves;
   int n_combo_moves;
 
-std::array<Moves, max_moves> moves;
-std::array<Moves, max_exclusive_moves> exclusive_moves;
-std::array<Moves, max_essential_moves> essential_moves;
-std::array<Moves, max_combo_moves> combo_moves; 
+  std::array<Moves, max_moves> moves;
+  std::array<Moves, max_exclusive_moves> exclusive_moves;
+  std::array<Moves, max_essential_moves> essential_moves;
+  std::array<Moves, max_combo_moves> combo_moves; 
 };
 
 constexpr std::array<RandomSetEntry, 152> RANDOM_SET_DATA

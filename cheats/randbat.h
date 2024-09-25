@@ -109,23 +109,14 @@ struct Teams {
 
     prng.next(); // for type sample call
 
-    // clone the pool but now as an ArrayBaseVector derived struct with fast
-    // sampling
     using Arr = ArrayBasedVector<146>::Vector<Data::Species>;
     Arr pokemonPool{
         RandomBattlesData::pokemonPool};
-    // std::cout << "pool size: " << pokemonPool.size() << std::endl;
-    // for (int i = 0; i < 10; ++i) {
-    //   std::cout << Names::species_name[static_cast<int>(pokemonPool[i])] << '
-    //   ';
-    // }std::cout << std::endl;
 
     while (n_pokemon < 6 && pokemonPool.size()) {
       Helpers::Species species = sampleNoReplace(pokemonPool, prng);
 
       auto name = Names::species_name[static_cast<int>(species)];
-      std::cout << "sampled: " << static_cast<int>(species) << " : " << name
-                << std::endl;
 
       if (species == Helpers::Species::Ditto && battleHasDitto) {
         continue;
@@ -177,45 +168,31 @@ struct Teams {
     };
 
     const auto print_move = [](const auto& x) {
-      std::cout << Names::species_name[static_cast<int>(x)] << std::endl;
+      std::cout << Names::move_name[static_cast<int>(x)] << std::endl;
     };
 
     const auto data{RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
     const auto maxMoveCount = 4;
-    print("data:");
-    print(data.level);
-    print(data.n_moves);
-    print(data.n_essential_moves);
-    print(data.n_exclusive_moves);
-    print(data.n_combo_moves);
-
-
 
     using Map = std::unordered_map<Data::Moves, bool>;
     Map moves{};
 
     // combo moves
-    print("combo moves");
-    if (data.n_combo_moves && data.n_combo_moves <= maxMoveCount && prng.randomChance(1, 2)) {
+    if (data.n_combo_moves && (data.n_combo_moves <= maxMoveCount) && prng.randomChance(1, 2)) {
       for (int m = 0; m < data.n_combo_moves; ++m) {
-        print_move(data.combo_moves[m]);
         moves[data.combo_moves[m]] = true;
       }
     }
 
     // exclusive moves
-    print("exclusive moves");
-    if (moves.size() < maxMoveCount && data.n_exclusive_moves) {
+    if ((moves.size() < maxMoveCount) && data.n_exclusive_moves) {
       moves[data.exclusive_moves[prng.next(data.n_exclusive_moves)]] = true;
-      print_move(data.exclusive_moves[prng.next(data.n_exclusive_moves)]);
     }
 
     // essential moves
-    print("essential moves");
-    if (moves.size() < maxMoveCount && data.n_essential_moves) {
+    if ((moves.size() < maxMoveCount) && data.n_essential_moves) {
       for (int m = 0; m < data.n_essential_moves; ++m) {
         moves[data.essential_moves[m]] = true;
-        print_move(data.essential_moves[m]);
         if (moves.size() == maxMoveCount) {
           break;
         }
@@ -223,18 +200,13 @@ struct Teams {
     }
 
     ArrayBasedVector<6>::Vector<Data::Moves> movePool{data.moves};
-    print("moves");
-    while (moves.size() < maxMoveCount && movePool.size()) {
+    movePool.resize(data.n_moves);
+    while ((moves.size() < maxMoveCount) && movePool.size()) {
       const auto move = sampleNoReplace(movePool, prng);
       moves[move] = true;
     } 
 
     int m = 0;
-    print("moves:");
-    for (const auto pair : moves) {
-      print(static_cast<int>(pair.first));
-    }
-
     for (const auto& [ key, value ] : moves) {
         set.moves[m] = key;
         ++m;
@@ -244,6 +216,13 @@ struct Teams {
     }
     prng.shuffle(set.moves);
     set.species = species;
+
+    // print set
+    std::cout << Names::species_name[static_cast<int>(set.species)] << std::endl;
+    for (int i = 0; i < 4; ++i) {
+      std::cout << Names::move_name[static_cast<int>(set.moves[i])] << std::endl;
+    }
+
     return set;
   }
 };
