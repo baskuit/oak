@@ -187,8 +187,8 @@ struct Teams {
       }
     }
 
-    if (moves.size() < maxMoveCount && data.n_essential_moves) {
-      moves[data.essential_moves[prng.next(data.n_essential_moves)]] = true;
+    if (moves.size() < maxMoveCount && data.n_exclusive_moves) {
+      moves[data.essential_moves[prng.next(data.n_exclusive_moves)]] = true;
     }
 
     if (moves.size() < maxMoveCount && data.n_essential_moves) {
