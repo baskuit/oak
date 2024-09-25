@@ -169,7 +169,7 @@ struct Teams {
     return {};
   }
 
-  Helpers::Pokemon randomSet(Helpers::Species species, PRNG prng) {
+  Helpers::Pokemon randomSet(Helpers::Species species) {
     Helpers::Pokemon set{};
 
     RandomBattlesData::RandomSetEntry data{RandomSetEntry[static_cast<int>(species)]};
@@ -204,8 +204,10 @@ struct Teams {
       }
     }
 
+    auto it = moves.begin();
     for (int m = 0; m < 4; ++m) {
-      set.moves[m] = *(moves.begin() + m);
+      set.moves[m] = (*it).first;
+      ++it;
     }
     prng.shuffle(set.moves);
     set.species = species;
@@ -256,8 +258,6 @@ bool RandbatObservationMatches(const Helpers::Battle &seen,
     for (int pokemon = 0; pokemon < 6; ++pokemon) {
     }
   }
-
-  template <typename T>
 
   return seen == omni;
 }
