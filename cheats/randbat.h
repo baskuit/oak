@@ -199,7 +199,7 @@ struct Teams {
       }
     }
 
-    ArrayBasedVector<RandomSetData::max_moves>::Vector<Data::Moves> movePool{data.moves};
+    ArrayBasedVector<RandomSetData::RandomSetEntry::max_moves>::Vector<Data::Moves> movePool{data.moves};
     movePool.resize(data.n_moves);
     while ((moves.size() < maxMoveCount) && movePool.size()) {
       const auto move = sampleNoReplace(movePool, prng);
