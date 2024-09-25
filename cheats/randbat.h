@@ -176,7 +176,11 @@ struct Teams {
       std::cout << x << std::endl;
     };
 
-    auto data{RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
+    const auto print_move = [](const auto& x) {
+      std::cout << Names::species_name[static_cast<int>(x)] << std::endl;
+    };
+
+    const auto data{RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
     const auto maxMoveCount = 4;
     print("data:");
     print(data.level);
@@ -185,25 +189,33 @@ struct Teams {
     print(data.n_exclusive_moves);
     print(data.n_combo_moves);
 
+
+
     using Map = std::unordered_map<Data::Moves, bool>;
     Map moves{};
 
     // combo moves
+    print("combo moves");
     if (data.n_combo_moves && data.n_combo_moves <= maxMoveCount && prng.randomChance(1, 2)) {
       for (int m = 0; m < data.n_combo_moves; ++m) {
+        print_move(data.combo_moves[m]);
         moves[data.combo_moves[m]] = true;
       }
     }
 
     // exclusive moves
+    print("exclusive moves");
     if (moves.size() < maxMoveCount && data.n_exclusive_moves) {
       moves[data.exclusive_moves[prng.next(data.n_exclusive_moves)]] = true;
+      print_move(data.exclusive_moves[prng.next(data.n_exclusive_moves)]);
     }
 
     // essential moves
+    print("essential moves");
     if (moves.size() < maxMoveCount && data.n_essential_moves) {
       for (int m = 0; m < data.n_essential_moves; ++m) {
         moves[data.essential_moves[m]] = true;
+        print_move(data.essential_moves[m]);
         if (moves.size() == maxMoveCount) {
           break;
         }
@@ -211,6 +223,7 @@ struct Teams {
     }
 
     ArrayBasedVector<6>::Vector<Data::Moves> movePool{data.moves};
+    print("moves");
     while (moves.size() < maxMoveCount && movePool.size()) {
       const auto move = sampleNoReplace(movePool, prng);
       moves[move] = true;
