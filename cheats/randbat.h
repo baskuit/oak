@@ -185,26 +185,23 @@ struct Teams {
       for (int m = 0; m < data.n_combo_moves; ++m) {
         moves[data.combo_moves[m]] = true;
       }
-      moves.size() = data.n_combo_moves;
     }
 
     if (moves.size() < maxMoveCount && data.n_essential_moves) {
       moves[data.essential_moves[prng.next(data.n_essential_moves)]] = true;
-      ++moves.size();
     }
 
     if (moves.size() < maxMoveCount && data.n_essential_moves) {
       for (int m = 0; m < data.n_essential_moves; ++m) {
         moves[data.essential_moves[m]] = true;
-        ++moves.size();
         if (moves.size() == maxMoveCount) {
           break;
         }
       }
     }
 
-    auto it = moves.begin();
     int m = 0;
+    assert(moves.size() >= 4);
     for (const auto& [ key, value ] : moves) {
         set.moves[m] = key;
         ++m;
