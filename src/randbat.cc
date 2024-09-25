@@ -1,7 +1,21 @@
 #include <randbat.h>
 
-int main(int argc, char **argv) {
+int benchmark(int argc, char **argv) {
+  if (argc != 2) {
+    std::cout << "enter number of teams to generate" << std::endl;
+    return 1;
+  }
 
+  RandomBattles::PRNG prng{32049283049280};
+  for (int i = 0; i < std::atoi(argv[1]); ++i) {
+    prng.next();
+    RandomBattles::Teams generator{prng};
+    generator.randomTeam();
+  }
+  return 0;
+}
+
+int generate_team(int argc, char **argv) {
   if (argc != 5) {
     return 1;
   }
@@ -18,10 +32,7 @@ int main(int argc, char **argv) {
     std::cout << seed_raw[3 - i] << ' ';
   }
   std::cout << " = " << seed << std::endl;
-
-  RandomBattles::PRNG prng{seed};
-  RandomBattles::Teams generator{prng};
-  generator.randomTeam();
-
   return 0;
 }
+
+int main(int argc, char **argv) { return benchmark(argc, argv); }

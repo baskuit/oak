@@ -28,14 +28,18 @@ struct PRNG {
     return seed;
   }
 
-  void next() noexcept {
-    seed = nextFrame(seed);
-  }
+  void next() noexcept { seed = nextFrame(seed); }
 
   int next(int to) noexcept {
     seed = nextFrame(seed);
     const uint32_t top = seed >> 32;
     return to * ((double)top / 0x100000000);
+  }
+
+  int next(int from, int to) {
+    seed = nextFrame(seed);
+    const uint32_t top = seed >> 32; // Use the upper 32 bits
+    return from + (to - from) * ((double)top / 0x100000000);
   }
 
   template <typename Container>
@@ -73,7 +77,7 @@ struct PRNG {
 };
 
 template <typename Container>
-auto sampleNoReplace(Container& container, PRNG& prng) {
+auto sampleNoReplace(Container &container, PRNG &prng) {
   const auto n = container.size();
   const auto index = prng.next(n);
   const auto val = container[index];
@@ -103,8 +107,7 @@ public:
 
     using Arr = ArrayBasedVector<146>::Vector<Data::Species>;
 
-    Arr pokemonPool{
-        RandomBattlesData::pokemonPool};
+    Arr pokemonPool{RandomBattlesData::pokemonPool};
     Arr rejectedButNotInvalidPool{};
 
     while (n_pokemon < 6 && pokemonPool.size()) {
@@ -130,7 +133,9 @@ public:
       }
 
       // weakness
-      const auto &w = RandomBattlesData::RANDOM_SET_DATA[static_cast<uint8_t>(species)].weakness;
+      const auto &w =
+          RandomBattlesData::RANDOM_SET_DATA[static_cast<uint8_t>(species)]
+              .weaknesses;
       for (int i = 0; i < 6; ++i) {
         if (!w[i]) {
           continue;
@@ -144,7 +149,7 @@ public:
         rejectedButNotInvalidPool.push_back(species);
         continue;
       }
-      
+
       // lvl 100
       if (RandomBattlesData::isLevel100(species) && numMaxLevelPokemon > 1) {
         skip = true;
@@ -157,7 +162,6 @@ public:
       // accept the set
       team[n_pokemon++] = randomSet(species);
 
-
       // update
       typeCount[static_cast<uint8_t>(types[0])]++;
       if (types[0] != types[1]) {
@@ -165,7 +169,7 @@ public:
       }
 
       for (int i = 0; i < 6; ++i) {
-        weaknessCount[i] += weakness[i];
+        weaknessCount[i] += w[i];
       }
       if (RandomBattlesData::isLevel100(species) && numMaxLevelPokemon > 1) {
         ++numMaxLevelPokemon;
@@ -185,16 +189,15 @@ public:
 
   Helpers::Pokemon randomSet(Helpers::Species species) {
     Helpers::Pokemon set{};
-    
-    const auto print = [](const auto& x) {
-      std::cout << x << std::endl;
-    };
 
-    const auto print_move = [](const auto& x) {
+    const auto print = [](const auto &x) { std::cout << x << std::endl; };
+
+    const auto print_move = [](const auto &x) {
       std::cout << Names::move_name[static_cast<int>(x)] << std::endl;
     };
 
-    const auto data{RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
+    const auto data{
+        RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
     const auto maxMoveCount = 4;
 
     // todo use something faster
@@ -202,7 +205,8 @@ public:
     Map moves{};
 
     // combo moves
-    if (data.n_combo_moves && (data.n_combo_moves <= maxMoveCount) && prng.randomChance(1, 2)) {
+    if (data.n_combo_moves && (data.n_combo_moves <= maxMoveCount) &&
+        prng.randomChance(1, 2)) {
       for (int m = 0; m < data.n_combo_moves; ++m) {
         moves[data.combo_moves[m]] = true;
       }
@@ -225,23 +229,34 @@ public:
 
     // TODO this can be done without copying/using pinyon
     // moves
-    ArrayBasedVector<RandomBattlesData::RandomSetEntry::max_moves>::Vector<Data::Moves> movePool{data.moves};
+    ArrayBasedVector<RandomBattlesData::RandomSetEntry::max_moves>::Vector<
+        Data::Moves>
+        movePool{data.moves};
     movePool.resize(data.n_moves);
     while ((moves.size() < maxMoveCount) && movePool.size()) {
       const auto move = sampleNoReplace(movePool, prng);
       moves[move] = true;
-    } 
+    }
 
     int m = 0;
-    for (const auto& [ key, value ] : moves) {
-        set.moves[m] = key;
-        ++m;
-        if (m >= 4) {
-          break;
-        }
+    for (const auto &[key, value] : moves) {
+      set.moves[m] = key;
+      ++m;
+      if (m >= 4) {
+        break;
+      }
     }
     prng.shuffle(set.moves);
     set.species = species;
+
+    // std::cout << Names::species_name[static_cast<uint8_t>(set.species)] <<
+    // std::endl; std::cout << '\t' <<
+    // Names::move_name[static_cast<uint8_t>(set.moves[0])] << std::endl;
+    // std::cout << '\t' << Names::move_name[static_cast<uint8_t>(set.moves[1])]
+    // << std::endl; std::cout << '\t' <<
+    // Names::move_name[static_cast<uint8_t>(set.moves[2])] << std::endl;
+    // std::cout << '\t' << Names::move_name[static_cast<uint8_t>(set.moves[3])]
+    // << std::endl; std::cout << std::endl;
     return set;
   }
 };

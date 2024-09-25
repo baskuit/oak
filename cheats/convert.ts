@@ -192,8 +192,8 @@ function fixName(move: string): string {
     return all_moves_fixed[index];
 }
 
-function print_set_data_as_initializer(species: string): boolean {
-    species = species.toLowerCase();
+function print_set_data_as_initializer(libpkmn_species: string): boolean {
+    const species = libpkmn_species.toLowerCase();
     const data: any = set_json[species];
     if (data === undefined) {
         console.log("RandomSetEntry{},");
@@ -211,7 +211,7 @@ function print_set_data_as_initializer(species: string): boolean {
     {${Array.from({ length: max_exclusive_moves }, (_, x) => fixName(exclusiveMoves[x]))}},
     {${Array.from({ length: max_essential_moves }, (_, x) => fixName(essentialMoves[x]))}},
     {${Array.from({ length: max_combo_moves }, (_, x) => fixName(comboMoves[x]))}},
-    getImportantWeaknesses(Species::${species}), getTypes(Species::${species})}},`;
+    getImportantWeaknesses(Species::${libpkmn_species}), Data::get_types(Species::${libpkmn_species})},`;
 
     console.log(s);
     return true;
@@ -381,8 +381,9 @@ const header_header: string =
 
 namespace RandomBattlesData {
 
-using Data::Moves;
 using Data::Species;
+using Data::Moves;
+using Data::Types;
 
 struct RandomSetEntry {
   static constexpr uint8_t max_moves{${max_moves}};
@@ -402,7 +403,7 @@ struct RandomSetEntry {
   std::array<Moves, max_combo_moves> combo_moves;
 
   std::array<uint8_t, ${n_important_types}> weaknesses{};
-  std::array<Moves, 2> types{};
+  std::array<Types, 2> types{};
 };
 
 constexpr std::array<RandomSetEntry, 152> RANDOM_SET_DATA

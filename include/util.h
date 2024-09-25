@@ -2,11 +2,11 @@
 
 #include <pkmn.h>
 
+#include <array>
 #include <cstdint>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <array>
 #include <vector>
 
 #include "data.h"
