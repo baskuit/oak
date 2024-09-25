@@ -18,6 +18,23 @@ function get_all_moves_set(): set<string> {
     return all_moves;
 }
 
+let max_moves: number = 0;
+let max_exclusive_moves: number = 0;
+let max_essential_moves: number = 0;
+let max_combo_moves: number = 0;
+
+function get_all_max_counts(): void {
+    for (let species in set_json) {
+        const data = set_json[species];
+        max_moves = Math.max(max_moves, data.moves?.length || 0);
+        max_exclusive_moves = Math.max(max_exclusive_moves, data.exclusiveMoves?.length || 0);
+        max_essential_moves = Math.max(max_essential_moves, data.essentialMoves?.length || 0);
+        max_combo_moves = Math.max(max_combo_moves, data.comboMoves?.length || 0);
+    }
+}
+
+get_all_max_counts();
+
 function fixName(move: string): string {
     const all_moves_precomputed = ["bodyslam",
         "razorleaf",
@@ -188,10 +205,10 @@ function print_set_data_as_initializer(species: string): boolean {
 
     const s =
         `RandomSetEntry{ ${level},${moves.length},${exclusiveMoves.length},${essentialMoves.length},${comboMoves.length},
-    {${Array.from({ length: 6 }, (_, x) => fixName(moves[x]))}},
-    {${Array.from({ length: 6 }, (_, x) => fixName(exclusiveMoves[x]))}},
-    {${Array.from({ length: 3 }, (_, x) => fixName(essentialMoves[x]))}},
-    {${Array.from({ length: 4 }, (_, x) => fixName(comboMoves[x]))}}},`;
+    {${Array.from({ length: max_moves }, (_, x) => fixName(moves[x]))}},
+    {${Array.from({ length: max_exclusive_moves }, (_, x) => fixName(exclusiveMoves[x]))}},
+    {${Array.from({ length: max_essential_moves }, (_, x) => fixName(essentialMoves[x]))}},
+    {${Array.from({ length: max_combo_moves }, (_, x) => fixName(comboMoves[x]))}}},`;
 
     console.log(s);
     return true;
@@ -365,10 +382,10 @@ using Data::Moves;
 using Data::Species;
 
 struct RandomSetEntry {
-  static constexpr int max_moves{6};
-  static constexpr int max_exclusive_moves{6};
-  static constexpr int max_essential_moves{3};
-  static constexpr int max_combo_moves{4};
+  static constexpr int max_moves{${max_moves}};
+  static constexpr int max_exclusive_moves{${max_exclusive_moves}};
+  static constexpr int max_essential_moves{${max_essential_moves}};
+  static constexpr int max_combo_moves{${max_combo_moves}};
 
   int level;
   int n_moves;
