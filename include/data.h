@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstddef>
+
 namespace Data {
-enum class Species {
+enum class Species : std::underlying_type_t<std::byte> {
   None,
   Bulbasaur,
   Ivysaur,
@@ -156,7 +158,7 @@ enum class Species {
   Mew
 };
 
-enum class Moves {
+enum class Moves : std::underlying_type_t<std::byte> {
   None,
   Pound,
   KarateChop,
@@ -324,4 +326,8 @@ enum class Moves {
   Substitute,
   Struggle
 };
+
+static_assert(sizeof(Data::Species) == 1);
+static_assert(sizeof(Data::Moves) == 1);
+
 }; // namespace Data
