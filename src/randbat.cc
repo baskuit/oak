@@ -89,17 +89,17 @@ consteval auto get_partial() noexcept {
   partial.move_sets[2] = {Data::Moves::Explosion, Data::Moves::FireBlast,
                           Data::Moves::MegaDrain, Data::Moves::None};
 
-  partial.species_slots[3] = {Data::Species::Farfetchd, 3};
-  partial.move_sets[3] = {Data::Moves::Slash, Data::Moves::Agility,
-                          Data::Moves::BodySlam, Data::Moves::None};
+  // partial.species_slots[3] = {Data::Species::Farfetchd, 3};
+  // partial.move_sets[3] = {Data::Moves::Slash, Data::Moves::Agility,
+  //                         Data::Moves::BodySlam, Data::Moves::None};
 
-  partial.species_slots[4] = {Data::Species::Bellsprout, 4};
-  partial.move_sets[4] = {Data::Moves::SleepPowder, Data::Moves::StunSpore,
-                          Data::Moves::RazorLeaf, Data::Moves::None};
+  // partial.species_slots[4] = {Data::Species::Bellsprout, 4};
+  // partial.move_sets[4] = {Data::Moves::SleepPowder, Data::Moves::StunSpore,
+  //                         Data::Moves::RazorLeaf, Data::Moves::None};
 
-  partial.species_slots[5] = {Data::Species::None, 5};
-  partial.move_sets[5] = {Data::Moves::None, Data::Moves::None,
-                          Data::Moves::None, Data::Moves::None};
+  // partial.species_slots[5] = {Data::Species::None, 5};
+  // partial.move_sets[5] = {Data::Moves::None, Data::Moves::None,
+  //                         Data::Moves::None, Data::Moves::None};
   return partial;
 }
 
