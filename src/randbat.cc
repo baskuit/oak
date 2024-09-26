@@ -40,20 +40,49 @@ int generate_team(int argc, char **argv) {
 }
 
 int matches(int argc, char **argv) {
-  RandomBattles::Teams generator{RandomBattles::PRNG{0}};
-  const auto team = generator.randomTeam();
+  if (argc != 2) {
+    std::cout << "enter number of tries to match partial." << std::endl;
+    return 1;
+  }
+
+  RandomBattles::PRNG prng{0};
 
   RandomBattles::PartialTeam partial{};
   partial.species_slots[0] = {Data::Species::Jolteon, 0};
-  partial.move_sets[0] = {Data::Moves::None, Data::Moves::None, Data::Moves::None, Data::Moves::None};
+  partial.species_slots[1] = {Data::Species::Shellder, 1};
+  partial.species_slots[2] = {Data::Species::Grimer, 2};
+  partial.move_sets[0] = {Data::Moves::Agility, Data::Moves::BodySlam,
+                          Data::Moves::None, Data::Moves::None};
+  partial.move_sets[1] = {Data::Moves::Blizzard, Data::Moves::DoubleEdge,
+                          Data::Moves::None, Data::Moves::None};
+  partial.move_sets[2] = {Data::Moves::FireBlast, Data::Moves::BodySlam,
+                          Data::Moves::None, Data::Moves::None};
 
-  std::cout << "team matches partial: " << team.matches(partial) << std::endl;
-  std::cout << "partial matches team: " << partial.matches(team) << std::endl;
-
-  team.print();
+  size_t tries = std::atoi(argv[1]);
+  std::cout << "using " << tries << " tries; find teams matching:" << std::endl;
   partial.print();
+  std::cout << std::endl;
+
+  std::unordered_map<int64_t, bool> seed_set{};
+
+  for (int i = 0; i < tries; ++i) {
+    RandomBattles::Teams generator{prng};
+    const auto seed = prng.seed;
+    const auto team = generator.randomTeam();
+
+    if (partial.matches(team)) {
+      std::cout << "match found! seed: " << seed << std::endl;
+      team.print();
+      std::cout << std::endl;
+      seed_set[seed] = true;
+    };
+    prng.next();
+  }
+
+  std::cout << "\nTOTAL DISTINCT MATCHING SEEDS: " << seed_set.size()
+            << std::endl;
 
   return 0;
 }
 
-int main(int argc, char **argv) { return benchmark(argc, argv); }
+int main(int argc, char **argv) { return matches(argc, argv); }

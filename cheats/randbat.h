@@ -50,18 +50,22 @@ public:
   }
 
   bool contains(const OrderedArrayBasedSet &other) const noexcept {
-    int j = 0;
-    for (int i = 0; i < 4; ++i) {
-      if (other._data[i] == T{0}) {
+    int i = 0;
+    for (int other_i = 0; other_i < 4; ++other_i) {
+      const auto other_move = other._data[other_i];
+      if (other_move == T{0}) {
         break;
       }
-      while (j < 4) {
-        if (other._data[i] == _data[j++]) {
-          continue;
+      while (true) {
+        if (other_move == _data[i]) {
+          ++i;
+          break;
+        } else {
         }
-        if (other._data[i] > _data[j] || (j == 4)) {
+        if ((i >= 4) || (other_move > _data[i])) {
           return false;
         }
+        ++i;
       }
     }
     return true;
@@ -83,40 +87,43 @@ struct PartialTeam {
               });
   }
 
-  bool matches(const PartialTeam &other) const {
+  bool matches(const PartialTeam &complete) const {
     int j = 0;
     for (int i = 0; i < 6; ++i) {
-      if (other.species_slots[i].first == Data::Species::None) {
+
+      const auto smaller_species = species_slots[i].first;
+      if (smaller_species == Data::Species::None) {
         break;
       }
+
       while (j < 6) {
-        if (other.species_slots[i].first ==
-            species_slots[j++].first) {
+        if (species_slots[i].first == complete.species_slots[j].first) {
           const bool matches =
-              other.move_sets[other.species_slots[i].second].contains(
-                  move_sets[species_slots[j].second]);
+              complete.move_sets[complete.species_slots[j].second].contains(
+                  move_sets[species_slots[i].second]);
           if (!matches) {
             return false;
           }
-          continue;
+          break;
         }
-        if (other.species_slots[i].first > species_slots[j].first ||
-            (j == 4)) {
+        if (complete.species_slots[j].first < species_slots[i].first ||
+            (j == 5)) {
           return false;
         }
+        ++j;
       }
     }
     return true;
   }
 
-  void print () const noexcept {
+  void print() const noexcept {
     for (int i = 0; i < 6; ++i) {
       const auto pair = species_slots[i];
       if (pair.first == Data::Species::None) {
         continue;
       }
       std::cout << Names::species_string(pair.first) << ": ";
-      const auto& set_data = move_sets[pair.second]._data;
+      const auto &set_data = move_sets[pair.second]._data;
       for (int m = 0; m < 4; ++m) {
         if (set_data[m] == Data::Moves::None) {
           continue;

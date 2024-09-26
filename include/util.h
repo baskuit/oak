@@ -146,7 +146,7 @@ constexpr std::string side_choice_string(const uint8_t *side,
   }
   case 1: {
     return Names::MOVE_STRING[get_pokemon_from_slot(side,
-                                                  1)[8 + 2 * choice_data]];
+                                                    1)[8 + 2 * choice_data]];
   }
   case 2: {
     return Names::SPECIES_STRING[get_pokemon_from_slot(side, choice_data)[21]];
