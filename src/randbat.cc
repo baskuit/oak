@@ -32,6 +32,27 @@ int generate_team(int argc, char **argv) {
     std::cout << seed_raw[3 - i] << ' ';
   }
   std::cout << " = " << seed << std::endl;
+
+  RandomBattles::Teams generator{RandomBattles::PRNG{seed}};
+  const auto team = generator.randomTeam();
+  team.print();
+  return 0;
+}
+
+int matches(int argc, char **argv) {
+  RandomBattles::Teams generator{RandomBattles::PRNG{0}};
+  const auto team = generator.randomTeam();
+
+  RandomBattles::PartialTeam partial{};
+  partial.species_slots[0] = {Data::Species::Jolteon, 0};
+  partial.move_sets[0] = {Data::Moves::None, Data::Moves::None, Data::Moves::None, Data::Moves::None};
+
+  std::cout << "team matches partial: " << team.matches(partial) << std::endl;
+  std::cout << "partial matches team: " << partial.matches(team) << std::endl;
+
+  team.print();
+  partial.print();
+
   return 0;
 }
 

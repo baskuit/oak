@@ -5,6 +5,7 @@
 #include <array>
 #include <bit>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <unordered_map>
 
@@ -17,55 +18,114 @@
 namespace RandomBattles {
 
 namespace Detail {
-  template <typename T, size_t n>
-  class OrderedArrayBasedSet {
-  private:
-    std::array<T, n> _data;
-  public:
-  template <typename T>
-  OrderedArrayBasedSet(T&& data) : _data{std::forward<T>(data)} {
-    // std::sort();
+template <typename T, size_t n>
+  requires(std::is_enum_v<T>)
+class OrderedArrayBasedSet {
+public:
+  std::array<T, n> _data;
+
+public:
+  void sort() noexcept {
+    std::sort(_data.begin(), _data.end(), std::greater<T>());
   }
 
-  // TODO use comparison
-  bool subset(const OrderedArrayBasedSet &other) const noexcept {
+  // OrderedArrayBasedSet& operator=(const OrderedArrayBasedSet&) = default;
+
+  bool insert(const T &val) noexcept {
+    auto free_index = -1;
+    bool is_in = false;
+    for (auto i = 0; i < n; ++i) {
+      if (_data[i] == val) {
+        return false;
+      }
+      if (_data[i] == T{0}) {
+        free_index = i;
+      }
+    }
+    if (free_index >= 0) {
+      _data[free_index] = val;
+      return true;
+    }
+    return false;
+  }
+
+  bool contains(const OrderedArrayBasedSet &other) const noexcept {
     int j = 0;
     for (int i = 0; i < 4; ++i) {
-      if (moves[i] == Data::Moves::None) {
-        continue;
+      if (other._data[i] == T{0}) {
+        break;
       }
-      while (j < 4 && moves[i] != moves[j]) {
-        ++j;
-      }
-      if (j == 4) {
-        return false;
-      } else {
-        continue;
+      while (j < 4) {
+        if (other._data[i] == _data[j++]) {
+          continue;
+        }
+        if (other._data[i] > _data[j] || (j == 4)) {
+          return false;
+        }
       }
     }
     return true;
   }
 };
-};
+}; // namespace Detail
 
 using PartialSet = Detail::OrderedArrayBasedSet<Data::Moves, 4>;
 
-class PartialTeam {
-private:
-using SpeciesSlot = std::pair<Data::Species, uint8_t>;
-Detail::OrderedArrayBasedSet<SpeciesSlot, 6> species_slots;
-std::array<PartialSet, 6> sets;
-public:
+struct PartialTeam {
+  using SpeciesSlot = std::pair<Data::Species, uint8_t>;
+  std::array<SpeciesSlot, 6> species_slots;
+  std::array<PartialSet, 6> move_sets;
 
-void init () {
-  // this is also what we store out results in for randomTeam()
-  // so we have to sort it after we are finished calling the prng
-}
+  void sort() {
+    std::sort(species_slots.begin(), species_slots.end(),
+              [](const auto &slot1, const auto &slot2) {
+                return slot1.first > slot2.first;
+              });
+  }
 
-void matches () {
+  bool matches(const PartialTeam &other) const {
+    int j = 0;
+    for (int i = 0; i < 6; ++i) {
+      if (other.species_slots[i].first == Data::Species::None) {
+        break;
+      }
+      while (j < 6) {
+        if (other.species_slots[i].first ==
+            species_slots[j++].first) {
+          const bool matches =
+              other.move_sets[other.species_slots[i].second].contains(
+                  move_sets[species_slots[j].second]);
+          if (!matches) {
+            return false;
+          }
+          continue;
+        }
+        if (other.species_slots[i].first > species_slots[j].first ||
+            (j == 4)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
 
-}
-
+  void print () const noexcept {
+    for (int i = 0; i < 6; ++i) {
+      const auto pair = species_slots[i];
+      if (pair.first == Data::Species::None) {
+        continue;
+      }
+      std::cout << Names::species_string(pair.first) << ": ";
+      const auto& set_data = move_sets[pair.second]._data;
+      for (int m = 0; m < 4; ++m) {
+        if (set_data[m] == Data::Moves::None) {
+          continue;
+        }
+        std::cout << Names::move_string(set_data[m]) << ", ";
+      }
+      std::cout << std::endl;
+    }
+  }
 };
 
 struct PRNG {
@@ -146,9 +206,9 @@ private:
 public:
   Teams(PRNG prng) : prng{prng} {}
 
-  Helpers::Side randomTeam() {
+  PartialTeam randomTeam() {
 
-    Helpers::Side team{};
+    PartialTeam team{};
     auto n_pokemon = 0;
 
     prng.next(); // for type sample call
@@ -212,7 +272,8 @@ public:
       }
 
       // accept the set
-      team[n_pokemon++] = randomSet(species);
+      team.species_slots[n_pokemon] = {species, n_pokemon};
+      team.move_sets[n_pokemon++] = randomSet(species);
 
       // update
       typeCount[static_cast<uint8_t>(types[0])]++;
@@ -233,82 +294,60 @@ public:
 
     while (n_pokemon < 6 && rejectedButNotInvalidPool.size()) {
       const auto species = sampleNoReplace(rejectedButNotInvalidPool, prng);
-      team[n_pokemon++] = randomSet(species);
+      team.species_slots[n_pokemon] = {species, n_pokemon};
+      team.move_sets[n_pokemon++] = randomSet(species);
     }
 
+    team.sort();
     return team;
   }
 
-  Helpers::Pokemon randomSet(Helpers::Species species) {
-    Helpers::Pokemon set{};
-
-    const auto print = [](const auto &x) { std::cout << x << std::endl; };
-
-    const auto print_move = [](const auto &x) {
-      std::cout << Names::move_name[static_cast<int>(x)] << std::endl;
-    };
+  PartialSet randomSet(Helpers::Species species) {
+    PartialSet set{};
+    auto set_size = 0;
 
     const auto data{
         RandomBattlesData::RANDOM_SET_DATA[static_cast<int>(species)]};
-    const auto maxMoveCount = 4;
-
-    // todo use something faster
-    using Map = std::unordered_map<Data::Moves, bool>;
-    Map moves{};
+    constexpr auto maxMoveCount = 4;
 
     // combo moves
     if (data.n_combo_moves && (data.n_combo_moves <= maxMoveCount) &&
         prng.randomChance(1, 2)) {
       for (int m = 0; m < data.n_combo_moves; ++m) {
-        moves[data.combo_moves[m]] = true;
+        set_size += set.insert(data.combo_moves[m]);
       }
     }
 
     // exclusive moves
-    if ((moves.size() < maxMoveCount) && data.n_exclusive_moves) {
-      moves[data.exclusive_moves[prng.next(data.n_exclusive_moves)]] = true;
+    if ((set_size < maxMoveCount) && data.n_exclusive_moves) {
+      set_size +=
+          set.insert(data.exclusive_moves[prng.next(data.n_exclusive_moves)]);
     }
 
     // essential moves
-    if ((moves.size() < maxMoveCount) && data.n_essential_moves) {
+    if ((set_size < maxMoveCount) && data.n_essential_moves) {
       for (int m = 0; m < data.n_essential_moves; ++m) {
-        moves[data.essential_moves[m]] = true;
-        if (moves.size() == maxMoveCount) {
+        set_size += set.insert(data.essential_moves[m]);
+        if (set_size == maxMoveCount) {
           break;
         }
       }
     }
 
-    // TODO this can be done without copying/using pinyon
-    // moves
     ArrayBasedVector<RandomBattlesData::RandomSetEntry::max_moves>::Vector<
         Data::Moves>
         movePool{data.moves};
     movePool.resize(data.n_moves);
-    while ((moves.size() < maxMoveCount) && movePool.size()) {
-      const auto move = sampleNoReplace(movePool, prng);
-      moves[move] = true;
+    while ((set_size < maxMoveCount) && movePool.size()) {
+      set_size += set.insert(sampleNoReplace(movePool, prng));
     }
 
-    int m = 0;
-    for (const auto &[key, value] : moves) {
-      set.moves[m] = key;
-      ++m;
-      if (m >= 4) {
-        break;
-      }
-    }
-    prng.shuffle(set.moves);
-    set.species = species;
+    assert(set_size == maxMoveCount);
 
-    // std::cout << Names::species_name[static_cast<uint8_t>(set.species)] <<
-    // std::endl; std::cout << '\t' <<
-    // Names::move_name[static_cast<uint8_t>(set.moves[0])] << std::endl;
-    // std::cout << '\t' << Names::move_name[static_cast<uint8_t>(set.moves[1])]
-    // << std::endl; std::cout << '\t' <<
-    // Names::move_name[static_cast<uint8_t>(set.moves[2])] << std::endl;
-    // std::cout << '\t' << Names::move_name[static_cast<uint8_t>(set.moves[3])]
-    // << std::endl; std::cout << std::endl;
+    prng.shuffle(set._data);
+    // sort before returning for fast comparison
+    set.sort();
+
     return set;
   }
 };

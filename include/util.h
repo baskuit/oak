@@ -31,7 +31,7 @@ void init_battle(pkmn_gen1_battle *battle, const Battle &b) { return; }
 }; // namespace Helpers
 
 namespace Names {
-static constexpr std::string move_name[166]{
+static constexpr std::string MOVE_STRING[166]{
     "None",         "Pound",        "KarateChop",  "DoubleSlap",
     "CometPunch",   "MegaPunch",    "PayDay",      "FirePunch",
     "IcePunch",     "ThunderPunch", "Scratch",     "ViseGrip",
@@ -75,7 +75,11 @@ static constexpr std::string move_name[166]{
     "Conversion",   "TriAttack",    "SuperFang",   "Slash",
     "Substitute",   "Struggle"};
 
-static constexpr std::string species_name[152]{
+static constexpr std::string move_string(const Data::Moves move) {
+  return MOVE_STRING[static_cast<uint8_t>(move)];
+}
+
+static constexpr std::string SPECIES_STRING[152]{
     "None",       "Bulbasaur",  "Ivysaur",    "Venusaur",   "Charmander",
     "Charmeleon", "Charizard",  "Squirtle",   "Wartortle",  "Blastoise",
     "Caterpie",   "Metapod",    "Butterfree", "Weedle",     "Kakuna",
@@ -107,16 +111,21 @@ static constexpr std::string species_name[152]{
     "Kabuto",     "Kabutops",   "Aerodactyl", "Snorlax",    "Articuno",
     "Zapdos",     "Moltres",    "Dratini",    "Dragonair",  "Dragonite",
     "Mewtwo",     "Mew"};
+
+static constexpr std::string species_string(const Data::Species species) {
+  return SPECIES_STRING[static_cast<uint8_t>(species)];
+}
+
 }; // namespace Names
 
 void print_moves(const uint8_t *pokemon) {
   for (int m = 10; m < 18; m += 2) {
-    std::cout << Names::move_name[pokemon[m]] << std::endl;
+    std::cout << Names::MOVE_STRING[pokemon[m]] << std::endl;
   }
 }
 
 void print_species(const uint8_t *pokemon) {
-  std::cout << Names::species_name[pokemon[21]] << std::endl;
+  std::cout << Names::SPECIES_STRING[pokemon[21]] << std::endl;
 }
 
 constexpr const uint8_t *get_pokemon_from_slot(const uint8_t *side,
@@ -136,11 +145,11 @@ constexpr std::string side_choice_string(const uint8_t *side,
     return "pass";
   }
   case 1: {
-    return Names::move_name[get_pokemon_from_slot(side,
+    return Names::MOVE_STRING[get_pokemon_from_slot(side,
                                                   1)[8 + 2 * choice_data]];
   }
   case 2: {
-    return Names::species_name[get_pokemon_from_slot(side, choice_data)[21]];
+    return Names::SPECIES_STRING[get_pokemon_from_slot(side, choice_data)[21]];
   }
   default: {
     std::cout << "bad choice - data: " << (int)choice_data
