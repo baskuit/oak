@@ -4,6 +4,11 @@
 
 #include <map.h>
 
+// This is the tree structure that will be used from computing the 1v1 evals
+
+// Instead of hashing bucketed states like in the TT, we have a 'perfect hashing'
+// scheme using trees. This is because this search needs correctness over speed
+
 namespace Tree {
 
 template <typename NodeData>

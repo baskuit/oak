@@ -3,12 +3,15 @@
 // #include <pkmn.h>
 #include <assert.h>
 
+// #include ""
+
 namespace Data{using Species = unsigned int; using Moves = unsigned int;};
 
 using pkmn_gen1_battle = uint8_t[384];
 
 namespace Eval {
 
+    // We may just use Randbat data for this
     struct FullSet {
         Data::Species species;
         std::array<Data::Moves, 4> moves;
@@ -40,7 +43,10 @@ namespace Eval {
         float variance;
     };
 
-
+    // Holds values/variance for say any two species
+    struct SpeciesMatchupTable {
+        BasicMatchupEntry data[3][3]; 
+    };
 
 
 };

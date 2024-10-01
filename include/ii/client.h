@@ -4,15 +4,12 @@
 
 namespace Client {
     
-    // One side's private oberservations of an external showdown battle (ps/libpkmn)
     struct Battle;
 
     struct Durations {
         uint8_t sleep;
     };
 
-
-    // our is basically just a libpkmn side but with oberserved durations for hidden stuff like sleep
     struct OurSide {
         struct Active{
             uint16_t stats{};
