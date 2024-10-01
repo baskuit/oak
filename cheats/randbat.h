@@ -135,6 +135,43 @@ struct PartialTeam {
   }
 };
 
+using Seed = int64_t;
+
+namespace PRNG2 {
+
+  constexpr void next(Seed& seed) noexcept {
+    static constexpr int64_t a{0x5D588B656C078965};
+    static constexpr int64_t c{0x0000000000269EC3};
+    seed = a * seed + c;
+  }
+
+  constexpr auto next(Seed& seed, auto to) noexcept {
+    next(seed);
+    const uint32_t top = seed >> 32;
+    return to * ((double)top / 0x100000000);
+  }
+
+  constexpr auto next(Seed& seed, auto from, auto to) noexcept {
+    next(seed);
+    const uint32_t top = seed >> 32;
+    return from + (to - from) * ((double)top / 0x100000000);
+  }
+
+  template <typename Container>
+  void shuffle(Seed& seed, Container &items) noexcept {
+    auto start = 0;
+    const auto end = items.size();
+    while(start < end - 1) {
+      const auto nextIndex = next(start, end);
+      if (start != nextIndex) {
+        std::swap(items[start], items[nextIndex]);
+      }
+      ++start;
+    }
+  }
+
+};
+
 struct PRNG {
   int64_t seed;
 
@@ -196,13 +233,18 @@ struct PRNG {
 };
 
 template <typename Container>
-auto sampleNoReplace(Container &container, PRNG &prng) {
-  const auto n = container.size();
-  const auto index = prng.next(n);
+auto fastPop(Container &container, auto index) noexcept {
   const auto val = container[index];
   container[index] = container[n - 1];
   container.resize(n - 1);
   return val;
+}
+
+template <typename Container>
+auto sampleNoReplace(Container &container, PRNG &prng) noexcept {
+  const auto n = container.size();
+  const auto index = prng.next(n);
+  return fastPop<Container>(container, index);
 }
 
 class Teams {
@@ -356,6 +398,36 @@ public:
     set.sort();
 
     return set;
+  }
+
+  PartialSet finishSet(const Data::Species species, const PartialSet &set) {
+    while (true) {
+      const auto finished = randomSet(species);
+      if (finished.contains(set)) {
+        return finished;
+      }
+    }
+  }
+
+  void finishTeam(PartialTeam& partial) {
+    using Arr = ArrayBasedVector<146>::Vector<Data::Species>;
+
+    const bool species_done = !std::any();
+
+    if (!species_done) {
+      // get valid species, add to partial
+      Arr pokemonPool{RandomBattlesData::pokemonPool};
+      Arr validPool{}
+    }
+
+    for (auto p = 0; p < 6; ++p) {
+      const auto pair = partial.species_slots[p];
+      const auto& set = partial.move_sets[pair.second];
+      if (std::any()) {
+        set = finishSet(set);
+      }
+    }
+    partial.sort();
   }
 };
 

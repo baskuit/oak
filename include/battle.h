@@ -105,8 +105,6 @@ public:
     _options_data.set();
   }
 
-  Battle operator=(const Battle &other) {}
-
   // Battle() = default;
   ~Battle() = default;
   Battle(Battle &&) = default;
