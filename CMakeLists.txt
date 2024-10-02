@@ -44,23 +44,11 @@ target_include_directories(main PRIVATE
 target_link_libraries(main PRIVATE libpkmn)
 target_link_libraries(main PRIVATE pinyon)
 
-add_executable(libpkmn_test src/test.cc)
-add_dependencies(libpkmn_test build_zig_lib)
-target_include_directories(libpkmn_test PRIVATE
+add_executable(teamgen src/teamgen.cc)
+add_dependencies(teamgen build_zig_lib)
+target_include_directories(teamgen PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/cheats
   ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
 )
-target_link_libraries(libpkmn_test PRIVATE libpkmn)
-target_link_libraries(libpkmn_test PRIVATE pinyon)
-add_test(NAME libpkmn_test_  COMMAND libpkmn_test)
-
-add_executable(randbat src/randbat.cc)
-add_dependencies(randbat build_zig_lib)
-target_include_directories(randbat PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/cheats
-  ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
-)
-target_link_libraries(randbat PRIVATE libpkmn)
-target_link_libraries(randbat PRIVATE pinyon)
+target_link_libraries(teamgen PRIVATE libpkmn)
+target_link_libraries(teamgen PRIVATE pinyon)
