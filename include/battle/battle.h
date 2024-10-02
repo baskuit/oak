@@ -6,6 +6,8 @@
 
 #include <pkmn.h>
 
+static_assert(PKMN_OPTIONS.showdown);
+
 // stick to log and chance only for now
 
 template <size_t log_size, bool chance> struct OptionsData;
@@ -19,6 +21,7 @@ template <> struct OptionsData<0, false> {
 };
 
 template <> struct OptionsData<0, true> {
+  static_assert(PKMN_OPTIONS.chance);
   pkmn_gen1_battle_options options;
   // pkmn_gen1_chance_options chance_options;
   void set() noexcept {
@@ -32,6 +35,7 @@ template <> struct OptionsData<0, true> {
 };
 
 template <size_t log_size> struct OptionsData<log_size, false> {
+  static_assert(PKMN_OPTIONS.log);
   pkmn_gen1_battle_options options;
   uint8_t log_buffer[log_size];
   void set() noexcept {
@@ -45,6 +49,7 @@ template <size_t log_size> struct OptionsData<log_size, false> {
 };
 
 template <size_t log_size> struct OptionsData<log_size, true> {
+  static_assert(PKMN_OPTIONS.log && PKMN_OPTIONS.chance);
   pkmn_gen1_battle_options options;
   uint8_t log_buffer[log_size];
   void set() noexcept {
