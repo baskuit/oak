@@ -190,4 +190,8 @@ template <typename Key, typename Value> struct LinearScanMap {
     }
     return nullptr;
   }
+
+  constexpr auto size() const noexcept {
+    return data.size();
+  }
 };

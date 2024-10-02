@@ -9,10 +9,9 @@
 #include <iostream>
 #include <unordered_map>
 
-// now includes ./data.h
-#include "random-set-data.h"
+#include <ii/random-battles/random-set-data.h>
 
-#include <util.h>
+#include <battle/util.h>
 
 // WIP clone of the official showdown random team generator
 namespace RandomBattles {
@@ -30,6 +29,7 @@ public:
   }
 
   // OrderedArrayBasedSet& operator=(const OrderedArrayBasedSet&) = default;
+  bool operator==(const OrderedArrayBasedSet&) const noexcept = default;
 
   bool insert(const T &val) noexcept {
     auto free_index = -1;
@@ -234,6 +234,7 @@ struct PRNG {
 
 template <typename Container>
 auto fastPop(Container &container, auto index) noexcept {
+  const auto n = container.size();
   const auto val = container[index];
   container[index] = container[n - 1];
   container.resize(n - 1);
@@ -412,22 +413,22 @@ public:
   void finishTeam(PartialTeam& partial) {
     using Arr = ArrayBasedVector<146>::Vector<Data::Species>;
 
-    const bool species_done = !std::any();
+  //   const bool species_done = !std::any();
 
-    if (!species_done) {
-      // get valid species, add to partial
-      Arr pokemonPool{RandomBattlesData::pokemonPool};
-      Arr validPool{}
-    }
+  //   if (!species_done) {
+  //     // get valid species, add to partial
+  //     Arr pokemonPool{RandomBattlesData::pokemonPool};
+  //     Arr validPool{}
+  //   }
 
-    for (auto p = 0; p < 6; ++p) {
-      const auto pair = partial.species_slots[p];
-      const auto& set = partial.move_sets[pair.second];
-      if (std::any()) {
-        set = finishSet(set);
-      }
-    }
-    partial.sort();
+  //   for (auto p = 0; p < 6; ++p) {
+  //     const auto pair = partial.species_slots[p];
+  //     const auto& set = partial.move_sets[pair.second];
+  //     if (std::any()) {
+  //       set = finishSet(set);
+  //     }
+  //   }
+  //   partial.sort();
   }
 };
 

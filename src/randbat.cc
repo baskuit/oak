@@ -1,8 +1,8 @@
-#include <randbat.h>
-
 #include <mutex>
 #include <thread>
 #include <random>
+
+#include <ii/random-battles/randbat.h>
 
 int benchmark(int argc, char **argv) {
   if (argc != 2) {
@@ -103,6 +103,41 @@ consteval auto get_partial() noexcept {
   return partial;
 }
 
+int try_generate_all_sets(int argc, char **argv) {
+  std::mt19937_64 rng{};
+  rng.seed(std::random_device{}());
+  int64_t initial_seed = rng();
+  RandomBattles::PRNG prng{initial_seed};
+
+  const size_t tries_per_species = 10000;
+  using Map = LinearScanMap<RandomBattles::PartialSet, bool>;
+  constexpr auto n_species = RandomBattlesData::pokemonPool.size();
+  std::array<Map, n_species> sets{};
+  auto total_sets = 0;
+
+  for (int i = 0; i < n_species; ++i) {
+    const auto species = RandomBattlesData::pokemonPool[i];
+    for (int t = 0; t < tries_per_species; ++t) {
+      auto generator = RandomBattles::Teams{prng};
+      auto set = generator.randomSet(species);
+      set.sort();
+      sets[i][set] = true;
+      prng.next();
+    }
+    total_sets += sets[i].size();
+    std::cout << Names::species_string(species) << " : " << sets[i].size() << std::endl;
+    for (const auto &pair : sets[i].data) {
+      const auto &arr = pair.first._data;
+      for (const auto move : arr) {
+        std::cout << Names::move_string(move) << "(" << static_cast<int>(move) << "), ";
+      }
+      std::cout << std::endl;
+    }
+  }
+  std::cout << "Total Sets: " << total_sets << std::endl;
+  return 0;
+}
+
 int deep_sample(int argc, char **argv) {
 
   if (argc != 2) {
@@ -130,4 +165,4 @@ int deep_sample(int argc, char **argv) {
   return 0;
 }
 
-int main(int argc, char **argv) { return deep_sample(argc, argv); }
+int main(int argc, char **argv) { return try_generate_all_sets(argc, argv); }
