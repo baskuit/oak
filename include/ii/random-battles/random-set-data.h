@@ -3,7 +3,7 @@
 
 #include <array>
 
-#include "data.h"
+#include <ii/random-battles/data.h>
 
 namespace RandomBattlesData {
 
