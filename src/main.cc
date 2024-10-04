@@ -4,10 +4,10 @@
 #include <types/random.h>
 #include <types/vector.h>
 
-#include <battle.h>
-#include <chance.h>
-#include <debug-log.h>
-#include <sides.h>
+#include <battle/battle.h>
+#include <battle/chance.h>
+#include <battle/debug-log.h>
+#include <battle/sides.h>
 
 struct Types {
   using Real = float;

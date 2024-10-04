@@ -12,11 +12,11 @@ int generate_team(int argc, char **argv) {
   seed_raw[0] = std::atoi(argv[4]);
   int64_t seed = *reinterpret_cast<int64_t *>(seed_raw);
 
-//   std::cout << "seed: ";
-//   for (int i = 0; i < 4; ++i) {
-//     std::cout << seed_raw[3 - i] << ' ';
-//   }
-//   std::cout << " = " << seed << std::endl;
+  //   std::cout << "seed: ";
+  //   for (int i = 0; i < 4; ++i) {
+  //     std::cout << seed_raw[3 - i] << ' ';
+  //   }
+  //   std::cout << " = " << seed << std::endl;
 
   RandomBattles::Teams generator{RandomBattles::PRNG{seed}};
   const auto team = generator.randomTeam();

@@ -1,6 +1,6 @@
 #include <mutex>
-#include <thread>
 #include <random>
+#include <thread>
 
 #include <ii/random-battles/randbat.h>
 
@@ -125,11 +125,13 @@ int try_generate_all_sets(int argc, char **argv) {
       prng.next();
     }
     total_sets += sets[i].size();
-    std::cout << Names::species_string(species) << " : " << sets[i].size() << std::endl;
+    std::cout << Names::species_string(species) << " : " << sets[i].size()
+              << std::endl;
     for (const auto &pair : sets[i].data) {
       const auto &arr = pair.first._data;
       for (const auto move : arr) {
-        std::cout << Names::move_string(move) << "(" << static_cast<int>(move) << "), ";
+        std::cout << Names::move_string(move) << "(" << static_cast<int>(move)
+                  << "), ";
       }
       std::cout << std::endl;
     }

@@ -42,19 +42,16 @@ struct Bench {
   Status status;
 
   Bench() : hp{SEVEN}, Status{None} {}
-  Bench(const uin8_t const *bytes) {
-  }
+  Bench(const uin8_t const *bytes) {}
 
   constexpr void get_from_bytes(const uint8_t const *bytes) {}
 };
 
 struct Active {
 
-  Active(const uin8_t const *bytes) {
-  }
+  Active(const uin8_t const *bytes) {}
 
-  constexpr void reset () noexcept {
-  }
+  constexpr void reset() noexcept {}
 
   constexpr void get_from_bytes(const uint8_t const *bytes) {}
 };
@@ -63,9 +60,7 @@ struct Side {
   Active active;
   std::array<Bench, 6> bench;
 
-  Side(const uin8_t const *bytes) {
-    this->get_from_bytes(bytes);
-  }
+  Side(const uin8_t const *bytes) { this->get_from_bytes(bytes); }
 
   constexpr void get_from_bytes(const uint8_t const *bytes) {
     for (int p = 0; p < 6; ++p) {
@@ -83,12 +78,11 @@ struct Battle {
   }
 };
 
-};
+}; // namespace Bucketing
 
-
-// A battle that also caches information to make calculating the MatchupTable entries and hash easier.
-template <typename State>
-struct StateWithBucketing {
+// A battle that also caches information to make calculating the MatchupTable
+// entries and hash easier.
+template <typename State> struct StateWithBucketing {
   // using State::State;
   State state;
   Bucketing::Battle battle;
@@ -98,14 +92,16 @@ struct StateWithBucketing {
   // this gets sigmoided and updated incrementally
   float pre_value{};
 
-  template <typename ...Args>
-  StateWithBucketing(Args ... &&args) : state{args}, battle{state.battle().bytes} {}
+  template <typename... Args>
+  StateWithBucketing(Args... &&args)
+      : state{args}, battle{state.battle().bytes} {}
 
-  void apply_actions (auto p1_action, auto p2_action) {
+  void apply_actions(auto p1_action, auto p2_action) {
     state.apply_actions(p1_action, p2_action);
     const auto obs = state.obs();
     if (p1_action == 0) {
-      // pass, no change must have occured to their side?. Not necessarily true, toxic/leach
+      // pass, no change must have occured to their side?. Not necessarily true,
+      // toxic/leach
     }
     if (p1_action.switch) {
       // reset_active
@@ -113,14 +109,13 @@ struct StateWithBucketing {
       // get active again cus stuff could have happened
       // leave old bench alone, it must have same status and hp
     } else {
-
     }
 
     // make sure incremental updates to bucketed battle are working
     assert(sides == sides{state.battle().bytes});
   }
 
-  auto hash () const noexcept {
+  auto hash() const noexcept {
     uint64_t result = 0;
     for (auto side = 0; side < 2; ++side) {
       for (auto index = 0; index < 7; ++index) {
@@ -130,9 +125,8 @@ struct StateWithBucketing {
     return result;
   }
 
-  float get_value () const noexcept {
+  float get_value() const noexcept {
     return 0;
     // sigmoid on pre_value
   }
-
 };
