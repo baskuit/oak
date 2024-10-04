@@ -15,7 +15,7 @@ static size_t total_nodes = 0;
 
 template <typename PRNG, typename Node, typename Battle, typename Model>
 float run_iteration(PRNG& device, Node *node, Battle &battle, Model &model) {
-  if (battle.terminal()) {
+  if (battle.is_terminal()) {
     // std::cout << "terminal." << std::endl;
     return battle.payoff();
   }
