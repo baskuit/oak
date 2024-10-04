@@ -2,39 +2,44 @@
 
 #include <cstdint>
 #include <utility>
+#include <type_traits>
+#include <iostream>
+
+#include <pi/exp3.h>
+
+#include <types/random.h>
 
 namespace MCTS {
 
-struct Outcome {
-  uint8_t row_idx;
-  uint8_t col_idx;
-  float value;
-};
+static size_t total_nodes = 0;
 
-template <typename Node, typename Battle, typename Model>
-float run_iteration(Node *node, Battle &battle, Model &model) {
+template <typename PRNG, typename Node, typename Battle, typename Model>
+float run_iteration(PRNG& device, Node *node, Battle &battle, Model &model) {
   if (battle.terminal()) {
+    // std::cout << "terminal." << std::endl;
     return battle.payoff();
   }
 
   if (!node->is_init()) {
+    ++total_nodes;
     node->init(battle.rows(), battle.cols());
+    // std::cout << "terminal." << std::endl;
+
     return model.inference(std::move(battle));
   }
 
-  Outcome outcome;
-
   auto &data = node->data();
-  data.select(outcome);
+  using Outcome = std::remove_reference_t<decltype(data)>::Outcome;
+  Outcome outcome;
+  data.select(device, outcome);
+  // std::cout << "select: " << outcome.row_idx << ' ' << outcome.col_idx << ' ' << outcome.row_mu << ' ' << outcome.col_mu; 
   battle.apply_actions(battle.row_actions[outcome.row_idx],
                        battle.col_actions[outcome.col_idx]);
   battle.get_actions();
   Node *next_node = (*node)(outcome.row_idx, outcome.col_idx, battle.obs());
 
-  outcome.value = run_iteration(next_node, battle, model);
-
+  outcome.value = run_iteration(device, next_node, battle, model);
   data.update(outcome);
-
   return outcome.value;
 }
 

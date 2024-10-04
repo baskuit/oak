@@ -2,6 +2,11 @@
 
 #include <array>
 #include <numeric>
+#include <cmath>
+
+float sigmoid (auto x) {
+  return 1 / (1 + std::exp(-static_cast<float>(x)));
+}
 
 class PGame {
 public:
@@ -25,10 +30,10 @@ public:
   auto cols() const noexcept { return 4; }
   int obs() const noexcept { return 1; }
   bool terminal() const noexcept { return depth == 0; }
-  float payoff() const noexcept { return score; }
+  float payoff() const noexcept { return sigmoid(score); }
 };
 
 class PGameModel {
 public:
-  float inference(PGame &&state) { return state.score / 10.0; }
+  float inference(PGame &&state) { return .5; }
 };

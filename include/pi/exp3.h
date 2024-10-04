@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <vector>
+#include <assert.h>
 
 namespace Exp3 {
 
@@ -53,7 +54,8 @@ struct uint24_t_test {
 
 #pragma pack(push, 1)
 class JointBanditData {
-private:
+// private:
+public:
   std::array<float, 9> row_gains;
   std::array<float, 9> col_gains;
   std::array<uint24_t, 9> row_visits;
@@ -62,13 +64,22 @@ private:
   uint8_t _cols;
 
 public:
+
+  struct Outcome {
+    float value;
+    float row_mu;
+    float col_mu;
+    uint8_t row_idx;
+    uint8_t col_idx;
+  };
+
   void init(auto rows, auto cols) {
     _rows = rows;
     _cols = cols;
-    std::copy(row_gains.begin(), row_gains.begin() + rows, {});
-    std::copy(row_visits.begin(), row_visits.begin() + rows, {});
-    std::copy(col_gains.begin(), col_gains.begin() + cols, {});
-    std::copy(col_visits.begin(), col_visits.begin() + cols, {});
+    std::fill(row_gains.begin(), row_gains.begin() + rows, 0);
+    std::fill(row_visits.begin(), row_visits.begin() + rows, uint24_t{});
+    std::fill(col_gains.begin(), col_gains.begin() + cols, 0);
+    std::fill(col_visits.begin(), col_visits.begin() + cols, uint24_t{});
   }
 
   bool is_init() const noexcept { return _rows != 0; }
@@ -93,8 +104,8 @@ public:
 
   template <typename PRNG, typename Outcome>
   void select(PRNG &device, Outcome &outcome) const noexcept {
-    static const float gamma = .1;
-    static const float one_minus_gamma = .9;
+    static const float gamma = .1f;
+    static const float one_minus_gamma = .9f;
     std::array<float, 9> row_forecast{};
     std::array<float, 9> col_forecast{};
 
@@ -106,7 +117,7 @@ public:
       softmax(row_forecast, row_gains, _rows, eta);
       std::transform(row_forecast.begin(), row_forecast.begin() + _rows,
                      row_forecast.begin(),
-                     [eta, one_minus_gamma](const float value) {
+                     [eta](const float value) {
                        return one_minus_gamma * value + eta;
                      });
       outcome.row_idx = device.sample_pdf(row_forecast);
@@ -120,12 +131,14 @@ public:
       softmax(col_forecast, col_gains, _cols, eta);
       std::transform(col_forecast.begin(), col_forecast.begin() + _cols,
                      col_forecast.begin(),
-                     [eta, one_minus_gamma](const float value) {
+                     [eta](const float value) {
                        return one_minus_gamma * value + eta;
                      });
       outcome.col_idx = device.sample_pdf(col_forecast);
       outcome.col_mu = col_forecast[outcome.col_idx];
     }
+    assert(outcome.row_idx < _rows);
+    assert(outcome.col_idx < _cols);
   }
 
 private:
@@ -147,14 +160,6 @@ private:
 struct JointBanditDataTest {
   // hopefully that shit about double cache lines is true
   static_assert(sizeof(JointBanditData) == 128);
-};
-
-struct Outcome {
-  float value;
-  float row_mu;
-  float col_mu;
-  uint8_t row_idx;
-  uint8_t col_idx;
 };
 
 template <typename Container>
