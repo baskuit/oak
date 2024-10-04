@@ -52,3 +52,9 @@ target_include_directories(teamgen PRIVATE
 )
 target_link_libraries(teamgen PRIVATE libpkmn)
 target_link_libraries(teamgen PRIVATE pinyon)
+
+add_executable(mcts src/mcts.cc)
+target_include_directories(mcts PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(mcts PRIVATE pinyon)

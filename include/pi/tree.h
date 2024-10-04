@@ -1,8 +1,9 @@
 #pragma once
 
-#include <pkmn.h>
+#include <assert.h>
 
-#include <map.h>
+#include <map>
+#include <memory>
 
 // This is the tree structure that will be used from computing the 1v1 evals
 
@@ -11,19 +12,37 @@
 
 namespace Tree {
 
-template <typename NodeData>
-struct Node {
-    using Chance = std::map<pkmn_gen1_chance_actions, std::unique_ptr<Node>>;
+template <typename NodeData, typename Obs>
+class Node {
+private:
+    using Chance = std::map<std::tuple<uint8_t, uint8_t, Obs>, std::unique_ptr<Node<NodeData, Obs>>>;
+    NodeData _data;
+    Chance _map;
+    
 
-    NodeData data;
-    std::vector<Chance> chance_nodes;
+public:
+    const auto& data() const noexcept {return _data;}
+    auto& data() noexcept {return _data;}
+
+    void init (auto rows, auto cols) noexcept {
+        _data.init(rows, cols);
+    }
+
+    bool is_init() const noexcept {
+        return _data.is_init();
+    }
 
     Node *at(auto p1_index, auto p2_index, auto obs) const {
-        return nullptr;
+        return _map.at({p1_index, p2_index, obs}).get();
     };
 
     Node *operator()(auto p1_index, auto p2_index, auto obs) {
-
+        auto& node = _map[{p1_index, p2_index, obs}];
+        if (!node) {
+            node = std::make_unique<Node<NodeData, Obs>>();
+        }
+        return node.get();
     };
 };
+
 };
