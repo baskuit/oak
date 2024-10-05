@@ -24,6 +24,9 @@ int main() {
 //   Exp3::uint24_t_test int_test{};
   prng device{1111111};
   Battle<64, true> battle{sides[0], sides[1]};
+  battle.apply_actions(0, 0);
+  battle.get_actions();
+
   MonteCarloModel<prng, Battle<64, true>> model{device.uniform_64()};
   using Obs = std::array<uint8_t, 16>;
   using Exp3Node = Tree::Node<Exp3::JointBanditData, Obs>;
