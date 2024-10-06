@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <numeric>
+#include <sstream>
 
 template <typename Container> void print(const Container &container) {
   const auto n = container.size();
@@ -19,22 +20,49 @@ template <typename Container> void print(const Container &container) {
   std::cout << container[n - 1] << std::endl;
 }
 
-namespace Teams {
-using Data::Moves;
-using Data::Species;
-using enum Moves;
-struct Set {
-  Species species;
-  std::vector<Moves> moves;
-};
 
-Set jynx{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}};
-Set chansey{Species::Chansey, {IceBeam, Sing, SoftBoiled, Thunderbolt}};
-Set cloyster{Species::Cloyster, {Blizzard, Clamp, Explosion, HyperBeam}};
-Set rhydon{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}};
-Set starmie{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}};
-Set tauros{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}};
-};
+namespace Sets {
+  struct SetCompare {
+    constexpr bool operator()(SampleTeams::Set a, SampleTeams::Set b) const {
+      if (a.species == b.species) {
+        return a.moves < b.moves;
+      } else {
+        return a.species < b.species;
+      }
+    }
+  };
+  auto get_sorted_set_map () {
+    std::map<SampleTeams::Set, size_t, SetCompare> map{};
+    for (const auto& team : SampleTeams::teams) {
+      for (const auto& set : team ) {
+        auto set_sorted = set;
+        std::sort(set_sorted.moves.begin(), set_sorted.moves.end());
+        ++map[set_sorted]; 
+      }
+    }
+    // for (const auto& pair : map) {
+    //   const auto& set = pair.first;
+    //   std::cout << Names::species_string(set.species) << " { ";
+    //   for (const auto move : set.moves) {
+    //     std::cout << Names::move_string(move) << ", ";
+    //   }
+    //   std::cout << "} : " << pair.second << std::endl;
+    // }
+    // std::cout << "total sets: " << map.size() << std::endl;
+    return map;
+  }
+
+  std::string set_string(auto set) {
+    std::stringstream stream{};
+    stream << Names::species_string(set.species) << " { ";
+    for (const auto move : set.moves) {
+      stream << Names::move_string(move) << ", ";
+    }
+    stream << "}";
+    stream.flush();
+    return stream.str();
+  }
+}
 
 struct Types {
   using State = Battle<0, true, true>;
@@ -43,51 +71,76 @@ struct Types {
   using Node = Tree::Node<Exp3::JointBanditData, Obs>;
 };
 
-int mcts_1v1(int argc, char **argv) {
-  prng device{1111111};
-  Types::State battle{std::vector<Teams::Set>{Teams::tauros}, std::vector<Teams::Set>{Teams::rhydon}};
-  battle.apply_actions(0, 0);
-  battle.get_actions();
-  Types::Model model{device.uniform_64()};
-  Types::Node node{};
 
-  const auto iterations = 1 << 20;
-  double total_value = 0;
-  const size_t window_size = 1 << 8;
-  std::array<float, window_size> window{};
 
-  for (auto i = 0; i < iterations; ++i) {
-    auto battle_copy{battle};
-    battle_copy.randomize_transition(device);
-    const auto value = MCTS::run_iteration(device, &node, battle_copy, model);
-    total_value += value;
-    window[i % window_size] = value;
+int all_1v1(int argc, char **argv) {
+  if (argc != 3) {
+    std::cout
+        << "Usage: provide seed, mcts iterations"
+        << std::endl;
+    return 1;
   }
+  const uint64_t seed = std::atoi(argv[1]);
+  const size_t iterations = std::atoi(argv[2]);
+  prng device{seed};
 
-  const double rolling_average =
-      std::accumulate(window.begin(), window.end(), 0) / (double)window_size;
+  const auto search = [](auto& device, auto& node, auto& battle, auto& model, auto iterations){
+    double total_value = 0;
+    const size_t window_size = 1 << 8;
+    std::array<float, window_size> window{};
 
-  const auto row_strategy = Exp3::empirical_strategies(node.data().row_visits);
-  const auto col_strategy = Exp3::empirical_strategies(node.data().col_visits);
-  std::cout << "row strategy" << std::endl;
-  for (int i = 0; i < battle.rows(); ++i) {
-    std::cout << side_choice_string(battle.battle().bytes, battle.row_actions[i]) <<  " : " << row_strategy[i] << std::endl;
+    for (auto i = 0; i < iterations; ++i) {
+      auto battle_copy{battle};
+      battle_copy.randomize_transition(device);
+      const auto value = MCTS::run_iteration(device, &node, battle_copy, model);
+      total_value += value;
+      window[i % window_size] = value;
+    }
+
+    const double rolling_average =
+        std::accumulate(window.begin(), window.end(), 0) / (double)window_size;
+
+    const auto row_strategy = Exp3::empirical_strategies(node.data().row_visits);
+    const auto col_strategy = Exp3::empirical_strategies(node.data().col_visits);
+    for (int i = 0; i < battle.rows(); ++i) {
+      std::cout << side_choice_string(battle.battle().bytes, battle.row_actions[i]) <<  " : " << row_strategy[i] << ", ";
+    }
+    std::cout << std::endl;
+
+    for (int i = 0; i < battle.cols(); ++i) {
+      std::cout << side_choice_string(battle.battle().bytes + 184, battle.col_actions[i]) <<  " : " << col_strategy[i] << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "average value: " << total_value / iterations << " rolling average: " << rolling_average << std::endl;
+    // std::cout << "total nodes: " << MCTS::total_nodes << std::endl;
+    // std::cout << "average depth: "
+    //           << MCTS::total_depth / (double)MCTS::total_nodes << std::endl;
+  };
+
+  const auto set_map = Sets::get_sorted_set_map();
+  std::vector<SampleTeams::Set> sets{};
+  for (const auto& [key, value] : set_map) {
+    sets.push_back(key);
   }
-  std::cout << std::endl;
-
-  std::cout << "col strategy" << std::endl;
-  for (int i = 0; i < battle.cols(); ++i) {
-    std::cout << side_choice_string(battle.battle().bytes + 184, battle.col_actions[i]) <<  " : " << col_strategy[i] << std::endl;
+  const auto n = sets.size();
+  for (auto i = 0; i < n; ++i) {
+    const auto set_a = sets[i];
+    const auto set_a_str = Sets::set_string(set_a);
+    for (auto j = i + 1; j < n; ++j) {
+      const auto set_b = sets[j];
+      const auto set_b_str = Sets::set_string(set_b);
+      Types::State battle{std::vector<SampleTeams::Set>{set_a}, std::vector<SampleTeams::Set>{set_b}};
+      battle.apply_actions(0, 0);
+      battle.get_actions();
+      Types::Model model{device.uniform_64()};
+      Types::Node node{};
+      std::cout << set_a_str << " vs " << set_b_str << std::endl;
+      search(device, node, battle, model, iterations);
+      std::cout << std::endl;
+    }
   }
-  std::cout << std::endl;
-
-  std::cout << "rolling average: " << rolling_average << std::endl;
-  std::cout << "average value: " << total_value / iterations << std::endl;
-  std::cout << "total nodes: " << MCTS::total_nodes << std::endl;
-  std::cout << "average depth: "
-            << MCTS::total_depth / (double)MCTS::total_nodes << std::endl;
-
   return 0;
 }
 
-int main(int argc, char **argv) { return mcts_1v1(argc, argv); }
+int main(int argc, char **argv) { return all_1v1(argc, argv); }
