@@ -6,8 +6,14 @@
 
 #include <battle/battle.h>
 #include <battle/chance.h>
+#include <battle/data/data.h>
 #include <battle/debug-log.h>
 #include <battle/sides.h>
+
+struct Set {
+  Data::Species species;
+  std::vector<Data::Moves> moves;
+};
 
 struct Types {
   using Real = float;
@@ -28,10 +34,19 @@ struct Types {
 };
 
 int main(int argc, char **argv) {
+  using Data::Species;
+  using Data::Moves;
+
   if (argc != 4) {
-    std::cout << "Provide two team indices and a seed" << std::endl;
+    std::cout << "Provide two team indices (from include/battle/sides.h) and a seed" << std::endl;
     return 1;
   }
+
+  Battle<0, false, false> Battle
+  {
+    std::vector<Set>{{Species::Tauros, {Moves::BodySlam}}},
+    {}
+  };
 
   int i = std::atoi(argv[1]);
   int j = std::atoi(argv[2]);
@@ -42,7 +57,8 @@ int main(int argc, char **argv) {
 
   DebugLog<Types::State::log_buffer_size> debug_log{};
   debug_log.rollout_battle(std::move(state), device);
-  debug_log.save_data_to_path("");
+  // save here until we can get pkmn-debug working everywhere
+  debug_log.save_data_to_path("./extern/engine/logs");
 
   return 0;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <battle/data/data.h>
+
 #include <array>
 #include <cstring>
 #include <exception>
@@ -73,6 +75,13 @@ public:
 
   std::array<uint8_t, 9> row_actions;
   std::array<uint8_t, 9> col_actions;
+
+  template <typename Side>
+  Battle(const Side &p1_side, const Side &p2_side, uint64_t seed = 0) {
+    Data::init_side(p1_side, _battle.bytes);
+    Data::init_side(p2_side, _battle.bytes);
+    randomize_transition(seed);
+  }
 
   Battle(const uint8_t *p1_side, const uint8_t *p2_side) : _result{} {
     std::memcpy(_battle.bytes, p1_side, 184);

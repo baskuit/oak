@@ -275,7 +275,7 @@ public:
     while (n_pokemon < 6 && pokemonPool.size()) {
       auto species = sampleNoReplace(pokemonPool, prng);
 
-      if (species == Helpers::Species::Ditto && battleHasDitto) {
+      if (species == Data::Species::Ditto && battleHasDitto) {
         continue;
       }
 
@@ -337,7 +337,7 @@ public:
       if (RandomBattlesData::isLevel100(species) && numMaxLevelPokemon > 1) {
         ++numMaxLevelPokemon;
       }
-      if (species == Helpers::Species::Ditto) {
+      if (species == Data::Species::Ditto) {
         battleHasDitto = true;
       }
     }
@@ -352,7 +352,7 @@ public:
     return team;
   }
 
-  PartialSet randomSet(Helpers::Species species) {
+  PartialSet randomSet(Data::Species species) {
     PartialSet set{};
     auto set_size = 0;
 

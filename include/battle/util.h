@@ -9,26 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "data.h"
-
-namespace Helpers {
-
-using Data::Moves;
-using Data::Species;
-
-struct Pokemon {
-  Species species{};
-  std::array<Moves, 4> moves{};
-
-  bool operator==(const Pokemon &other) const noexcept = default;
-};
-
-using Side = std::array<Pokemon, 6>;
-using Battle = std::array<Side, 2>;
-
-// TODO
-void init_battle(pkmn_gen1_battle *battle, const Battle &b) { return; }
-}; // namespace Helpers
+#include <battle/data/data.h>
 
 namespace Names {
 static constexpr std::string MOVE_STRING[166]{
