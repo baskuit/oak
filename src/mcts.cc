@@ -10,8 +10,7 @@
 
 #include <iostream>
 
-template <typename Container>
-void print(const Container &container) {
+template <typename Container> void print(const Container &container) {
   const auto n = container.size();
   for (int i = 0; i < n - 1; ++i) {
     std::cout << container[i] << ' ';
@@ -21,13 +20,13 @@ void print(const Container &container) {
 
 int main() {
 
-//   Exp3::uint24_t_test int_test{};
+  //   Exp3::uint24_t_test int_test{};
   prng device{1111111};
-  Battle<64, true> battle{sides[0], sides[1]};
+  Battle<0, true> battle{sides[0], sides[1]};
   battle.apply_actions(0, 0);
   battle.get_actions();
 
-  MonteCarloModel<prng, Battle<64, true>> model{device.uniform_64()};
+  MonteCarloModel<prng, Battle<0, true>> model{device.uniform_64()};
   using Obs = std::array<uint8_t, 16>;
   using Exp3Node = Tree::Node<Exp3::JointBanditData, Obs>;
   Exp3Node node{};
@@ -35,7 +34,7 @@ int main() {
   const auto iterations = 1 << 20;
   for (auto i = 0; i < iterations; ++i) {
     auto battle_copy{battle};
-      MCTS::run_iteration(device, &node, battle_copy, model);
+    MCTS::run_iteration(device, &node, battle_copy, model);
   }
 
   const auto row_strategy = Exp3::empirical_strategies(node.data().row_visits);

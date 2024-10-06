@@ -1,12 +1,10 @@
 #pragma once
 
 #include <array>
-#include <numeric>
 #include <cmath>
+#include <numeric>
 
-float sigmoid (auto x) {
-  return 1 / (1 + std::exp(-static_cast<float>(x)));
-}
+float sigmoid(auto x) { return 1 / (1 + std::exp(-static_cast<float>(x))); }
 
 class PGame {
 public:

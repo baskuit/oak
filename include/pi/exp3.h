@@ -2,10 +2,10 @@
 
 #include <algorithm>
 #include <array>
+#include <assert.h>
 #include <cmath>
 #include <cstdint>
 #include <vector>
-#include <assert.h>
 
 namespace Exp3 {
 
@@ -54,7 +54,7 @@ struct uint24_t_test {
 
 #pragma pack(push, 1)
 class JointBanditData {
-// private:
+  // private:
 public:
   std::array<float, 9> row_gains;
   std::array<float, 9> col_gains;
@@ -64,7 +64,6 @@ public:
   uint8_t _cols;
 
 public:
-
   struct Outcome {
     float value;
     float row_mu;
@@ -116,8 +115,7 @@ public:
       const float eta{gamma / _rows};
       softmax(row_forecast, row_gains, _rows, eta);
       std::transform(row_forecast.begin(), row_forecast.begin() + _rows,
-                     row_forecast.begin(),
-                     [eta](const float value) {
+                     row_forecast.begin(), [eta](const float value) {
                        return one_minus_gamma * value + eta;
                      });
       outcome.row_idx = device.sample_pdf(row_forecast);
@@ -130,8 +128,7 @@ public:
       const float eta{gamma / _cols};
       softmax(col_forecast, col_gains, _cols, eta);
       std::transform(col_forecast.begin(), col_forecast.begin() + _cols,
-                     col_forecast.begin(),
-                     [eta](const float value) {
+                     col_forecast.begin(), [eta](const float value) {
                        return one_minus_gamma * value + eta;
                      });
       outcome.col_idx = device.sample_pdf(col_forecast);

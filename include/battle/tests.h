@@ -2,8 +2,8 @@
 
 #include <pkmn.h>
 
-#include "chance.h"
-#include "util.h"
+#include <battle/chance.h>
+#include <battle/util.h>
 
 #include <vector>
 
@@ -41,16 +41,25 @@ auto actions_test(PRNG &device, const State &state, pkmn_choice p1_action,
 void display_actions_test_map(const auto &map) {
   double total_prob = 0;
   for (const auto &pair : map.data) {
-    const auto *buf = pair.first.data();
     const auto &data = pair.second;
     const size_t n = std::get<0>(data);
     const size_t p = std::get<1>(data);
     const size_t q = std::get<2>(data);
     const double x = p / (double)q;
     pkmn_gen1_chance_actions actions;
-    std::memcpy(actions.bytes, buf, 16);
-    display(&actions);
-    std::cout << n << ", " << p << " / " << q << " = " << x << std::endl;
+
+    const auto *buf = pair.first.data();
+
+    std::memcpy(actions.bytes, buf, 8);
+    std::cout << "P1:" << std::endl;
+    Chance::display(&actions);
+
+    std::memcpy(actions.bytes, buf + 8, 8);
+    std::cout << "P2:" << std::endl;
+    Chance::display(&actions);
+
+    std::cout << n << ", " << p << " / " << q << " = " << x << std::endl
+              << std::endl;
     total_prob += x;
   }
   std::cout << "number of branches: " << map.data.size() << std::endl;

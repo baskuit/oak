@@ -4,13 +4,10 @@
 #include <types/random.h>
 #include <types/vector.h>
 
-#include <battle.h>
-#include <sides.h>
-#include <tests.h>
-#include <tt.h>
-#include <util.h>
-
-#include <randbat.h>
+#include <battle/battle.h>
+#include <battle/sides.h>
+#include <battle/tests.h>
+#include <battle/util.h>
 
 struct Types {
   using Real = float;
@@ -41,8 +38,18 @@ void obs_sanity_test() {
   assert(state1.obs() == state2.obs());
 }
 
-void chance_test(Types::PRNG &device, size_t trials) {
-  for (size_t t = 0; t < trials; ++t) {
+int chance_test(int argc, char **argv) {
+
+  if (argc != 3) {
+    std::cout << "Expects number of chance tries and seed." << std::endl;
+    return 1;
+  }
+  size_t tries = std::atoi(argv[1]);
+  uint64_t seed = std::atoi(argv[2]);
+
+  Types::PRNG device{seed};
+
+  for (size_t t = 0; t < 1; ++t) {
     // const int i = device.random_int(100);
     // const int j = device.random_int(100);
     const int i = 0;
@@ -59,65 +66,12 @@ void chance_test(Types::PRNG &device, size_t trials) {
         side_choice_string(state.battle().bytes, p1_action);
     const std::string p2_string =
         side_choice_string(state.battle().bytes + 184, p2_action);
+    std::cout << p1_string << ", " << p2_string << std::endl;
 
-    const auto map = actions_test(device, state, p1_action, p2_action, 1000);
+    const auto map = actions_test(device, state, p1_action, p2_action, tries);
     display_actions_test_map(map);
-  }
-}
-
-void rollout_hash(Types::PRNG &device, const uint64_t *const z, uint8_t *test) {
-  int i = device.random_int(50);
-  int j = device.random_int(50);
-
-  Types::State state{sides[i], sides[j]};
-  state.randomize_transition(device);
-  state.get_actions();
-
-  BaseHashData base_hash_data{&state.battle()};
-
-  while (!state.is_terminal()) {
-    const auto p1_action = state.row_actions[device.random_int(state.rows())];
-    const auto p2_action = state.col_actions[device.random_int(state.cols())];
-
-    // const std::string p1_string =
-    //     side_choice_string(state.battle().bytes, p1_action);
-    // const std::string p2_string =
-    //     side_choice_string(state.battle().bytes + 184, p2_action);
-    // std::cout << p1_string << " - " << p2_string << std::endl;
-
-    state.apply_actions(p1_action, p2_action);
-    state.get_actions();
-
-    const auto hash =
-        compute_hash(&state.battle(),
-                     pkmn_gen1_battle_options_chance_actions(&state.options()),
-                     base_hash_data, z);
-    const auto top = hash >> 20;
-    const auto bottom = (hash << 44) >> 44;
-    std::cout << "top: " << top << " bottom: " << bottom << std::endl;
-    uint8_t a = ++test[bottom];
-  }
-}
-
-int main(int argc, char **argv) {
-
-  if (argc != 2) {
-    return 1;
-  }
-  int trials = std::atoi(argv[1]);
-  // int trials = 10000;
-
-  Types::PRNG device{9348739486};
-  constexpr size_t z_slots = 12 * 30 + 12;
-  std::array<uint64_t, z_slots> z{};
-  for (auto &x : z) {
-    x = device.uniform_64();
-  }
-  std::array<uint8_t, 1 << 20> TT_test{};
-
-  for (int i = 0; i < trials; ++i) {
-    rollout_hash(device, z.data(), TT_test.data());
-    std::fill(TT_test.begin(), TT_test.end(), 0);
   }
   return 0;
 }
+
+int main(int argc, char **argv) { return chance_test(argc, argv); }

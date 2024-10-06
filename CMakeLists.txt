@@ -19,7 +19,7 @@ add_custom_command(
   OUTPUT
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/lib/libpkmn-showdown.a
   COMMAND
-    zig build -Dshowdown -Dpic -Dchance -Dcalc -Dlog -Doptimize=${ZIG_BUILD_MODE}
+    zig build -Dshowdown -Dpic -Dchance -Dcalc -Doptimize=${ZIG_BUILD_MODE} -Doption=advance=false -Doption=ebc=false -Doption=miss=false -Doption=key=true
   WORKING_DIRECTORY
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine
   COMMENT
@@ -54,9 +54,19 @@ target_link_libraries(teamgen PRIVATE libpkmn)
 target_link_libraries(teamgen PRIVATE pinyon)
 
 add_executable(mcts src/mcts.cc)
+add_dependencies(mcts build_zig_lib)
 target_include_directories(mcts PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
 )
 target_link_libraries(mcts PRIVATE libpkmn)
 target_link_libraries(mcts PRIVATE pinyon)
+
+add_executable(oak-test src/test.cc)
+add_dependencies(oak-test build_zig_lib)
+target_include_directories(oak-test PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
+)
+target_link_libraries(oak-test PRIVATE libpkmn)
+target_link_libraries(oak-test PRIVATE pinyon)
