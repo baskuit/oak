@@ -69,8 +69,8 @@ void display_actions_test_map(const auto &map) {
 template <typename PRNG, typename State>
 void copy_rollout_test(PRNG &device, State &state) {
   State state_copy{state};
-  while (!state.is_terminal()) {
-    assert(!state_copy.is_terminal());
+  while (!state.terminal()) {
+    assert(!state_copy.terminal());
     const auto p1_action = state.row_actions[device.random_int(state.rows())];
     const auto p2_action = state.col_actions[device.random_int(state.cols())];
     state.apply_actions(p1_action, p2_action);
@@ -87,6 +87,6 @@ void copy_rollout_test(PRNG &device, State &state) {
     }
     assert(state.obs() == state_copy.obs());
   }
-  assert(state_copy.is_terminal());
+  assert(state_copy.terminal());
   assert(state.payoff() == state_copy.payoff());
 }

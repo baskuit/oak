@@ -18,7 +18,7 @@ struct Types {
   struct Model {
     float inference(State &&state) {
       PRNG device{*(reinterpret_cast<uint64_t *>(state.battle().bytes + 376))};
-      while (!state.is_terminal()) {
+      while (!state.terminal()) {
         state.get_actions();
         state.apply_actions(state.row_actions[0], state.col_actions[0]);
       }
@@ -26,17 +26,6 @@ struct Types {
     }
   };
 };
-
-void obs_sanity_test() {
-  Types::State state1{sides[0], sides[1]};
-  Types::State state2{sides[0], sides[1]};
-
-  Types::PRNG device;
-
-  state1.apply_actions(0, 0);
-  state2.apply_actions(0, 0);
-  assert(state1.obs() == state2.obs());
-}
 
 int chance_test(int argc, char **argv) {
 

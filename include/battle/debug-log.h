@@ -61,7 +61,7 @@ template <size_t log_size = 64> struct DebugLog {
   template <typename State, typename PRNG>
   void rollout_battle(State &&state, PRNG &device) {
     set_header(state);
-    while (!state.is_terminal()) {
+    while (!state.terminal()) {
       state.get_actions();
       apply_actions(state, state.row_actions[device.random_int(state.rows())],
                     state.col_actions[device.random_int(state.cols())]);

@@ -18,7 +18,7 @@ struct Types {
   struct Model {
     float inference(State &&state) {
       PRNG device{*(reinterpret_cast<uint64_t *>(state.battle().bytes + 376))};
-      while (!state.is_terminal()) {
+      while (!state.terminal()) {
         state.get_actions();
         state.apply_actions(state.row_actions[0], state.col_actions[0]);
       }

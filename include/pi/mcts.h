@@ -12,19 +12,19 @@
 namespace MCTS {
 
 static size_t total_nodes = 0;
+static size_t total_depth = 0;
 
 template <typename PRNG, typename Node, typename Battle, typename Model>
-float run_iteration(PRNG &device, Node *node, Battle &battle, Model &model) {
-  if (battle.is_terminal()) {
-    // std::cout << "terminal." << std::endl;
+float run_iteration(PRNG &device, Node *node, Battle &battle, Model &model,
+                    int depth = 0) {
+  if (battle.terminal()) {
     return battle.payoff();
   }
 
   if (!node->is_init()) {
     ++total_nodes;
+    total_depth += depth;
     node->init(battle.rows(), battle.cols());
-    // std::cout << "terminal." << std::endl;
-
     return model.inference(std::move(battle));
   }
 
@@ -32,14 +32,12 @@ float run_iteration(PRNG &device, Node *node, Battle &battle, Model &model) {
   using Outcome = std::remove_reference_t<decltype(data)>::Outcome;
   Outcome outcome;
   data.select(device, outcome);
-  // std::cout << "select: " << outcome.row_idx << ' ' << outcome.col_idx << ' '
-  // << outcome.row_mu << ' ' << outcome.col_mu;
   battle.apply_actions(battle.row_actions[outcome.row_idx],
                        battle.col_actions[outcome.col_idx]);
   battle.get_actions();
   Node *next_node = (*node)(outcome.row_idx, outcome.col_idx, battle.obs());
 
-  outcome.value = run_iteration(device, next_node, battle, model);
+  outcome.value = run_iteration(device, next_node, battle, model, depth + 1);
   data.update(outcome);
   return outcome.value;
 }

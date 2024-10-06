@@ -1,5 +1,10 @@
 #pragma once
 
+#include <array>
+#include <bits>
+
+#include <pkmn.h>
+
 // turn 0 base stats. We bucket the active pokemons' stats using the log of the
 // ratio between the current and base stats
 struct BaseStatData {

@@ -7,10 +7,6 @@
 
 #include <pkmn.h>
 
-// static_assert(PKMN_OPTIONS.showdown);
-
-// stick to log and chance only for now
-
 template <size_t log_size, bool chance> struct OptionsData;
 
 template <> struct OptionsData<0, false> {
@@ -22,9 +18,7 @@ template <> struct OptionsData<0, false> {
 };
 
 template <> struct OptionsData<0, true> {
-  // static_assert(PKMN_OPTIONS.chance);
   pkmn_gen1_battle_options options;
-  // pkmn_gen1_chance_options chance_options;
   void set() noexcept {
     pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
   }
@@ -36,7 +30,6 @@ template <> struct OptionsData<0, true> {
 };
 
 template <size_t log_size> struct OptionsData<log_size, false> {
-  // static_assert(PKMN_OPTIONS.log);
   pkmn_gen1_battle_options options;
   uint8_t log_buffer[log_size];
   void set() noexcept {
@@ -50,7 +43,6 @@ template <size_t log_size> struct OptionsData<log_size, false> {
 };
 
 template <size_t log_size> struct OptionsData<log_size, true> {
-  // static_assert(PKMN_OPTIONS.log && PKMN_OPTIONS.chance);
   pkmn_gen1_battle_options options;
   uint8_t log_buffer[log_size];
   void set() noexcept {
@@ -67,7 +59,7 @@ template <size_t log_size> struct OptionsData<log_size, true> {
   }
 };
 
-template <size_t log_size, bool chance> class Battle {
+template <size_t log_size, bool chance, bool clamp = false> class Battle {
 
 private:
   pkmn_gen1_battle _battle;
@@ -126,8 +118,14 @@ public:
   }
 
   void apply_actions(pkmn_choice p1_action, pkmn_choice p2_action) {
-    // _options_data.set();
-    pkmn_gen1_battle_options_set(&options(), nullptr, nullptr, nullptr);
+    if constexpr (clamp) {
+      pkmn_gen1_calc_options calc_options{};
+      calc_options.overrides.bytes[0] = 217 + 19 * (_battle.bytes[383] % 3);
+      calc_options.overrides.bytes[8] = 217 + 19 * (_battle.bytes[382] % 3);
+      pkmn_gen1_battle_options_set(&options(), NULL, NULL, &calc_options);
+    } else {
+      pkmn_gen1_battle_options_set(&options(), nullptr, nullptr, nullptr);
+    }
     _result =
         pkmn_gen1_battle_update(&_battle, p1_action, p2_action, &options());
   };
@@ -161,7 +159,7 @@ public:
     }
   }
 
-  bool is_terminal() const noexcept { return pkmn_result_type(_result); }
+  bool terminal() const noexcept { return pkmn_result_type(_result); }
 
   void get_actions() {
     _rows = pkmn_gen1_battle_choices(&_battle, PKMN_PLAYER_P1,
@@ -196,3 +194,6 @@ public:
   pkmn_result &result() noexcept { return _result; }
   const pkmn_result &result() const noexcept { return _result; }
 };
+
+// using ClientBattle = Battle<256, false, false>;
+// using SearchBattle = Battle<0, true, true>;
