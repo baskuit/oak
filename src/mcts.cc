@@ -1,4 +1,5 @@
 #include <battle/battle.h>
+#include <battle/chance.h>
 #include <battle/util.h>
 
 #include <pi/exp3.h>
@@ -20,40 +21,46 @@ template <typename Container> void print(const Container &container) {
   std::cout << container[n - 1] << std::endl;
 }
 
-
 namespace Sets {
-  struct SetCompare {
-    constexpr bool operator()(SampleTeams::Set a, SampleTeams::Set b) const {
-      if (a.species == b.species) {
-        return a.moves < b.moves;
-      } else {
-        return a.species < b.species;
-      }
+struct SetCompare {
+  constexpr bool operator()(SampleTeams::Set a, SampleTeams::Set b) const {
+    if (a.species == b.species) {
+      return a.moves < b.moves;
+    } else {
+      return a.species < b.species;
     }
-  };
-  auto get_sorted_set_map () {
-    std::map<SampleTeams::Set, size_t, SetCompare> map{};
-    for (const auto& team : SampleTeams::teams) {
-      for (const auto& set : team ) {
-        auto set_sorted = set;
-        std::sort(set_sorted.moves.begin(), set_sorted.moves.end());
-        ++map[set_sorted]; 
-      }
-    }
-    return map;
   }
+};
 
-  std::string set_string(auto set) {
-    std::stringstream stream{};
-    stream << Names::species_string(set.species) << " { ";
-    for (const auto move : set.moves) {
-      stream << Names::move_string(move) << ", ";
+auto get_sorted_set_array() {
+  std::map<SampleTeams::Set, size_t, SetCompare> map{};
+  for (const auto &team : SampleTeams::teams) {
+    for (const auto &set : team) {
+      auto set_sorted = set;
+      std::sort(set_sorted.moves.begin(), set_sorted.moves.end());
+      ++map[set_sorted];
     }
-    stream << "}";
-    stream.flush();
-    return stream.str();
   }
+  std::vector<std::pair<SampleTeams::Set, size_t>> sets_sorted_by_use{};
+  for (const auto &[set, n] : map) {
+    sets_sorted_by_use.emplace_back(set, n);
+  }
+  std::sort(sets_sorted_by_use.begin(), sets_sorted_by_use.end(),
+            [](const auto &a, const auto &b) { return a.second > b.second; });
+  return sets_sorted_by_use;
 }
+
+std::string set_string(auto set) {
+  std::stringstream stream{};
+  stream << Names::species_string(set.species) << " { ";
+  for (const auto move : set.moves) {
+    stream << Names::move_string(move) << ", ";
+  }
+  stream << "}";
+  stream.flush();
+  return stream.str();
+}
+} // namespace Sets
 
 struct Types {
   using State = Battle<0, true, true>;
@@ -64,20 +71,21 @@ struct Types {
 
 int all_1v1(int argc, char **argv) {
   if (argc != 3) {
-    std::cout
-        << "Usage: provide seed, mcts iterations"
-        << std::endl;
+    std::cout << "Usage: provide seed, mcts iterations" << std::endl;
     return 1;
   }
   const uint64_t seed = std::atoi(argv[1]);
   const size_t iterations = std::atoi(argv[2]);
   prng device{seed};
 
-  std::cout << "Calculating 1v1 for all sets found in SampleTeams::teams, ordered by frequency" << std::endl;
+  std::cout << "Calculating 1v1 for all sets found in SampleTeams::teams, "
+               "ordered by frequency"
+            << std::endl;
   std::cout << "MCTS ITERATIONS: " << iterations << '\n' << std::endl;
 
   // search + print results
-  const auto search = [](auto& device, auto& node, auto& battle, auto& model, auto iterations){
+  const auto search = [](auto &device, auto &node, auto &battle, auto &model,
+                         auto iterations) {
     double total_value = 0;
     const size_t window_size = 1 << 8;
     std::array<float, window_size> window{};
@@ -85,47 +93,47 @@ int all_1v1(int argc, char **argv) {
     for (auto i = 0; i < iterations; ++i) {
       auto battle_copy{battle};
       battle_copy.randomize_transition(device);
-      const auto value = MCTS::run_iteration(device, &node, battle_copy, model);
+      const float value =
+          MCTS::run_iteration(device, &node, battle_copy, model);
       total_value += value;
       window[i % window_size] = value;
     }
 
     const double rolling_average =
-        std::accumulate(window.begin(), window.end(), 0) / (double)window_size;
-
-    const auto row_strategy = Exp3::empirical_strategies(node.data().row_visits);
-    const auto col_strategy = Exp3::empirical_strategies(node.data().col_visits);
+        std::accumulate(window.begin(), window.end(), 0.0) /
+        (double)window_size;
+    const auto row_strategy =
+        Exp3::empirical_strategies(node.data().row_visits);
+    const auto col_strategy =
+        Exp3::empirical_strategies(node.data().col_visits);
     for (int i = 0; i < battle.rows(); ++i) {
-      std::cout << side_choice_string(battle.battle().bytes, battle.row_actions[i]) <<  " : " << row_strategy[i] << ", ";
+      std::cout << side_choice_string(battle.battle().bytes,
+                                      battle.row_actions[i])
+                << " : " << row_strategy[i] << ", ";
     }
     std::cout << std::endl;
 
     for (int i = 0; i < battle.cols(); ++i) {
-      std::cout << side_choice_string(battle.battle().bytes + 184, battle.col_actions[i]) <<  " : " << col_strategy[i] << ", ";
+      std::cout << side_choice_string(battle.battle().bytes + 184,
+                                      battle.col_actions[i])
+                << " : " << col_strategy[i] << ", ";
     }
     std::cout << std::endl;
-
-    std::cout << "average value: " << total_value / iterations << " rolling average: " << rolling_average << std::endl;
-    // std::cout << "total nodes: " << MCTS::total_nodes << std::endl;
+    std::cout << "average value: " << total_value / iterations
+              << " rolling average: " << rolling_average << std::endl;
     std::cout << "average depth: "
               << MCTS::total_depth / (double)MCTS::total_nodes << std::endl;
   };
 
   // sorting, printing the sets take from sample teams
-  const auto set_map = Sets::get_sorted_set_map();
-  std::vector<std::pair<SampleTeams::Set, size_t>> sets_sorted_by_use{};
-  for (const auto& [set, n] : set_map) {
-    sets_sorted_by_use.emplace_back(set, n);
-  }
-  std::sort(sets_sorted_by_use.begin(), sets_sorted_by_use.end(), [](const auto &a, const auto &b){return a.second > b.second;});
-
+  const auto sorted_set_array = Sets::get_sorted_set_array();
   std::vector<SampleTeams::Set> sets{};
-  for (const auto& pair : sets_sorted_by_use) {
-    const auto& set = pair.first;
+  for (const auto &pair : sorted_set_array) {
+    const auto &set = pair.first;
     sets.emplace_back(set);
-    std::cout << Sets::set_string(set) << " : " << pair.second << std::endl;
   }
-  std::cout << "total sets: " << sets_sorted_by_use.size() << '\n' << std::endl;
+
+  std::cout << "total sets: " << sets.size() << '\n' << std::endl;
 
   // iterate through all pairs and search the 1v1
   const auto n = sets.size();
@@ -135,12 +143,15 @@ int all_1v1(int argc, char **argv) {
     for (auto j = i + 1; j < n; ++j) {
       const auto set_b = sets[j];
       const auto set_b_str = Sets::set_string(set_b);
-      Types::State battle{std::vector<SampleTeams::Set>{set_a}, std::vector<SampleTeams::Set>{set_b}};
+      Types::State battle{std::vector<SampleTeams::Set>{set_a},
+                          std::vector<SampleTeams::Set>{set_b}};
       battle.apply_actions(0, 0);
       battle.get_actions();
       Types::Model model{device.uniform_64()};
       Types::Node node{};
       std::cout << set_a_str << " vs " << set_b_str << std::endl;
+      MCTS::total_depth = 0; // ugh TODO
+      MCTS::total_nodes = 0;
       search(device, node, battle, model, iterations);
       std::cout << std::endl;
     }
