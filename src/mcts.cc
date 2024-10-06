@@ -26,16 +26,33 @@ struct Types {
   using Node = Tree::Node<Exp3::JointBanditData, Obs>;
 };
 
+namespace Teams {
+using Data::Moves;
+using Data::Species;
+using enum Moves;
+struct Set {
+  Species species;
+  std::vector<Moves> moves;
+};
+
+Set jynx{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}};
+Set chansey{Species::Chansey, {IceBeam, Sing, SoftBoiled, Thunderbolt}};
+Set cloyster{Species::Cloyster, {Blizzard, Clamp, Explosion, HyperBeam}};
+Set rhydon{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}};
+Set starmie{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}};
+Set tauros{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}};
+};
+
 int main() {
 
   prng device{1111111};
-  Types::State battle{sides[0], sides[1]};
+  Types::State battle{std::vector<Teams::Set>{Teams::jynx}, std::vector<Teams::Set>{Teams::tauros}};
   battle.apply_actions(0, 0);
   battle.get_actions();
   Types::Model model{device.uniform_64()};
   Types::Node node{};
 
-  const auto iterations = 1 << 20;
+  const auto iterations = 1 << 10;
   double total_value = 0;
   const size_t window_size = 1 << 8;
   std::array<float, window_size> window{};
@@ -48,8 +65,14 @@ int main() {
     window[i % window_size] = value;
   }
 
-  const double rolling_average =
-      std::accumulate(window.begin(), window.end(), 0) / window_size;
+  // const double rolling_average =
+  //     std::accumulate(window.begin(), window.end(), 0) / window_size;
+
+  double rolling_sum = 0;
+  for (int i = 0; i < window_size; ++i) {
+    rolling_sum += window[i];
+  }
+  const double rolling_average = rolling_sum / window_size;
 
   const auto row_strategy = Exp3::empirical_strategies(node.data().row_visits);
   print(node.data().row_visits);

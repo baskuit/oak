@@ -25,7 +25,7 @@ float run_iteration(PRNG &device, Node *node, Battle &battle, Model &model,
     ++total_nodes;
     total_depth += depth;
     node->init(battle.rows(), battle.cols());
-    return model.inference(std::move(battle));
+    return model.inference(battle);
   }
 
   auto &data = node->data();

@@ -4,6 +4,7 @@
 #include <battle/data/species.h>
 #include <battle/data/types.h>
 
+#include <assert.h>
 #include <cstddef>
 #include <cstring>
 
