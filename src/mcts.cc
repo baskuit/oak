@@ -13,14 +13,6 @@
 #include <numeric>
 #include <sstream>
 
-template <typename Container> void print(const Container &container) {
-  const auto n = container.size();
-  for (int i = 0; i < n - 1; ++i) {
-    std::cout << container[i] << ' ';
-  }
-  std::cout << container[n - 1] << std::endl;
-}
-
 namespace Sets {
 struct SetCompare {
   constexpr bool operator()(SampleTeams::Set a, SampleTeams::Set b) const {
@@ -83,48 +75,6 @@ int all_1v1(int argc, char **argv) {
             << std::endl;
   std::cout << "MCTS ITERATIONS: " << iterations << '\n' << std::endl;
 
-  // search + print results
-  const auto search = [](auto &device, auto &node, auto &battle, auto &model,
-                         auto iterations) {
-    double total_value = 0;
-    const size_t window_size = 1 << 8;
-    std::array<float, window_size> window{};
-
-    for (auto i = 0; i < iterations; ++i) {
-      auto battle_copy{battle};
-      battle_copy.randomize_transition(device);
-      const float value =
-          MCTS::run_iteration(device, &node, battle_copy, model);
-      total_value += value;
-      window[i % window_size] = value;
-    }
-
-    const double rolling_average =
-        std::accumulate(window.begin(), window.end(), 0.0) /
-        (double)window_size;
-    const auto row_strategy =
-        Exp3::empirical_strategies(node.data().row_visits);
-    const auto col_strategy =
-        Exp3::empirical_strategies(node.data().col_visits);
-    for (int i = 0; i < battle.rows(); ++i) {
-      std::cout << side_choice_string(battle.battle().bytes,
-                                      battle.row_actions[i])
-                << " : " << row_strategy[i] << ", ";
-    }
-    std::cout << std::endl;
-
-    for (int i = 0; i < battle.cols(); ++i) {
-      std::cout << side_choice_string(battle.battle().bytes + 184,
-                                      battle.col_actions[i])
-                << " : " << col_strategy[i] << ", ";
-    }
-    std::cout << std::endl;
-    std::cout << "average value: " << total_value / iterations
-              << " rolling average: " << rolling_average << std::endl;
-    std::cout << "average depth: "
-              << MCTS::total_depth / (double)MCTS::total_nodes << std::endl;
-  };
-
   // sorting, printing the sets take from sample teams
   const auto sorted_set_array = Sets::get_sorted_set_array();
   std::vector<SampleTeams::Set> sets{};
@@ -149,11 +99,27 @@ int all_1v1(int argc, char **argv) {
       battle.get_actions();
       Types::Model model{device.uniform_64()};
       Types::Node node{};
+      MCTS mcts{};
       std::cout << set_a_str << " vs " << set_b_str << std::endl;
-      MCTS::total_depth = 0; // ugh TODO
-      MCTS::total_nodes = 0;
-      search(device, node, battle, model, iterations);
+      const auto output = mcts.run(iterations, device, battle, model, &node);
+
+      for (int i = 0; i < battle.rows(); ++i) {
+        std::cout << side_choice_string(battle.battle().bytes,
+                                        battle.row_actions[i])
+                  << " : " << output.row_strategy[i] << ", ";
+      }
       std::cout << std::endl;
+
+      for (int i = 0; i < battle.cols(); ++i) {
+        std::cout << side_choice_string(battle.battle().bytes + 184,
+                                        battle.col_actions[i])
+                  << " : " << output.col_strategy[i] << ", ";
+      }
+      std::cout << std::endl;
+      std::cout << "average value: " << output.average_value
+                << " rolling average: " << output.rolling_average_value
+                << std::endl;
+      std::cout << "average depth: " << output.average_depth << std::endl;
     }
   }
   return 0;
