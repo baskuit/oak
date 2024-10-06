@@ -40,15 +40,6 @@ namespace Sets {
         ++map[set_sorted]; 
       }
     }
-    // for (const auto& pair : map) {
-    //   const auto& set = pair.first;
-    //   std::cout << Names::species_string(set.species) << " { ";
-    //   for (const auto move : set.moves) {
-    //     std::cout << Names::move_string(move) << ", ";
-    //   }
-    //   std::cout << "} : " << pair.second << std::endl;
-    // }
-    // std::cout << "total sets: " << map.size() << std::endl;
     return map;
   }
 
@@ -71,8 +62,6 @@ struct Types {
   using Node = Tree::Node<Exp3::JointBanditData, Obs>;
 };
 
-
-
 int all_1v1(int argc, char **argv) {
   if (argc != 3) {
     std::cout
@@ -84,6 +73,10 @@ int all_1v1(int argc, char **argv) {
   const size_t iterations = std::atoi(argv[2]);
   prng device{seed};
 
+  std::cout << "Calculating 1v1 for all sets found in SampleTeams::teams, ordered by frequency" << std::endl;
+  std::cout << "MCTS ITERATIONS: " << iterations << '\n' << std::endl;
+
+  // search + print results
   const auto search = [](auto& device, auto& node, auto& battle, auto& model, auto iterations){
     double total_value = 0;
     const size_t window_size = 1 << 8;
@@ -114,15 +107,27 @@ int all_1v1(int argc, char **argv) {
 
     std::cout << "average value: " << total_value / iterations << " rolling average: " << rolling_average << std::endl;
     // std::cout << "total nodes: " << MCTS::total_nodes << std::endl;
-    // std::cout << "average depth: "
-    //           << MCTS::total_depth / (double)MCTS::total_nodes << std::endl;
+    std::cout << "average depth: "
+              << MCTS::total_depth / (double)MCTS::total_nodes << std::endl;
   };
 
+  // sorting, printing the sets take from sample teams
   const auto set_map = Sets::get_sorted_set_map();
-  std::vector<SampleTeams::Set> sets{};
-  for (const auto& [key, value] : set_map) {
-    sets.push_back(key);
+  std::vector<std::pair<SampleTeams::Set, size_t>> sets_sorted_by_use{};
+  for (const auto& [set, n] : set_map) {
+    sets_sorted_by_use.emplace_back(set, n);
   }
+  std::sort(sets_sorted_by_use.begin(), sets_sorted_by_use.end(), [](const auto &a, const auto &b){return a.second > b.second;});
+
+  std::vector<SampleTeams::Set> sets{};
+  for (const auto& pair : sets_sorted_by_use) {
+    const auto& set = pair.first;
+    sets.emplace_back(set);
+    std::cout << Sets::set_string(set) << " : " << pair.second << std::endl;
+  }
+  std::cout << "total sets: " << sets_sorted_by_use.size() << '\n' << std::endl;
+
+  // iterate through all pairs and search the 1v1
   const auto n = sets.size();
   for (auto i = 0; i < n; ++i) {
     const auto set_a = sets[i];
