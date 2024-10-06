@@ -59,7 +59,7 @@ template <size_t log_size = 64> struct DebugLog {
   }
 
   template <typename State, typename PRNG>
-  void rollout_battle(State &&state, PRNG &device) {
+  void rollout_battle(State& state, PRNG &device) {
     set_header(state);
     while (!state.terminal()) {
       state.get_actions();

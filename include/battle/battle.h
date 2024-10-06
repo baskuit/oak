@@ -77,10 +77,12 @@ public:
   std::array<uint8_t, 9> col_actions;
 
   template <typename Side>
-  Battle(const Side &p1_side, const Side &p2_side, uint64_t seed = 0) {
+  Battle(const Side &p1_side, const Side &p2_side, uint64_t seed = 0) : _result{} {
     Data::init_side(p1_side, _battle.bytes);
-    Data::init_side(p2_side, _battle.bytes);
+    Data::init_side(p2_side, _battle.bytes + 184);
+    std::memset(_battle.bytes + 2 * 184, 0, 376 - 2 * 184);
     randomize_transition(seed);
+    _options_data.set();
   }
 
   Battle(const uint8_t *p1_side, const uint8_t *p2_side) : _result{} {
