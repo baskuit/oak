@@ -3,6 +3,7 @@
 #include <battle/data/moves.h>
 #include <battle/data/species.h>
 #include <battle/data/types.h>
+#include <battle/data/sample-teams.h>
 
 #include <assert.h>
 #include <cstddef>

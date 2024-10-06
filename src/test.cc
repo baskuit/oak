@@ -5,7 +5,6 @@
 #include <types/vector.h>
 
 #include <battle/battle.h>
-#include <battle/sides.h>
 #include <battle/tests.h>
 #include <battle/util.h>
 
@@ -44,7 +43,7 @@ int chance_test(int argc, char **argv) {
     const int i = 0;
     const int j = 1;
 
-    Types::State state{sides[i], sides[j]};
+    Types::State state{SampleTeams::teams[i], SampleTeams::teams[j]};
     state.apply_actions(0, 0);
     state.get_actions();
 

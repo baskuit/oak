@@ -1,0 +1,823 @@
+
+#pragma once
+
+#include <battle/data/species.h>
+#include <battle/data/moves.h>
+
+#include <array>
+
+namespace SampleTeams {
+using Data::Moves;
+using Data::Species;
+using enum Moves;
+
+struct Set {
+  Species species;
+  std::array<Moves, 4> moves;
+};
+
+constexpr std::array<std::array<Set, 6>, 100> teams {
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, Thunderbolt}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, HyperBeam}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Counter, IceBeam, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Lapras, {Blizzard, BodySlam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Psychic, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, MegaDrain, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Golem, {Earthquake, Explosion, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {IceBeam, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Slowbro, {Amnesia, Psychic, Rest, ThunderWave}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Rest, SelfDestruct}},
+    Set{Species::Golem, {Earthquake, Explosion, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Psychic, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Psychic, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Reflect, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Gyarados, {BodySlam, HydroPump, HyperBeam, Thunderbolt}},
+    Set{Species::Jolteon, {DoubleKick, Rest, Thunderbolt, ThunderWave}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Moltres, {Agility, FireBlast, FireSpin, HyperBeam}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Sandslash, {Earthquake, RockSlide, Slash, SwordsDance}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, HyperBeam}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Snorlax, {Amnesia, Blizzard, BodySlam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Jolteon, {DoubleKick, PinMissile, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, Rest}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, Rest}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Starmie, {Recover, Surf, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Hypno, {Hypnosis, Psychic, Rest, ThunderWave}},
+    Set{Species::Articuno, {Agility, Blizzard, HyperBeam, IceBeam}},
+    Set{Species::Dugtrio, {Earthquake, RockSlide, Slash, Toxic}},
+    Set{Species::Kadabra, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Omastar, {Blizzard, BodySlam, HydroPump, Rest}},
+    Set{Species::Tentacruel, {Blizzard, HydroPump, Surf, Wrap}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {DrillPeck, Thunderbolt, ThunderWave, Toxic}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Psychic, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Counter, IceBeam, Sing, SoftBoiled}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, Rest}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {Amnesia, BodySlam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Starmie, {Psychic, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, HyperBeam, Thunderbolt}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Lapras, {Blizzard, BodySlam, ConfuseRay, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, FireBlast, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Counter, Earthquake, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, Counter, LovelyKiss, Psychic}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Snorlax, {Amnesia, Blizzard, BodySlam, Rest}},
+    Set{Species::Starmie, {Recover, Surf, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Alakazam, {Psychic, Recover, Reflect, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, Rest}},
+    Set{Species::Sandslash, {Earthquake, RockSlide, Slash, SwordsDance}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Gengar, {Explosion, Hypnosis, MegaDrain, NightShade}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Dragonite, {Agility, Blizzard, HyperBeam, Wrap}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Snorlax, {Blizzard, BodySlam, HyperBeam, SelfDestruct}},
+    Set{Species::Alakazam, {Psychic, Recover, Reflect, ThunderWave}},
+    Set{Species::Dragonite, {Agility, Blizzard, HyperBeam, Wrap}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Lapras, {Blizzard, BodySlam, ConfuseRay, Sing}},
+    Set{Species::Tauros, {Blizzard, BodySlam, HyperBeam, Thunderbolt}}
+},
+std::array<Set, 6>{
+    Set{Species::Arcanine, {BodySlam, FireBlast, HyperBeam, Rest}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Starmie, {Psychic, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {SeismicToss, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, HyperBeam}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Sandslash, {Earthquake, HyperBeam, Slash, SwordsDance}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, HyperBeam, Thunderbolt}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Persian, {BodySlam, BubbleBeam, Slash, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Psychic, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, Counter, LovelyKiss, Psychic}},
+    Set{Species::Chansey, {Counter, IceBeam, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {DrillPeck, Thunderbolt, ThunderWave, Toxic}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {Counter, IceBeam, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {Amnesia, BodySlam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Psychic, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Rest, SelfDestruct}},
+    Set{Species::Golem, {Earthquake, Explosion, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Dragonite, {Blizzard, HyperBeam, ThunderWave, Wrap}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Slowbro, {Amnesia, Rest, Surf, ThunderWave}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Victreebel, {BodySlam, RazorLeaf, SleepPowder, Wrap}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Lapras, {Blizzard, HyperBeam, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, Rest}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, IceBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Lapras, {Blizzard, ConfuseRay, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jolteon, {DoubleKick, PinMissile, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, Rest}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Slowbro, {Amnesia, Rest, Surf, ThunderWave}},
+    Set{Species::Starmie, {Blizzard, Recover, Surf, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Sing, SoftBoiled, ThunderWave}},
+    Set{Species::Persian, {BubbleBeam, HyperBeam, Slash, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Counter, Earthquake, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Alakazam, {Psychic, Recover, Reflect, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Reflect, Rest, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Starmie, {Psychic, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jolteon, {DoubleKick, PinMissile, Thunderbolt, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {LeechSeed, Psychic, Rest, StunSpore}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Hypno, {Hypnosis, Psychic, Rest, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Victreebel, {RazorLeaf, SleepPowder, StunSpore, Wrap}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Lapras, {Blizzard, Rest, Sing, Thunderbolt}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Gengar, {Explosion, Hypnosis, NightShade, Thunderbolt}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Slowbro, {Amnesia, Rest, Surf, ThunderWave}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Gengar, {Explosion, Hypnosis, NightShade, Thunderbolt}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, Psychic, SleepPowder, StunSpore}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Cloyster, {Blizzard, Clamp, Explosion, Rest}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Recover, Thunderbolt, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Tauros, {Blizzard, BodySlam, HyperBeam, TailWhip}}
+},
+std::array<Set, 6>{
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Rhydon, {BodySlam, Earthquake, RockSlide, Substitute}},
+    Set{Species::Snorlax, {BodySlam, Earthquake, HyperBeam, SelfDestruct}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {Reflect, SeismicToss, SoftBoiled, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, MegaDrain, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, HyperBeam, Reflect, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, LovelyKiss, Psychic, Rest}},
+    Set{Species::Alakazam, {Psychic, Recover, SeismicToss, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, Reflect, SoftBoiled, Thunderbolt}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {Amnesia, Blizzard, BodySlam, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Starmie, {Blizzard, Psychic, Recover, ThunderWave}},
+    Set{Species::Chansey, {IceBeam, SoftBoiled, Thunderbolt, ThunderWave}},
+    Set{Species::Exeggutor, {DoubleEdge, Explosion, Psychic, SleepPowder}},
+    Set{Species::Gengar, {Explosion, Hypnosis, NightShade, Thunderbolt}},
+    Set{Species::Snorlax, {Amnesia, Blizzard, BodySlam, Rest}},
+    Set{Species::Tauros, {Blizzard, BodySlam, Earthquake, HyperBeam}}
+},
+std::array<Set, 6>{
+    Set{Species::Jynx, {Blizzard, Counter, LovelyKiss, Psychic}},
+    Set{Species::Alakazam, {Counter, Psychic, Recover, ThunderWave}},
+    Set{Species::Exeggutor, {Explosion, HyperBeam, Psychic, SleepPowder}},
+    Set{Species::Snorlax, {BodySlam, Counter, SelfDestruct, Surf}},
+    Set{Species::Tauros, {Blizzard, BodySlam, HyperBeam, Thunderbolt}},
+    Set{Species::Zapdos, {Agility, DrillPeck, Thunderbolt, ThunderWave}}
+},
+};
+
+} // namespace SampleTeams
+

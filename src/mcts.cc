@@ -1,5 +1,4 @@
 #include <battle/battle.h>
-#include <battle/sides.h>
 #include <battle/util.h>
 
 #include <pi/exp3.h>
