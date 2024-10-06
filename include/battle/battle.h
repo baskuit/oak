@@ -92,8 +92,9 @@ public:
     _options_data.set();
   }
 
+  // TODO check that this works correctly with chance/options
   Battle(const Battle &other)
-      : _battle{other._battle}, _result{other._result}, _rows{other._rows},
+      : _battle{other._battle}, _options_data{other._options_data}, _result{other._result}, _rows{other._rows},
         _cols{other._cols} {
     std::copy(other.row_actions.begin(), other.row_actions.begin() + _rows,
               row_actions.begin());
@@ -102,9 +103,9 @@ public:
     // not required to copy log buffer for search - even if they are used as the
     // obs()
     if constexpr (log_size > 0) {
-      std::copy(other._options_data.log_buffer,
-                other._options_data.log_buffer + log_size,
-                _options_data.log_buffer);
+      // std::copy(other._options_data.log_buffer,
+      //           other._options_data.log_buffer + log_size,
+      //           _options_data.log_buffer);
     }
     if constexpr (chance) {
       // pkmn_gen1_chance_options chance_options;
