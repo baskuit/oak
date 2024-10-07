@@ -33,22 +33,22 @@ template <> struct OptionsData<0, true> {
 
 template <size_t log_size> struct OptionsData<log_size, false> {
   pkmn_gen1_battle_options options;
-  uint8_t log_buffer[log_size];
+  std::array<uint8_t, log_size> log_buffer;
   void set() noexcept {
-    const pkmn_gen1_log_options log_options{.buf = log_buffer, .len = log_size};
+    const pkmn_gen1_log_options log_options{.buf = log_buffer.data(), .len = log_size};
     pkmn_gen1_battle_options_set(&options, &log_options, nullptr, nullptr);
   }
   using Obs = std::array<uint8_t, log_size>;
   const Obs &obs() const noexcept {
-    return *reinterpret_cast<Obs *>(log_buffer);
+    return log_buffer;
   }
 };
 
 template <size_t log_size> struct OptionsData<log_size, true> {
   pkmn_gen1_battle_options options;
-  uint8_t log_buffer[log_size];
+  std::array<uint8_t, log_size> log_buffer;
   void set() noexcept {
-    const pkmn_gen1_log_options log_options{.buf = log_buffer, .len = log_size};
+    const pkmn_gen1_log_options log_options{.buf = log_buffer.data(), .len = log_size};
     pkmn_gen1_chance_options chance_options{};
     pkmn_rational_init(&chance_options.probability);
     pkmn_gen1_battle_options_set(&options, &log_options, &chance_options,
@@ -209,3 +209,7 @@ public:
 
 // using ClientBattle = Battle<256, false, false>;
 // using SearchBattle = Battle<0, true, true>;
+
+// no log, or chance needed since we use abstact for state identification
+// this also means we don't have to clamp damage rolls either
+// therefore we don't need

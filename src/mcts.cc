@@ -6,6 +6,7 @@
 #include <pi/mcts.h>
 #include <pi/pgame.h>
 #include <pi/tree.h>
+#include <pi/abstract.h>
 
 #include <model/monte-carlo-model.h>
 
@@ -120,6 +121,7 @@ int all_1v1(int argc, char **argv) {
                 << " rolling average: " << output.rolling_average_value
                 << std::endl;
       std::cout << "average depth: " << output.average_depth << std::endl;
+      return 0;
     }
   }
   return 0;

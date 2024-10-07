@@ -52,6 +52,29 @@ struct uint24_t_test {
   }
 };
 
+// template <bool keep_selections>
+// struct BaseData;
+
+// template <>
+// struct BaseData<false>
+// {
+//   std::array<float, 9> row_gains;
+//   std::array<float, 9> col_gains;
+//   uint8_t _rows;
+//   uint8_t _cols;
+// };
+
+// template <>
+// struct BaseData<true>
+// {
+//   std::array<float, 9> row_gains;
+//   std::array<float, 9> col_gains;
+//   std::array<uint24_t, 9> row_visits;
+//   std::array<uint24_t, 9> col_visits;
+//   uint8_t _rows;
+//   uint8_t _cols;
+// };
+
 #pragma pack(push, 1)
 class JointBanditData {
   // private:

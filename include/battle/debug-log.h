@@ -32,7 +32,7 @@ template <size_t log_size = 64> struct DebugLog {
     state.apply_actions(p1_action, p2_action);
     frames.emplace_back();
     auto *frame_data = frames.back().data();
-    memcpy(frame_data, state.options_data().log_buffer, log_size);
+    memcpy(frame_data, state.options_data().log_buffer.data(), log_size);
 
     memcpy(frame_data + log_size, state.battle().bytes, PKMN_GEN1_BATTLE_SIZE);
     frame_data[header_size] = state.result();
