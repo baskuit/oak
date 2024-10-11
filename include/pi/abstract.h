@@ -52,7 +52,7 @@ struct Bench {
       : hp{get_hp_bucket(bytes)}, status{bytes[20]} {}
 };
 
-namespace BenchTest{
+namespace BenchTest {
 constexpr std::array<uint8_t, 24> mon{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                       0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
 constexpr std::array<uint8_t, 24> mon_low{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -62,7 +62,7 @@ constexpr std::array<uint8_t, 24> mon_kod{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 static_assert(Bench{mon.data()}.hp == HP::SEVEN);
 static_assert(Bench{mon_low.data()}.hp == HP::ONE);
 static_assert(Bench{mon_kod.data()}.hp == HP::KO);
-};
+}; // namespace BenchTest
 
 constexpr int8_t stat_log_ratio(uint16_t current, uint16_t base) {
   const float f = std::log(4 * current / base);
