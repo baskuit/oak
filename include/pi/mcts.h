@@ -88,18 +88,17 @@ private:
 
     // do bandit
     pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result), choices.data(), PKMN_GEN1_MAX_CHOICES);
-    const auto p1_index = node.stats.select(outcome, rows);
-    const pkmn_choice c1 = choices[p1_index];
+    node.stats.select(outcome, rows);
+    const auto c1 = choices[outcome.p1_index];
     pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2, pkmn_result_p2(result), choices.data(), PKMN_GEN1_MAX_CHOICES);
-    const auto p2_index = node.stats.select(outcome, cols);
-    const pkmn_choice c2 = choices[p2_index];
+    node.stats.select(outcome, cols);
+    const auto c2 = choices[outcome.p2_index];
 
     pkmn_gen1_battle_update(battle, c1, c2, &options);
+    const auto* chance_actions = pkmn_gen1_battle_options_chance_durations(&options);
+    const auto& obs = *std::bit_cast<std::array<uint8_t, 16> *>(chance_actions->bytes);
 
-    // 
-    const pkmn_gen1_chance_actions* chance_actions = pkmn_gen1_battle_options_chance_durations(&options);
-
-    const auto *child = node(p1_index, p2_index, chance_actions);
+    const auto *child = node(outcome.p1_index, outcome.p2_index, obs);
     const auto value = run_iteration(prng, eval, child, battle, result, depth + 1);
 
     return value;

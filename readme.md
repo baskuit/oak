@@ -1,6 +1,6 @@
 # About
 
-This repo is firstly a combination of computer search with `libpkmn`. It contains a C++ wrapper and utilities to make experimentation easier.
+This repo is firstly a combination of computer search with `libpkmn`.
 
 # Scope
 

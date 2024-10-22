@@ -13,23 +13,23 @@ namespace Exp3 {
 struct uint24_t {
   std::array<uint8_t, 3> _data;
 
-  uint24_t() = default;
+  constexpr uint24_t() = default;
 
-  uint24_t(uint32_t value) {
+  constexpr uint24_t(uint32_t value) noexcept {
     _data[0] = value & 0xFF;
     _data[1] = (value >> 8) & 0xFF;
     _data[2] = (value >> 16) & 0xFF;
   }
 
-  operator uint32_t() const noexcept {
+  constexpr operator uint32_t() const noexcept {
     return (static_cast<uint32_t>(_data[0]) |
             (static_cast<uint32_t>(_data[1]) << 8) |
             (static_cast<uint32_t>(_data[2]) << 16));
   }
 
-  uint24_t &operator++() noexcept {
+  constexpr uint24_t &operator++() noexcept {
     uint32_t value = static_cast<uint32_t>(*this) + 1;
-    *this = uint24_t(value); // Wrap around if needed
+    *this = uint24_t(value);
     return *this;
   }
 };
@@ -38,87 +38,60 @@ struct uint24_t {
 struct uint24_t_test {
   static_assert(sizeof(uint24_t) == 3);
 
-  uint24_t_test() {
-    uint24_t a{};
-    assert(static_cast<uint32_t>(a) == 0);
-    ++a;
-    assert(static_cast<uint32_t>(a) == 1);
-
-    uint24_t b{};
-    for (int i = 0; i < 1 << 24; ++i) {
-      ++b;
+  static consteval uint24_t overflow () {
+    uint24_t x{};
+    for (size_t i = 0; i < (1 << 24); ++i) {
+      ++x;
     }
-    assert(static_cast<uint32_t>(b) == 0);
+    return x;
   }
+  static_assert(static_cast<uint32_t>(overflow()) == 0);
 };
-
-// template <bool keep_selections>
-// struct BaseData;
-
-// template <>
-// struct BaseData<false>
-// {
-//   std::array<float, 9> row_gains;
-//   std::array<float, 9> col_gains;
-//   uint8_t _rows;
-//   uint8_t _cols;
-// };
-
-// template <>
-// struct BaseData<true>
-// {
-//   std::array<float, 9> row_gains;
-//   std::array<float, 9> col_gains;
-//   std::array<uint24_t, 9> row_visits;
-//   std::array<uint24_t, 9> col_visits;
-//   uint8_t _rows;
-//   uint8_t _cols;
-// };
 
 #pragma pack(push, 1)
 class JointBanditData {
   // private:
 public:
-  std::array<float, 9> row_gains;
-  std::array<float, 9> col_gains;
-  std::array<uint24_t, 9> row_visits;
-  std::array<uint24_t, 9> col_visits;
+  std::array<float, 9> p1_gains;
+  std::array<float, 9> p2_gains;
+  std::array<uint24_t, 9> p1_visits;
+  std::array<uint24_t, 9> p2_visits;
   uint8_t _rows;
   uint8_t _cols;
 
 public:
   struct Outcome {
     float value;
-    float row_mu;
-    float col_mu;
-    uint8_t row_idx;
-    uint8_t col_idx;
+    float p1_mu;
+    float p2_mu;
+    uint8_t p1_index;
+    uint8_t p2_index;
   };
 
   void init(auto rows, auto cols) {
     _rows = rows;
     _cols = cols;
-    std::fill(row_gains.begin(), row_gains.begin() + rows, 0);
-    std::fill(row_visits.begin(), row_visits.begin() + rows, uint24_t{});
-    std::fill(col_gains.begin(), col_gains.begin() + cols, 0);
-    std::fill(col_visits.begin(), col_visits.begin() + cols, uint24_t{});
+    std::fill(p1_gains.begin(), p1_gains.begin() + rows, 0);
+    std::fill(p1_visits.begin(), p1_visits.begin() + rows, uint24_t{});
+    std::fill(p2_gains.begin(), p2_gains.begin() + cols, 0);
+    std::fill(p2_visits.begin(), p2_visits.begin() + cols, uint24_t{});
   }
 
   bool is_init() const noexcept { return _rows != 0; }
 
   template <typename Outcome> void update(const Outcome &outcome) noexcept {
-    ++row_visits[outcome.row_idx];
-    ++col_visits[outcome.col_idx];
-    if ((row_gains[outcome.row_idx] += outcome.value / outcome.row_mu) >= 0) {
-      const auto max = row_gains[outcome.row_idx];
-      for (auto &v : row_gains) {
+    ++p1_visits[outcome.p1_index];
+    ++p2_visits[outcome.p2_index];
+    if ((p1_gains[outcome.p1_index] += outcome.value / outcome.p1_mu) >= 0) {
+      const auto max = p1_gains[outcome.p1_index];
+      for (auto &v : p1_gains) {
         v -= max;
       }
     }
-    if ((col_gains[outcome.col_idx] += (1 - outcome.value) / outcome.col_mu) >=
+    if ((p2_gains[outcome.p2_index] += (1 - outcome.value) / outcome.p2_mu) >=
         0) {
-      const auto max = col_gains[outcome.col_idx];
-      for (auto &v : col_gains) {
+      const auto max = p2_gains[outcome.p2_index];
+      for (auto &v : p2_gains) {
         v -= max;
       }
     }
@@ -128,37 +101,35 @@ public:
   void select(PRNG &device, Outcome &outcome) const noexcept {
     static const float gamma = .03f;
     static const float one_minus_gamma = .97f;
-    std::array<float, 9> row_forecast{};
-    std::array<float, 9> col_forecast{};
-
+    std::array<float, 9> forecast{};
     if (_rows == 1) {
-      outcome.row_idx = 0;
-      outcome.row_mu = 1;
+      outcome.p1_index = 0;
+      outcome.p1_mu = 1;
     } else {
       const float eta{gamma / _rows};
-      softmax(row_forecast, row_gains, _rows, eta);
-      std::transform(row_forecast.begin(), row_forecast.begin() + _rows,
-                     row_forecast.begin(), [eta](const float value) {
+      softmax(forecast, p1_gains, _rows, eta);
+      std::transform(forecast.begin(), forecast.begin() + _rows,
+                     forecast.begin(), [eta](const float value) {
                        return one_minus_gamma * value + eta;
                      });
-      outcome.row_idx = device.sample_pdf(row_forecast);
-      outcome.row_mu = row_forecast[outcome.row_idx];
+      outcome.p1_index = device.sample_pdf(forecast);
+      outcome.p1_mu = forecast[outcome.p1_index];
     }
     if (_cols == 1) {
-      outcome.col_idx = 0;
-      outcome.col_mu = 1;
+      outcome.p2_index = 0;
+      outcome.p2_mu = 1;
     } else {
       const float eta{gamma / _cols};
-      softmax(col_forecast, col_gains, _cols, eta);
-      std::transform(col_forecast.begin(), col_forecast.begin() + _cols,
-                     col_forecast.begin(), [eta](const float value) {
+      softmax(forecast, p2_gains, _cols, eta);
+      std::transform(forecast.begin(), forecast.begin() + _cols,
+                     forecast.begin(), [eta](const float value) {
                        return one_minus_gamma * value + eta;
                      });
-      outcome.col_idx = device.sample_pdf(col_forecast);
-      outcome.col_mu = col_forecast[outcome.col_idx];
+      outcome.p2_index = device.sample_pdf(forecast);
+      outcome.p2_mu = forecast[outcome.p2_index];
     }
-    assert(outcome.row_idx < _rows);
-    assert(outcome.col_idx < _cols);
+    assert(outcome.p1_index < _rows);
+    assert(outcome.p2_index < _cols);
   }
 
 private:
