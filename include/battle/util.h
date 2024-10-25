@@ -12,7 +12,7 @@
 #include <battle/data/data.h>
 
 namespace Names {
-static constexpr std::string MOVE_STRING[166]{
+constexpr std::string MOVE_STRING[166]{
     "None",         "Pound",        "KarateChop",  "DoubleSlap",
     "CometPunch",   "MegaPunch",    "PayDay",      "FirePunch",
     "IcePunch",     "ThunderPunch", "Scratch",     "ViseGrip",
@@ -56,11 +56,11 @@ static constexpr std::string MOVE_STRING[166]{
     "Conversion",   "TriAttack",    "SuperFang",   "Slash",
     "Substitute",   "Struggle"};
 
-static constexpr std::string move_string(const Data::Moves move) {
+constexpr std::string move_string(const Data::Moves move) {
   return MOVE_STRING[static_cast<uint8_t>(move)];
 }
 
-static constexpr std::string SPECIES_STRING[152]{
+constexpr std::string SPECIES_STRING[152]{
     "None",       "Bulbasaur",  "Ivysaur",    "Venusaur",   "Charmander",
     "Charmeleon", "Charizard",  "Squirtle",   "Wartortle",  "Blastoise",
     "Caterpie",   "Metapod",    "Butterfree", "Weedle",     "Kakuna",
@@ -93,7 +93,7 @@ static constexpr std::string SPECIES_STRING[152]{
     "Zapdos",     "Moltres",    "Dratini",    "Dragonair",  "Dragonite",
     "Mewtwo",     "Mew"};
 
-static constexpr std::string species_string(const Data::Species species) {
+constexpr std::string species_string(const Data::Species species) {
   return SPECIES_STRING[static_cast<uint8_t>(species)];
 }
 
