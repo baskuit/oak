@@ -51,14 +51,12 @@ target_link_libraries(main PRIVATE libpkmn_client pinyon)
 # target_link_libraries(teamgen PRIVATE libpkmn)
 # target_link_libraries(teamgen PRIVATE pinyon)
 
-# add_executable(mcts src/mcts.cc)
-# add_dependencies(mcts build_zig_lib)
-# target_include_directories(mcts PRIVATE
-#   ${CMAKE_CURRENT_SOURCE_DIR}/include
-#   ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
-# )
-# target_link_libraries(mcts PRIVATE libpkmn)
-# target_link_libraries(mcts PRIVATE pinyon)
+add_executable(mcts src/mcts.cc)
+add_dependencies(mcts build_zig_lib)
+target_include_directories(mcts PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(mcts PRIVATE libpkmn_client pinyon)
 
 # add_executable(oak-test src/test.cc)
 # add_dependencies(oak-test build_zig_lib)

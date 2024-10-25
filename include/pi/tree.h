@@ -18,15 +18,17 @@ namespace Tree {
 template <typename BanditData, typename Obs> class Node {
 private:
   using ChanceMap = std::map<std::tuple<uint8_t, uint8_t, Obs>,
-                          std::unique_ptr<Node<BanditData, Obs>>>;
+                             std::unique_ptr<Node<BanditData, Obs>>>;
   BanditData _data;
   ChanceMap _map;
 
 public:
-  const auto &data() const noexcept { return _data; }
-  auto &data() noexcept { return _data; }
+  const auto &stats() const noexcept { return _data; }
+  auto &stats() noexcept { return _data; }
 
-  void init(auto p1_choices, auto p2_choices) noexcept { _data.init(p1_choices, p2_choices); }
+  void init(auto p1_choices, auto p2_choices) noexcept {
+    _data.init(p1_choices, p2_choices);
+  }
 
   bool is_init() const noexcept { return _data.is_init(); }
 

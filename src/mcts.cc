@@ -102,25 +102,27 @@ int all_1v1(int argc, char **argv) {
       Types::Node node{};
       MCTS mcts{};
       std::cout << set_a_str << " vs " << set_b_str << std::endl;
-      const auto output = mcts.run(iterations, device, battle, model, &node);
+      pkmn_result result{};
+      pkmn_gen1_chance_durations durations{};
+      mcts.run(iterations, device, node, &battle.battle(), result, &durations);
 
-      for (int i = 0; i < battle.rows(); ++i) {
-        std::cout << side_choice_string(battle.battle().bytes,
-                                        battle.row_actions[i])
-                  << " : " << output.row_strategy[i] << ", ";
-      }
-      std::cout << std::endl;
+      // for (int i = 0; i < battle.rows(); ++i) {
+      //   std::cout << side_choice_string(battle.battle().bytes,
+      //                                   battle.row_actions[i])
+      //             << " : " << output.row_strategy[i] << ", ";
+      // }
+      // std::cout << std::endl;
 
-      for (int i = 0; i < battle.cols(); ++i) {
-        std::cout << side_choice_string(battle.battle().bytes + 184,
-                                        battle.col_actions[i])
-                  << " : " << output.col_strategy[i] << ", ";
-      }
-      std::cout << std::endl;
-      std::cout << "average value: " << output.average_value
-                << " rolling average: " << output.rolling_average_value
-                << std::endl;
-      std::cout << "average depth: " << output.average_depth << std::endl;
+      // for (int i = 0; i < battle.cols(); ++i) {
+      //   std::cout << side_choice_string(battle.battle().bytes + 184,
+      //                                   battle.col_actions[i])
+      //             << " : " << output.col_strategy[i] << ", ";
+      // }
+      // std::cout << std::endl;
+      // std::cout << "average value: " << output.average_value
+      //           << " rolling average: " << output.rolling_average_value
+      //           << std::endl;
+      // std::cout << "average depth: " << output.average_depth << std::endl;
       return 0;
     }
   }
