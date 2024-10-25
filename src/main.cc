@@ -4,7 +4,6 @@
 #include <types/random.h>
 #include <types/vector.h>
 
-#include <battle/battle.h>
 #include <battle/chance.h>
 #include <battle/data/data.h>
 #include <battle/debug-log.h>

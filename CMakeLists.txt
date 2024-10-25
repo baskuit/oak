@@ -35,12 +35,12 @@ add_subdirectory(extern/pinyon)
 
 add_custom_target(build_zig_lib ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/client/libpkmn-showdown.a)
 
-add_executable(main src/main.cc)
-add_dependencies(main build_zig_lib)
-target_include_directories(main PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-target_link_libraries(main PRIVATE libpkmn_client pinyon)
+# add_executable(main src/main.cc)
+# add_dependencies(main build_zig_lib)
+# target_include_directories(main PRIVATE
+#   ${CMAKE_CURRENT_SOURCE_DIR}/include
+# )
+# target_link_libraries(main PRIVATE libpkmn_client pinyon)
 
 # add_executable(teamgen src/teamgen.cc)
 # add_dependencies(teamgen build_zig_lib)
