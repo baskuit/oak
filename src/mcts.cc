@@ -4,10 +4,9 @@
 
 #include <pi/exp3.h>
 #include <pi/mcts.h>
-#include <pi/pgame.h>
 #include <pi/tree.h>
-#include <pi/abstract.h>
 
+#include <types/random.h>
 #include <model/monte-carlo-model.h>
 
 #include <iostream>

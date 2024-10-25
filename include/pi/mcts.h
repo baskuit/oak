@@ -11,8 +11,6 @@
 
 #include <types/random.h>
 
-#define size_t int
-
 namespace offset {
 constexpr auto seed = 376;
 };

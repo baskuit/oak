@@ -37,7 +37,7 @@ public:
   };
 
   Node *operator()(auto p1_index, auto p2_index, auto obs) {
-    auto &node = *_map[{p1_index, p2_index, obs}];
+    auto &node = _map[{p1_index, p2_index, obs}];
     if (!node) {
       node = std::make_unique<Node<BanditData, Obs>>();
     }
