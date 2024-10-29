@@ -12,7 +12,7 @@
 #include <battle/data/data.h>
 
 namespace Names {
-static constexpr std::string MOVE_STRING[166]{
+constexpr std::array<std::string, 166> MOVE_STRING{
     "None",         "Pound",        "KarateChop",  "DoubleSlap",
     "CometPunch",   "MegaPunch",    "PayDay",      "FirePunch",
     "IcePunch",     "ThunderPunch", "Scratch",     "ViseGrip",
@@ -56,11 +56,11 @@ static constexpr std::string MOVE_STRING[166]{
     "Conversion",   "TriAttack",    "SuperFang",   "Slash",
     "Substitute",   "Struggle"};
 
-static constexpr std::string move_string(const Data::Moves move) {
+constexpr std::string move_string(const Data::Moves move) {
   return MOVE_STRING[static_cast<uint8_t>(move)];
 }
 
-static constexpr std::string SPECIES_STRING[152]{
+constexpr std::array<std::string, 152> SPECIES_STRING{
     "None",       "Bulbasaur",  "Ivysaur",    "Venusaur",   "Charmander",
     "Charmeleon", "Charizard",  "Squirtle",   "Wartortle",  "Blastoise",
     "Caterpie",   "Metapod",    "Butterfree", "Weedle",     "Kakuna",
@@ -93,7 +93,7 @@ static constexpr std::string SPECIES_STRING[152]{
     "Zapdos",     "Moltres",    "Dratini",    "Dragonair",  "Dragonite",
     "Mewtwo",     "Mew"};
 
-static constexpr std::string species_string(const Data::Species species) {
+constexpr std::string species_string(const Data::Species species) {
   return SPECIES_STRING[static_cast<uint8_t>(species)];
 }
 
@@ -141,12 +141,32 @@ constexpr std::string side_choice_string(const uint8_t *side,
 }
 
 constexpr std::string buffer_to_string(const uint8_t *const buf, int n) {
-  std::stringstream stream{};
-  for (int i = 0; i < n - 1; ++i) {
-    stream << std::to_string(static_cast<int>(buf[i])) << ' ';
+  std::string result;
+  for (int i = 0; i < n; ++i) {
+    if (i > 0) {
+      result += ' ';
+    }
+    int value = static_cast<int>(buf[i]);
+    char temp[4] = {};
+    int len = 0;
+
+    // Convert integer to string representation without to_string
+    if (value == 0) {
+      temp[len++] = '0';
+    } else {
+      int temp_val = value;
+      while (temp_val > 0) {
+        temp[len++] = '0' + (temp_val % 10);
+        temp_val /= 10;
+      }
+      // Reverse the characters in place
+      for (int j = 0; j < len / 2; ++j) {
+        std::swap(temp[j], temp[len - j - 1]);
+      }
+    }
+    result.append(temp, len);
   }
-  stream << std::to_string(static_cast<int>(buf[n - 1]));
-  return stream.str();
+  return result;
 }
 
 // maybe pinyon this, its basically a chance node
