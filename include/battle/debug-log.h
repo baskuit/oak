@@ -18,29 +18,31 @@ template <size_t log_size = 64> struct DebugLog {
   Header header;
   std::vector<Frame> frames;
 
-  template <typename State> void set_header(const State &state) {
+  void set_header(const pkmn_gen1_battle &battle) {
     header[0] = 1;
     header[1] = 1;
     header[2] = log_size % 256;
     header[3] = log_size / 256;
-    memcpy(header.data() + 4, state.battle().bytes, PKMN_GEN1_BATTLE_SIZE);
+    memcpy(header.data() + 4, battle.bytes, PKMN_GEN1_BATTLE_SIZE);
   }
 
-  template <typename State>
-  void apply_actions(State &state, pkmn_choice p1_action,
-                     pkmn_choice p2_action) {
-    state.apply_actions(p1_action, p2_action);
+  void update_battle(
+    pkmn_gen1_battle *battle,
+    pkmn_gen1_battle_options *options,
+    pkmn_choice p1_choice, pkmn_choice p2_choice) {
+
     frames.emplace_back();
-    auto *frame_data = frames.back().data();
-    memcpy(frame_data, state.options_data().log_buffer.data(), log_size);
+    pkmn_gen1_log_options log_options{frames.back().data(), log_size};
+    pkmn_gen1_battle_options_set(options, &log_options, nullptr, nullptr);
 
-    memcpy(frame_data + log_size, state.battle().bytes, PKMN_GEN1_BATTLE_SIZE);
-    frame_data[header_size] = state.result();
-    frame_data[header_size + 1] = p1_action;
-    frame_data[header_size + 2] = p2_action;
+    auto result = pkmn_gen1_battle_update(battle, p1_choice, p2_choice, options);
+
+    frame_data[header_size] = result;
+    frame_data[header_size + 1] = p1_choice;
+    frame_data[header_size + 2] = p2_choice;
   }
 
-  void save_data_to_path(std::string path) const {
+  void save_data_to_path(std::string path = "") const {
     if (path.empty()) {
       const uint8_t *battle_prng_bytes = frames[0].data() + 376;
       const uint64_t *seed =
@@ -58,13 +60,4 @@ template <size_t log_size = 64> struct DebugLog {
     file.close();
   }
 
-  template <typename State, typename PRNG>
-  void rollout_battle(State &state, PRNG &device) {
-    set_header(state);
-    while (!state.terminal()) {
-      state.get_actions();
-      apply_actions(state, state.row_actions[device.random_int(state.rows())],
-                    state.col_actions[device.random_int(state.cols())]);
-    }
-  }
 };
