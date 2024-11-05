@@ -28,41 +28,24 @@ function(build_libpkmn target dir extra_flags)
 endfunction()
 
 build_libpkmn(libpkmn_fast fast "-Doption=ebc=false -Doption=miss=false -Doption=advance=false")
-build_libpkmn(libpkmn_correct correct "-Doption=ebc=false" "-Doption=miss=false" "-Doption=advance=false" "-Dchance" "-Dcalc" "-Doption=key=true")
+build_libpkmn(libpkmn_chance chance "-Doption=ebc=false" "-Doption=miss=false" "-Doption=advance=false" "-Dchance" "-Dcalc" "-Doption=key=true")
 build_libpkmn(libpkmn_client client "-Doption=ebc=true" "-Doption=miss=true" "-Doption=advance=true" "-Dlog")
 
 add_subdirectory(extern/pinyon)
 
-add_custom_target(build_zig_lib ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/client/libpkmn-showdown.a)
+add_custom_target(build_chance ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/chance/libpkmn-showdown.a)
+add_custom_target(build_client ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/client/libpkmn-showdown.a)
 
-# add_executable(main src/main.cc)
-# add_dependencies(main build_zig_lib)
-# target_include_directories(main PRIVATE
-#   ${CMAKE_CURRENT_SOURCE_DIR}/include
-# )
-# target_link_libraries(main PRIVATE libpkmn_client pinyon)
-
-# add_executable(teamgen src/teamgen.cc)
-# add_dependencies(teamgen build_zig_lib)
-# target_include_directories(teamgen PRIVATE
-#   ${CMAKE_CURRENT_SOURCE_DIR}/include
-#   ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
-# )
-# target_link_libraries(teamgen PRIVATE libpkmn)
-# target_link_libraries(teamgen PRIVATE pinyon)
+add_executable(debug-log src/debug-log.cc)
+add_dependencies(debug-log build_client)
+target_include_directories(debug-log PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(debug-log PRIVATE libpkmn_client pinyon)
 
 add_executable(mcts src/mcts.cc)
-add_dependencies(mcts build_zig_lib)
+add_dependencies(mcts build_chance)
 target_include_directories(mcts PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_link_libraries(mcts PRIVATE libpkmn_client pinyon)
-
-# add_executable(oak-test src/test.cc)
-# add_dependencies(oak-test build_zig_lib)
-# target_include_directories(oak-test PRIVATE
-#   ${CMAKE_CURRENT_SOURCE_DIR}/include
-#   ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include
-# )
-# target_link_libraries(oak-test PRIVATE libpkmn)
-# target_link_libraries(oak-test PRIVATE pinyon)
+target_link_libraries(mcts PRIVATE libpkmn_chance pinyon)

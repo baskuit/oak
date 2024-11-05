@@ -26,17 +26,18 @@ template <size_t log_size = 64> struct DebugLog {
     memcpy(header.data() + 4, battle.bytes, PKMN_GEN1_BATTLE_SIZE);
   }
 
-  void update_battle(
-    pkmn_gen1_battle *battle,
-    pkmn_gen1_battle_options *options,
-    pkmn_choice p1_choice, pkmn_choice p2_choice) {
+  void update_battle(pkmn_gen1_battle *battle,
+                     pkmn_gen1_battle_options *options, pkmn_choice p1_choice,
+                     pkmn_choice p2_choice) {
 
     frames.emplace_back();
     pkmn_gen1_log_options log_options{frames.back().data(), log_size};
     pkmn_gen1_battle_options_set(options, &log_options, nullptr, nullptr);
 
-    auto result = pkmn_gen1_battle_update(battle, p1_choice, p2_choice, options);
+    auto result =
+        pkmn_gen1_battle_update(battle, p1_choice, p2_choice, options);
 
+    const auto *frame_data = frames.back().data();
     frame_data[header_size] = result;
     frame_data[header_size + 1] = p1_choice;
     frame_data[header_size + 2] = p2_choice;
@@ -59,5 +60,4 @@ template <size_t log_size = 64> struct DebugLog {
     }
     file.close();
   }
-
 };
