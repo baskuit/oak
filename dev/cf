@@ -1,0 +1,2 @@
+clang-format -i include/battle/*.h include/ii/*.h include/pi/*.h src/*.cc
+
