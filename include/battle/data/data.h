@@ -4,11 +4,15 @@
 #include <battle/data/sample-teams.h>
 #include <battle/data/species.h>
 #include <battle/data/types.h>
+#include <battle/data/offsets.h>
 
+#include <bit>
 #include <assert.h>
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
+
+#include <pkmn.h>
 
 namespace Data {
 
@@ -114,6 +118,14 @@ constexpr void init_side(const auto &side, uint8_t *bytes) noexcept {
   }
 }
 
+constexpr auto init_battle(const auto& p1, const auto &p2, uint64_t seed = 0x123445)
+{
+	pkmn_gen1_battle battle;
+	init_side(p1, battle.bytes);
+	init_side(p2, battle.bytes + Offsets::side);
+	*std::bit_cast<uint64_t *>(battle.bytes + Offsets::seed) = seed;
+	return battle;
+}
 static_assert(sizeof(Data::Species) == 1);
 static_assert(sizeof(Data::Moves) == 1);
 static_assert(sizeof(Data::Types) == 1);
