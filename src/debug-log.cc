@@ -21,6 +21,30 @@ int rollout_sample_teams_and_save_log(int argc, char **argv) {
 
   auto battle =
       Data::init_battle(SampleTeams::teams[p1], SampleTeams::teams[p2], seed);
+  pkmn_gen1_battle_options options{};
+
+  DebugLog<log_size> debug_log{};
+  debug_log.set_header(battle);
+
+  int turns = 0;
+  pkmn_result c1{};
+  pkmn_result c2{};
+  auto result = debug_log.update_battle(&battle, &options, c1, c2);
+  std::array<pkmn_choice, 9> choices{};
+  while (!pkmn_result_type(result)) {
+    const auto m = pkmn_gen1_battle_choices(
+        &battle, PKMN_PLAYER_P1, pkmn_result_p1(result), choices.data(),
+        PKMN_GEN1_MAX_CHOICES);
+    c1 = choices[battle.bytes[Offsets::seed] % m];
+    const auto n = pkmn_gen1_battle_choices(
+        &battle, PKMN_PLAYER_P2, pkmn_result_p2(result), choices.data(),
+        PKMN_GEN1_MAX_CHOICES);
+    c2 = choices[battle.bytes[Offsets::seed + 1] % n];
+    result = debug_log.update_battle(&battle, &options, c1, c2);
+    ++turns;
+  }
+
+  std::cout << "Played " << turns << " turns." << std::endl;
 
   return 0;
 }
