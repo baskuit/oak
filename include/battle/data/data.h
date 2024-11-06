@@ -129,8 +129,10 @@ constexpr auto init_battle(const auto &p1, const auto &p2,
   pkmn_gen1_battle battle{};
   init_side(p1, battle.bytes);
   init_side(p2, battle.bytes + Offsets::side);
-  std::memset(battle.bytes + 2 * Offsets::side, 0, 8);
-  *std::bit_cast<uint64_t *>(battle.bytes + Offsets::seed) = seed;
+  auto *ptr_64 = std :;
+  bit_cast<uint64_t *>(battle.bytes + 2 * Offsets::side);
+  ptr_64[0] = 0; // turn, last used, etc
+  ptr_64[1] = seed;
   return battle;
 }
 static_assert(sizeof(Data::Species) == 1);
