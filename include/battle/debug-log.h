@@ -11,7 +11,7 @@
 #include "./util.h"
 
 template <size_t log_size = 64> struct DebugLog {
-  static constexpr auto header_size = 4 + PKMN_GEN1_BATTLE_SIZE;
+  static constexpr auto header_size = 8 + PKMN_GEN1_BATTLE_SIZE;
   static constexpr auto frame_size = log_size + PKMN_GEN1_BATTLE_SIZE + 3;
 
   using Header = std::array<uint8_t, header_size>;
@@ -20,12 +20,16 @@ template <size_t log_size = 64> struct DebugLog {
   Header header;
   std::vector<Frame> frames;
 
-  void set_header(const pkmn_gen1_battle &battle) {
+  void set_header(const pkmn_gen1_battle *battle) {
     header[0] = 1;
     header[1] = 1;
     header[2] = log_size % 256;
     header[3] = log_size / 256;
-    memcpy(header.data() + 4, battle.bytes, PKMN_GEN1_BATTLE_SIZE);
+    header[4] = 0;
+    header[5] = 0;
+    header[6] = 0;
+    header[7] = 0;
+    memcpy(header.data() + 8, battle->bytes, PKMN_GEN1_BATTLE_SIZE);
   }
 
   pkmn_result update_battle(pkmn_gen1_battle *battle,
@@ -38,12 +42,14 @@ template <size_t log_size = 64> struct DebugLog {
     pkmn_gen1_battle_options_set(options, &log_options, nullptr, nullptr);
 
     auto result = pkmn_gen1_battle_update(battle, c1, c2, options);
+
     frame_data += log_size;
     std::memcpy(frame_data, battle->bytes, PKMN_GEN1_BATTLE_SIZE);
     frame_data += PKMN_GEN1_BATTLE_SIZE;
     frame_data[0] = result;
     frame_data[1] = c1;
     frame_data[2] = c2;
+
     return result;
   }
 
@@ -57,10 +63,8 @@ template <size_t log_size = 64> struct DebugLog {
     std::fstream file;
     file.open(path, std::ios::binary | std::ios::app);
     file.write(std::bit_cast<const char *>(header.data()), header_size);
-    std::cout << buffer_to_string(header.data(), header_size);
     for (const auto &frame : frames) {
       file.write(std::bit_cast<const char *>(frame.data()), frame_size);
-      std::cout << buffer_to_string(frame.data(), frame_size) << std::endl;
     }
     file.close();
   }

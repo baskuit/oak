@@ -27,9 +27,13 @@ function(build_libpkmn target dir extra_flags)
   target_include_directories(${target} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/extern/engine/zig-out/include)
 endfunction()
 
-build_libpkmn(libpkmn_fast fast "-Doption=ebc=false -Doption=miss=false -Doption=advance=false")
-build_libpkmn(libpkmn_chance chance "-Doption=ebc=false" "-Doption=miss=false" "-Doption=advance=false" "-Dchance" "-Dcalc" "-Doption=key=true")
-build_libpkmn(libpkmn_client client "-Doption=ebc=true" "-Doption=miss=true" "-Doption=advance=true" "-Dlog")
+set(fast_flags -Doption=ebc=false -Doption=miss=false -Doption=advance=false)
+set(chance_flags -Doption=ebc=false -Doption=miss=false -Doption=advance=false -Dchance -Dcalc -Doption=key=true)
+set(client_flags -Dlog)
+
+build_libpkmn(libpkmn_fast fast ${fast_flags})
+build_libpkmn(libpkmn_chance chance ${chance_flags})
+build_libpkmn(libpkmn_client client ${client_flags})
 
 add_subdirectory(extern/pinyon)
 

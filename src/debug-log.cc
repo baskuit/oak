@@ -5,7 +5,7 @@
 #include <battle/data/data.h>
 #include <battle/debug-log.h>
 
-int rollout_sample_teams_and_save_log(int argc, char **argv) {
+int rollout_sample_teams_and_stream_debug_log(int argc, char **argv) {
   constexpr size_t log_size{128};
   if (argc != 4) {
     std::cout
@@ -21,16 +21,16 @@ int rollout_sample_teams_and_save_log(int argc, char **argv) {
   auto battle =
       Data::init_battle(SampleTeams::teams[p1], SampleTeams::teams[p2], seed);
   pkmn_gen1_battle_options options{};
+  std::array<pkmn_choice, 9> choices{};
 
   DebugLog<log_size> debug_log{};
-  debug_log.set_header(battle);
+  debug_log.set_header(&battle);
   prng device{seed};
 
-  int turns = 0;
+  auto turns = 0;
   pkmn_choice c1{0};
   pkmn_choice c2{0};
   auto result = debug_log.update_battle(&battle, &options, c1, c2);
-  std::array<pkmn_choice, 9> choices{};
   while (!pkmn_result_type(result)) {
     const auto m = pkmn_gen1_battle_choices(
         &battle, PKMN_PLAYER_P1, pkmn_result_p1(result), choices.data(),
@@ -47,13 +47,19 @@ int rollout_sample_teams_and_save_log(int argc, char **argv) {
     ++turns;
   }
 
-  std::cout << "Played " << turns << " turns." << std::endl;
-
-  debug_log.save_data_to_path();
+  for (const char c : debug_log.header) {
+    std::cout << c;
+  }
+  for (const auto &frame : debug_log.frames) {
+    for (const char c : frame) {
+      std::cout << c;
+    }
+  }
+  std::cout << std::endl;
 
   return 0;
 }
 
 int main(int argc, char **argv) {
-  return rollout_sample_teams_and_save_log(argc, argv);
+  return rollout_sample_teams_and_stream_debug_log(argc, argv);
 }
