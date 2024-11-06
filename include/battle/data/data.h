@@ -117,11 +117,6 @@ constexpr void init_side(const auto &side, uint8_t *const bytes) noexcept {
   for (uint8_t i = 0; i < side.size(); ++i) {
     bytes[Offsets::order + i] = i + 1;
   }
-
-  for (int i = 0; i < Offsets::side; ++i) {
-    std::cout << static_cast<int>(bytes[i]) << ' ';
-  }
-  std::cout << std::endl;
 }
 
 constexpr auto init_battle(const auto &p1, const auto &p2,
@@ -129,8 +124,7 @@ constexpr auto init_battle(const auto &p1, const auto &p2,
   pkmn_gen1_battle battle{};
   init_side(p1, battle.bytes);
   init_side(p2, battle.bytes + Offsets::side);
-  auto *ptr_64 = std :;
-  bit_cast<uint64_t *>(battle.bytes + 2 * Offsets::side);
+  auto *ptr_64 = std::bit_cast<uint64_t *>(battle.bytes + 2 * Offsets::side);
   ptr_64[0] = 0; // turn, last used, etc
   ptr_64[1] = seed;
   return battle;

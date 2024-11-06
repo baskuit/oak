@@ -49,6 +49,8 @@ int rollout_sample_teams_and_save_log(int argc, char **argv) {
 
   std::cout << "Played " << turns << " turns." << std::endl;
 
+  debug_log.save_data_to_path();
+
   return 0;
 }
 
