@@ -93,7 +93,11 @@ int all_1v1(int argc, char **argv) {
 
       auto battle = Data::init_battle(std::vector<SampleTeams::Set>{set_a},
                                       std::vector<SampleTeams::Set>{set_b});
-      std::cout << set_b_str << std::endl;
+      MCTS search{};
+      auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
+      Types::Node node{};
+      pkmn_gen1_chance_durations durations{};
+      search.run(iterations, device, node, &battle, result, &durations);
     }
   }
   return 0;

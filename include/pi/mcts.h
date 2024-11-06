@@ -16,7 +16,7 @@ constexpr auto seed = 376;
 };
 
 class MCTS {
-private:
+public:
   pkmn_gen1_battle_options options;
   size_t total_nodes;
   size_t total_depth;
