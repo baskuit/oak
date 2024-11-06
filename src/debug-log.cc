@@ -2,7 +2,7 @@
 
 #include <types/random.h>
 
-#include <battle/data/data.h>
+#include <data/data.h>
 #include <battle/debug-log.h>
 
 int rollout_sample_teams_and_stream_debug_log(int argc, char **argv) {

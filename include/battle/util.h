@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <battle/data/data.h>
+#include <data/data.h>
 
 namespace Names {
 constexpr std::array<std::string, 166> MOVE_STRING{

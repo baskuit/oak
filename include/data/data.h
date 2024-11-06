@@ -1,10 +1,10 @@
 #pragma once
 
-#include <battle/data/moves.h>
-#include <battle/data/offsets.h>
-#include <battle/data/sample-teams.h>
-#include <battle/data/species.h>
-#include <battle/data/types.h>
+#include <data/moves.h>
+#include <data/offsets.h>
+#include <data/sample-teams.h>
+#include <data/species.h>
+#include <data/types.h>
 
 #include <assert.h>
 #include <bit>

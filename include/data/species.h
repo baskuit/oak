@@ -1,6 +1,6 @@
 #pragma once
 
-#include <battle/data/types.h>
+#include <data/types.h>
 
 #include <array>
 #include <cstddef>

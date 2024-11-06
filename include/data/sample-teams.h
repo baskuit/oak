@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <battle/data/moves.h>
-#include <battle/data/species.h>
+#include <data/moves.h>
+#include <data/species.h>
 
 #include <array>
 
