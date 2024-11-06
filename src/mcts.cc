@@ -91,24 +91,9 @@ int all_1v1(int argc, char **argv) {
       const auto set_b = sets[j];
       const auto set_b_str = Sets::set_string(set_b);
 
-      // for (int i = 0; i < battle.rows(); ++i) {
-      //   std::cout << side_choice_string(battle.battle().bytes,
-      //                                   battle.row_actions[i])
-      //             << " : " << output.row_strategy[i] << ", ";
-      // }
-      // std::cout << std::endl;
-
-      // for (int i = 0; i < battle.cols(); ++i) {
-      //   std::cout << side_choice_string(battle.battle().bytes + 184,
-      //                                   battle.col_actions[i])
-      //             << " : " << output.col_strategy[i] << ", ";
-      // }
-      // std::cout << std::endl;
-      // std::cout << "average value: " << output.average_value
-      //           << " rolling average: " << output.rolling_average_value
-      //           << std::endl;
-      // std::cout << "average depth: " << output.average_depth << std::endl;
-      return 0;
+      auto battle = Data::init_battle(std::vector<SampleTeams::Set>{set_a},
+                                      std::vector<SampleTeams::Set>{set_b});
+      std::cout << set_b_str << std::endl;
     }
   }
   return 0;
