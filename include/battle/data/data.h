@@ -1,13 +1,13 @@
 #pragma once
 
 #include <battle/data/moves.h>
+#include <battle/data/offsets.h>
 #include <battle/data/sample-teams.h>
 #include <battle/data/species.h>
 #include <battle/data/types.h>
-#include <battle/data/offsets.h>
 
-#include <bit>
 #include <assert.h>
+#include <bit>
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
@@ -62,7 +62,8 @@ constexpr std::array<uint16_t, 5> compute_stats(const auto &pokemon) noexcept {
   return stats;
 }
 
-constexpr void init_pokemon(const auto &pokemon, uint8_t *bytes) noexcept {
+constexpr void init_pokemon(const auto &pokemon,
+                            uint8_t *const bytes) noexcept {
   const auto species = pokemon.species;
   if (species == Species::None) {
     return;
@@ -103,28 +104,34 @@ constexpr void init_pokemon(const auto &pokemon, uint8_t *bytes) noexcept {
   }
 }
 
-constexpr void init_side(const auto &side, uint8_t *bytes) noexcept {
+constexpr void init_side(const auto &side, uint8_t *const bytes) noexcept {
   assert(side.size() > 0 && side.size() <= 6);
   std::memset(bytes, 0, 24 * 6);
+  auto i = 0;
   for (const auto &set : side) {
     assert(set.moves.size() <= 4);
-    init_pokemon(set, bytes);
-    bytes += 24;
+    init_pokemon(set, bytes + i * Offsets::pokemon);
+    ++i;
   }
-  std::memset(bytes + 176, 0, 6);
-  // TODO this breaks if you have None mon followed by a real one... prolly
-  for (auto i = 0; i < side.size(); ++i) {
-    bytes[176 + i] = i + 1;
+  std::memset(bytes + Offsets::order, 0, 6);
+  for (uint8_t i = 0; i < side.size(); ++i) {
+    bytes[Offsets::order + i] = i + 1;
   }
+
+  for (int i = 0; i < Offsets::side; ++i) {
+    std::cout << static_cast<int>(bytes[i]) << ' ';
+  }
+  std::cout << std::endl;
 }
 
-constexpr auto init_battle(const auto& p1, const auto &p2, uint64_t seed = 0x123445)
-{
-	pkmn_gen1_battle battle;
-	init_side(p1, battle.bytes);
-	init_side(p2, battle.bytes + Offsets::side);
-	*std::bit_cast<uint64_t *>(battle.bytes + Offsets::seed) = seed;
-	return battle;
+constexpr auto init_battle(const auto &p1, const auto &p2,
+                           uint64_t seed = 0x123445) {
+  pkmn_gen1_battle battle{};
+  init_side(p1, battle.bytes);
+  init_side(p2, battle.bytes + Offsets::side);
+  std::memset(battle.bytes + 2 * Offsets::side, 0, 8);
+  *std::bit_cast<uint64_t *>(battle.bytes + Offsets::seed) = seed;
+  return battle;
 }
 static_assert(sizeof(Data::Species) == 1);
 static_assert(sizeof(Data::Moves) == 1);
