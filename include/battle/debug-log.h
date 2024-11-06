@@ -8,6 +8,8 @@
 
 #include <pkmn.h>
 
+#include "./util.h"
+
 template <size_t log_size = 64> struct DebugLog {
   static constexpr auto header_size = 4 + PKMN_GEN1_BATTLE_SIZE;
   static constexpr auto frame_size = log_size + PKMN_GEN1_BATTLE_SIZE + 3;
@@ -47,16 +49,18 @@ template <size_t log_size = 64> struct DebugLog {
 
   void save_data_to_path(std::string path = "") const {
     if (path.empty()) {
-      const uint8_t *battle_prng_bytes = frames[0].data() + 376;
-      const uint64_t *seed = std::bit_cast<const uint64_t *>(battle_prng_bytes);
+      const auto *battle_prng_bytes = frames.front().data() + Offsets::seed;
+      const auto *seed = std::bit_cast<const uint64_t *>(battle_prng_bytes);
       path = (std::filesystem::current_path() / "logs" / std::to_string(*seed))
                  .string();
     }
     std::fstream file;
     file.open(path, std::ios::binary | std::ios::app);
     file.write(std::bit_cast<const char *>(header.data()), header_size);
+    std::cout << buffer_to_string(header.data(), header_size);
     for (const auto &frame : frames) {
       file.write(std::bit_cast<const char *>(frame.data()), frame_size);
+      std::cout << buffer_to_string(frame.data(), frame_size) << std::endl;
     }
     file.close();
   }
