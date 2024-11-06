@@ -27,22 +27,21 @@ template <size_t log_size = 64> struct DebugLog {
   }
 
   pkmn_result update_battle(pkmn_gen1_battle *battle,
-                            pkmn_gen1_battle_options *options,
-                            pkmn_choice p1_choice, pkmn_choice p2_choice) {
+                            pkmn_gen1_battle_options *options, pkmn_choice c1,
+                            pkmn_choice c2) {
 
     frames.emplace_back();
     auto *frame_data = frames.back().data();
     pkmn_gen1_log_options log_options{frame_data, log_size};
     pkmn_gen1_battle_options_set(options, &log_options, nullptr, nullptr);
 
-    auto result =
-        pkmn_gen1_battle_update(battle, p1_choice, p2_choice, options);
+    auto result = pkmn_gen1_battle_update(battle, c1, c2, options);
     frame_data += log_size;
     std::memcpy(frame_data, battle->bytes, PKMN_GEN1_BATTLE_SIZE);
     frame_data += PKMN_GEN1_BATTLE_SIZE;
     frame_data[0] = result;
-    frame_data[1] = p1_choice;
-    frame_data[2] = p2_choice;
+    frame_data[1] = c1;
+    frame_data[2] = c2;
     return result;
   }
 
