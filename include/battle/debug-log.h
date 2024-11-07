@@ -2,13 +2,15 @@
 
 #include <vector>
 
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
 
 #include <pkmn.h>
 
-#include "./util.h"
+#include <battle/util.h>
+#include <data/offsets.h>
 
 template <size_t log_size = 64> struct DebugLog {
   static constexpr auto header_size = 8 + PKMN_GEN1_BATTLE_SIZE;

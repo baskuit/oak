@@ -44,7 +44,7 @@ public:
     struct Output {};
   }
 
-private:
+public:
   float run_iteration(auto &prng, auto *node, pkmn_gen1_battle *battle,
                       pkmn_result result, size_t depth = 0) {
 
@@ -99,6 +99,7 @@ private:
     };
   }
 
+public:
   float init_stats_and_rollout(auto &stats, auto &prng,
                                pkmn_gen1_battle *battle, pkmn_result result) {
 

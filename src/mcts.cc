@@ -1,4 +1,7 @@
+#include <data/sample-teams.h>
+
 #include <battle/chance.h>
+#include <battle/init.h>
 #include <battle/util.h>
 
 #include <pi/exp3.h>
@@ -98,6 +101,9 @@ int all_1v1(int argc, char **argv) {
       Types::Node node{};
       pkmn_gen1_chance_durations durations{};
       search.run(iterations, device, node, &battle, result, &durations);
+      float value =
+          search.init_stats_and_rollout(node.stats(), device, &battle, result);
+      std::cout << set_a_str << ' ' << set_b_str << ' ' << value << std::endl;
     }
   }
   return 0;
