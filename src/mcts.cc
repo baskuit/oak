@@ -1,8 +1,8 @@
 #include <data/sample-teams.h>
+#include <data/strings.h>
 
 #include <battle/chance.h>
 #include <battle/init.h>
-#include <battle/util.h>
 
 #include <pi/exp3.h>
 #include <pi/mcts.h>

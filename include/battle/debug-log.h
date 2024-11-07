@@ -1,15 +1,13 @@
 #pragma once
 
-#include <vector>
-
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include <pkmn.h>
 
-#include <battle/util.h>
 #include <data/offsets.h>
 
 template <size_t log_size = 64> struct DebugLog {
@@ -27,11 +25,8 @@ template <size_t log_size = 64> struct DebugLog {
     header[1] = 1;
     header[2] = log_size % 256;
     header[3] = log_size / 256;
-    header[4] = 0;
-    header[5] = 0;
-    header[6] = 0;
-    header[7] = 0;
-    memcpy(header.data() + 8, battle->bytes, PKMN_GEN1_BATTLE_SIZE);
+    std::memset(header.data() + 4, 0, 4);
+    std::memcpy(header.data() + 8, battle->bytes, PKMN_GEN1_BATTLE_SIZE);
   }
 
   pkmn_result update_battle(pkmn_gen1_battle *battle,
