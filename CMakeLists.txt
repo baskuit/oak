@@ -28,7 +28,7 @@ function(build_libpkmn target dir extra_flags)
 endfunction()
 
 set(fast_flags -Doption=ebc=false -Doption=miss=false -Doption=advance=false)
-set(chance_flags -Doption=ebc=false -Doption=miss=false -Doption=advance=false -Dchance -Dcalc -Doption=key=true)
+set(chance_flags -Dchance -Doption=ebc=false -Doption=miss=false -Doption=advance=false -Dcalc -Doption=key=true)
 set(client_flags -Dlog)
 
 build_libpkmn(libpkmn_fast fast ${fast_flags})
