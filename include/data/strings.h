@@ -169,29 +169,3 @@ constexpr std::string buffer_to_string(const uint8_t *const buf, int n) {
   }
   return result;
 }
-
-// maybe pinyon this, its basically a chance node
-template <typename Key, typename Value> struct LinearScanMap {
-  std::vector<std::pair<Key, Value>> data;
-
-  Value &operator[](const Key &key) {
-    for (auto &pair : data) {
-      if (pair.first == key) {
-        return pair.second;
-      }
-    }
-    data.emplace_back(key, Value{});
-    return data.back().second;
-  }
-
-  const Value *at(const Key &key) const noexcept {
-    for (const auto &pair : data) {
-      if (pair.first == key) {
-        return &pair.second;
-      }
-    }
-    return nullptr;
-  }
-
-  constexpr auto size() const noexcept { return data.size(); }
-};
