@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <data/strings.h>
 #include <pi/exp3.h>
 
 #include <pkmn.h>
@@ -68,6 +69,8 @@ public:
           pkmn_gen1_battle_options_chance_actions(&options);
       const auto &obs =
           std::bit_cast<std::array<uint8_t, 16>>(chance_actions->bytes);
+
+      std::cout << "Obs: " << buffer_to_string(obs.data(), 16) << std::endl;
 
       auto *child = (*node)(outcome.p1_index, outcome.p2_index, obs);
       const auto value = run_iteration(prng, child, battle, result, depth + 1);

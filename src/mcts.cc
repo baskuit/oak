@@ -1,14 +1,12 @@
 #include <data/sample-teams.h>
 #include <data/strings.h>
 
-#include <battle/chance.h>
 #include <battle/init.h>
 
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>
 
-#include <model/monte-carlo-model.h>
 #include <types/random.h>
 
 #include <iostream>
@@ -104,6 +102,7 @@ int all_1v1(int argc, char **argv) {
       float value =
           search.init_stats_and_rollout(node.stats(), device, &battle, result);
       std::cout << set_a_str << ' ' << set_b_str << ' ' << value << std::endl;
+      return 0;
     }
   }
   return 0;
