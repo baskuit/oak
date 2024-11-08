@@ -9,7 +9,11 @@ int rollout_sample_teams_and_stream_debug_log(int argc, char **argv) {
   constexpr size_t log_size{128};
   if (argc != 4) {
     std::cout
-        << "Usage: provide two sample team indices [0 - 99] and a u64 seed."
+        << "Usage: provide two sample team indices [0 - 99] and a u64 seed.\n"
+        << "Debug log is piped via stdout e.g.:\n"
+        << "\t./build/debug-log 0 1 123456 | "
+           "./extern/engine/src/bin/pkmn-debug "
+           "> index.html"
         << std::endl;
     return 1;
   }
@@ -35,13 +39,11 @@ int rollout_sample_teams_and_stream_debug_log(int argc, char **argv) {
     const auto m = pkmn_gen1_battle_choices(
         &battle, PKMN_PLAYER_P1, pkmn_result_p1(result), choices.data(),
         PKMN_GEN1_MAX_CHOICES);
-    const auto i = device.random_int(m);
-    c1 = choices[i];
+    c1 = choices[device.random_int(m)];
     const auto n = pkmn_gen1_battle_choices(
         &battle, PKMN_PLAYER_P2, pkmn_result_p2(result), choices.data(),
         PKMN_GEN1_MAX_CHOICES);
-    const auto j = device.random_int(n);
-    c2 = choices[j];
+    c2 = choices[device.random_int(n)];
 
     result = debug_log.update_battle(&battle, &options, c1, c2);
     ++turns;
