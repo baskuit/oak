@@ -24,11 +24,35 @@ String utilities.
 ## /pi
 
 abstract.h
+
+Abstract:: defines structs that bucket similar states together by approximating hp, stats, etc.
+This means that states with only small continuous differences can be treated as the same.
+
+The headers below define two different kinds of perfect info search. The first is a provably correct approach that uses chance action 'keys' to keep track of states. The second is a fast approach that uses an imperfect hash and bandit algorithm.
+
 eval.h
+
+A hand crafted eval that uses precomputed 1v1 values and combines them into a crude full battle estimate TODO
+
 exp3.h
+
+`` is a 128 byte struct that holds joint Exp3 bandit data for both players. To manage this it uses 24bit integers for
+
 mcts.h
+
+Supports vanilla monte-carlo and eval.h for leaf value estimation.
+
 tree.h
+
+This structure stores all the search stats in a way that guarantees no "collisions". No two different histories will access the same stats.
+
+
 tt.h
 ucb.h
 
 ## /ii
+
+Imperfect info search is limited to IS-MCTS, basically. Out best hope currently is to quickly determinize the private observations of the acting player. This is particularly fast and accurate to do in `gen1randombattles`
+
+I don't want to write client code so I'm going to lean on @pkmn/client. Therefore there will be a simple struct clone of client observations here
+Then we just need methods to fill in the blanks with valid randbats teams
