@@ -69,4 +69,7 @@ consteval auto get_effectiveness(Types attacking, Types defending) noexcept {
   return TYPE_CHART[static_cast<uint8_t>(attacking)]
                    [static_cast<uint8_t>(defending)];
 }
+
+static_assert(sizeof(Types) == 1);
+
 } // namespace Data

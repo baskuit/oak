@@ -1772,4 +1772,6 @@ static constexpr std::array<uint8_t, 165> PP{
     10, // Struggle,
 };
 
+static_assert(sizeof(Moves) == 1);
+
 } // namespace Data

@@ -163,6 +163,8 @@ enum class Species : std::underlying_type_t<std::byte> {
   Mew
 };
 
+static_assert(sizeof(Species) == 1);
+
 struct SpeciesData {
   std::array<uint8_t, 5> base_stats;
   std::array<Types, 2> types;
