@@ -19,7 +19,7 @@ int rollout_sample_teams_and_stream_debug_log(int argc, char **argv) {
   uint64_t seed = std::atoi(argv[3]);
 
   auto battle =
-      Data::init_battle(SampleTeams::teams[p1], SampleTeams::teams[p2], seed);
+      Init::battle(SampleTeams::teams[p1], SampleTeams::teams[p2], seed);
   pkmn_gen1_battle_options options{};
   std::array<pkmn_choice, 9> choices{};
 

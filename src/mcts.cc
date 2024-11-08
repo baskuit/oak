@@ -83,17 +83,19 @@ int all_1v1(int argc, char **argv) {
 
   std::cout << "total sets: " << sets.size() << '\n' << std::endl;
 
+  const auto top = sets.begin() + 10;
+
   // iterate through all pairs and search the 1v1
   const auto n = sets.size();
-  for (auto i = 0; i < n; ++i) {
-    const auto set_a = sets[i];
+  for (auto i = sets.begin(); i != top; ++i) {
+    const auto set_a = *i;
     const auto set_a_str = Sets::set_string(set_a);
-    for (auto j = i + 1; j < n; ++j) {
-      const auto set_b = sets[j];
+    for (auto j = i + 1; j != top; ++j) {
+      const auto set_b = *j;
       const auto set_b_str = Sets::set_string(set_b);
 
-      auto battle = Data::init_battle(std::vector<SampleTeams::Set>{set_a},
-                                      std::vector<SampleTeams::Set>{set_b});
+      auto battle = Init::battle(std::vector<SampleTeams::Set>{set_a},
+                                 std::vector<SampleTeams::Set>{set_b});
       MCTS search{};
       auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
       Types::Node node{};
@@ -101,8 +103,8 @@ int all_1v1(int argc, char **argv) {
       search.run(iterations, device, node, &battle, result, &durations);
       float value =
           search.init_stats_and_rollout(node.stats(), device, &battle, result);
-      std::cout << set_a_str << ' ' << set_b_str << ' ' << value << std::endl;
-      return 0;
+      std::cout << set_a_str << " vs " << set_b_str << std::endl;
+      std::cout << value << std::endl;
     }
   }
   return 0;

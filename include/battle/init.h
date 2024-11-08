@@ -14,7 +14,11 @@
 
 #include <pkmn.h>
 
-namespace Data {
+namespace {
+using Data::Moves;
+using Data::PP;
+using Data::Species;
+using Data::SPECIES_DATA;
 
 constexpr auto get_types(const Species species) noexcept {
   return SPECIES_DATA[static_cast<uint8_t>(species) - 1].types;
@@ -79,7 +83,7 @@ constexpr void init_pokemon(const auto &pokemon,
   std::array<uint8_t, 5> dv, ev;
   for (const auto move : pokemon.moves) {
     move_bytes[0] = static_cast<uint8_t>(move);
-    move_bytes[1] = Data::get_max_pp(move);
+    move_bytes[1] = get_max_pp(move);
     move_bytes += 2;
   }
 
@@ -118,9 +122,11 @@ constexpr void init_side(const auto &side, uint8_t *const bytes) noexcept {
     bytes[Offsets::order + i] = i + 1;
   }
 }
+} // end anonymous namespace
 
-constexpr auto init_battle(const auto &p1, const auto &p2,
-                           uint64_t seed = 0x123445) {
+namespace Init {
+constexpr auto battle(const auto &p1, const auto &p2,
+                      uint64_t seed = 0x123445) {
   pkmn_gen1_battle battle{};
   init_side(p1, battle.bytes);
   init_side(p2, battle.bytes + Offsets::side);
@@ -129,11 +135,8 @@ constexpr auto init_battle(const auto &p1, const auto &p2,
   ptr_64[1] = seed;
   return battle;
 }
-static_assert(sizeof(Data::Species) == 1);
-static_assert(sizeof(Data::Moves) == 1);
-static_assert(sizeof(Data::Types) == 1);
-// static_assert(compute_stat(100, false) == 298);
-// static_assert(compute_stat(250, true) == 703);
-// static_assert(compute_stat(5, false) == 108);
+} // namespace Init
 
-}; // namespace Data
+static_assert(compute_stat(100, false) == 298);
+static_assert(compute_stat(250, true) == 703);
+static_assert(compute_stat(5, false) == 108);
