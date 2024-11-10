@@ -32,3 +32,10 @@ target_include_directories(mcts PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 target_link_libraries(mcts PRIVATE libpkmn_chance pinyon)
+
+add_executable(sleep src/sleep.cc)
+add_dependencies(sleep build_chance)
+target_include_directories(sleep PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(sleep PRIVATE libpkmn_chance pinyon)
