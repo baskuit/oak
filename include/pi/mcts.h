@@ -16,14 +16,13 @@ namespace offset {
 constexpr auto seed = 376;
 };
 
-class MCTS {
+template <bool debug_print = false> class MCTS {
 public:
   pkmn_gen1_battle_options options;
   size_t total_nodes;
   size_t total_depth;
   std::array<pkmn_choice, 9> choices;
 
-public:
   auto run(const auto iterations, auto &prng, auto &node,
            const pkmn_gen1_battle *const battle, pkmn_result result,
            const pkmn_gen1_chance_durations *const durations) {
@@ -45,7 +44,16 @@ public:
     struct Output {};
   }
 
-public:
+private:
+  void print(const auto data, size_t depth) {
+    if constexpr (!debug_print) {
+      return;
+    }
+
+    std::cout << std::string('\t', depth);
+    std::cout << data << std::endl;
+  }
+
   float run_iteration(auto &prng, auto *node, pkmn_gen1_battle *battle,
                       pkmn_result result, size_t depth = 0) {
 
@@ -63,6 +71,8 @@ public:
       pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2, pkmn_result_p2(result),
                                choices.data(), PKMN_GEN1_MAX_CHOICES);
       const auto c2 = choices[outcome.p2_index];
+
+      print("___", depth);
 
       pkmn_gen1_battle_update(battle, c1, c2, &options);
       const auto *chance_actions =
@@ -102,7 +112,6 @@ public:
     };
   }
 
-public:
   float init_stats_and_rollout(auto &stats, auto &prng,
                                pkmn_gen1_battle *battle, pkmn_result result) {
 
