@@ -39,6 +39,7 @@ public:
       pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
 
       run_iteration(prng, &node, &battle_copy, result);
+      print("", 0);
     }
 
     struct Output {};
@@ -49,8 +50,10 @@ private:
     if constexpr (!debug_print) {
       return;
     }
-
-    std::cout << std::string('\t', depth);
+    for (auto i = 0; i < depth; ++i) {
+      std::cout << '\t';
+    }
+    //   std::cout << std::string('\t', depth);
     std::cout << data << std::endl;
   }
 
@@ -58,12 +61,15 @@ private:
                       pkmn_result result, size_t depth = 0) {
 
     if (node->stats().is_init()) {
-      using Bandit = std::remove_reference<decltype(node->stats())>::type;
+      using Bandit = std::remove_reference_t<decltype(node->stats())>;
       using Outcome = typename Bandit::Outcome;
       Outcome outcome;
 
       // do bandit
       node->stats().select(prng, outcome);
+
+      auto visit_string = node->stats().visit_string();
+      print(visit_string, depth);
 
       pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
                                choices.data(), PKMN_GEN1_MAX_CHOICES);
@@ -72,7 +78,9 @@ private:
                                choices.data(), PKMN_GEN1_MAX_CHOICES);
       const auto c2 = choices[outcome.p2_index];
 
-      print("___", depth);
+      print("P1: " + side_choice_string(battle->bytes, c1) +
+                " P2: " + side_choice_string(battle->bytes + Offsets::side, c2),
+            depth);
 
       pkmn_gen1_battle_update(battle, c1, c2, &options);
       const auto *chance_actions =
@@ -80,20 +88,27 @@ private:
       const auto &obs =
           std::bit_cast<std::array<uint8_t, 16>>(chance_actions->bytes);
 
-      std::cout << "Obs: " << buffer_to_string(obs.data(), 16) << std::endl;
+      print("Obs: " + buffer_to_string(obs.data(), 16), depth);
 
       auto *child = (*node)(outcome.p1_index, outcome.p2_index, obs);
-      const auto value = run_iteration(prng, child, battle, result, depth + 1);
+      outcome.value = run_iteration(prng, child, battle, result, depth + 1);
 
-      return value;
+      node->stats().update(outcome);
+
+      print("value: " + std::to_string(outcome.value), depth);
+
+      return outcome.value;
     }
 
     total_depth += depth;
+
+    print("Node not initialized - maybe terminal", depth);
 
     switch (pkmn_result_type(result)) {
     case PKMN_RESULT_NONE:
       [[likely]] {
         ++total_nodes;
+        print("Initializing node", depth);
         return init_stats_and_rollout(node->stats(), prng, battle, result);
       }
     case PKMN_RESULT_WIN: {

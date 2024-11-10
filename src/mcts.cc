@@ -60,18 +60,17 @@ struct Types {
 };
 
 int all_1v1(int argc, char **argv) {
-  if (argc != 3) {
-    std::cout << "Usage: provide seed, mcts iterations" << std::endl;
+  if (argc != 5) {
+    std::cout << "Usage: provide seed, two set indices, and mcts iterations"
+              << std::endl;
     return 1;
   }
   const uint64_t seed = std::atoi(argv[1]);
-  const size_t iterations = std::atoi(argv[2]);
-  prng device{seed};
+  const int i = std::atoi(argv[2]);
+  const int j = std::atoi(argv[3]);
+  const size_t iterations = std::atoi(argv[4]);
 
-  std::cout << "Calculating 1v1 for all sets found in SampleTeams::teams, "
-               "ordered by frequency"
-            << std::endl;
-  std::cout << "MCTS ITERATIONS: " << iterations << '\n' << std::endl;
+  prng device{seed};
 
   // sorting, printing the sets take from sample teams
   const auto sorted_set_array = Sets::get_sorted_set_array();
@@ -81,31 +80,22 @@ int all_1v1(int argc, char **argv) {
     sets.emplace_back(set);
   }
 
-  std::cout << "total sets: " << sets.size() << '\n' << std::endl;
+  const auto set_a = sets[i];
+  const auto set_b = sets[j];
+  const auto set_a_str = Sets::set_string(set_a);
+  const auto set_b_str = Sets::set_string(set_b);
 
-  const auto top = sets.begin() + 10;
+  std::cout << set_a_str << " vs " << set_b_str << std::endl;
 
-  // iterate through all pairs and search the 1v1
-  const auto n = sets.size();
-  for (auto i = sets.begin(); i != top; ++i) {
-    const auto set_a = *i;
-    const auto set_a_str = Sets::set_string(set_a);
-    for (auto j = i + 1; j != top; ++j) {
-      const auto set_b = *j;
-      const auto set_b_str = Sets::set_string(set_b);
+  auto battle = Init::battle(std::vector<SampleTeams::Set>{set_a},
+                             std::vector<SampleTeams::Set>{set_b});
+  MCTS<true> search{};
+  auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
+  Types::Node node{};
+  pkmn_gen1_chance_durations durations{};
 
-      auto battle = Init::battle(std::vector<SampleTeams::Set>{set_a},
-                                 std::vector<SampleTeams::Set>{set_b});
-      MCTS<true> search{};
-      auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
-      Types::Node node{};
-      pkmn_gen1_chance_durations durations{};
-    
-      search.run(iterations, device, node, &battle, result, &durations);
-    
-      return 0;
-    }
-  }
+  search.run(iterations, device, node, &battle, result, &durations);
+
   return 0;
 }
 

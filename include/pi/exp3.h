@@ -130,6 +130,20 @@ public:
     assert(outcome.p2_index < _cols);
   }
 
+  std::string visit_string() const {
+    std::stringstream sstream{};
+    sstream << "V1: ";
+    for (auto i = 0; i < _rows; ++i) {
+      sstream << std::to_string(p1_visits[i]) << " ";
+    }
+    sstream << "V2: ";
+    for (auto i = 0; i < _cols; ++i) {
+      sstream << std::to_string(p2_visits[i]) << " ";
+    }
+    sstream.flush();
+    return sstream.str();
+  }
+
 private:
   void softmax(auto &forecast, const auto &gains, const auto k,
                float eta) const {
