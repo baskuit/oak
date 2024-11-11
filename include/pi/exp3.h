@@ -99,8 +99,8 @@ public:
 
   template <typename PRNG, typename Outcome>
   void select(PRNG &device, Outcome &outcome) const noexcept {
-    static const float gamma = .03f;
-    static const float one_minus_gamma = .97f;
+    constexpr float gamma = .03f;
+    constexpr float one_minus_gamma = 1 - gamma;
     std::array<float, 9> forecast{};
     if (_rows == 1) {
       outcome.p1_index = 0;
