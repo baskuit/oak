@@ -68,7 +68,7 @@ public:
     uint8_t p2_index;
   };
 
-  void init(auto rows, auto cols) {
+  void init(auto rows, auto cols) noexcept {
     _rows = rows;
     _cols = cols;
     std::fill(p1_gains.begin(), p1_gains.begin() + rows, 0);

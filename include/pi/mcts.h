@@ -35,8 +35,8 @@ public:
           std::bit_cast<uint64_t *>(battle_copy.bytes + offset::seed);
       *battle_seed = prng.uniform_64();
 
-      chance_options = {};
       chance_options.durations = *durations;
+      pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
 
       run_iteration(prng, &node, &battle_copy, result);
     }
@@ -79,7 +79,7 @@ private:
             " P2: " + side_choice_string(battle->bytes + Offsets::side, c2));
       print(node->stats().visit_string());
 
-      pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
+      pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
       pkmn_gen1_battle_update(battle, c1, c2, &options);
       const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
           *pkmn_gen1_battle_options_chance_actions(&options));
@@ -124,29 +124,34 @@ private:
   float init_stats_and_rollout(auto &stats, auto &prng,
                                pkmn_gen1_battle *battle, pkmn_result result) {
 
-    const auto p1_choices =
+    auto seed = prng.uniform_64();
+    auto m =
         pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
                                  choices.data(), PKMN_GEN1_MAX_CHOICES);
-    const auto p2_choices =
+    auto c1 = choices[seed % m];
+    auto n =
         pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2, pkmn_result_p2(result),
                                  choices.data(), PKMN_GEN1_MAX_CHOICES);
-    stats.init(p1_choices, p2_choices);
-    do {
-      uint64_t seed = prng.uniform_64();
-      const auto rows = pkmn_gen1_battle_choices(
-          battle, PKMN_PLAYER_P1, pkmn_result_p1(result), choices.data(),
-          PKMN_GEN1_MAX_CHOICES);
-      const pkmn_choice c1 = choices[seed % rows];
+    seed >>= 32;
+    auto c2 = choices[seed % n];
+    pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
+    result = pkmn_gen1_battle_update(battle, c1, c2, &options);
+    stats.init(m, n);
+
+    while (!pkmn_result_type(result)) {
+      seed = prng.uniform_64();
+      m = pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1,
+                                   pkmn_result_p1(result), choices.data(),
+                                   PKMN_GEN1_MAX_CHOICES);
+      c1 = choices[seed % m];
+      n = pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2,
+                                   pkmn_result_p2(result), choices.data(),
+                                   PKMN_GEN1_MAX_CHOICES);
       seed >>= 32;
-      const auto cols = pkmn_gen1_battle_choices(
-          battle, PKMN_PLAYER_P2, pkmn_result_p2(result), choices.data(),
-          PKMN_GEN1_MAX_CHOICES);
-      const auto c2 = choices[seed % cols];
-
-      pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
+      c2 = choices[seed % n];
+      pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
       result = pkmn_gen1_battle_update(battle, c1, c2, &options);
-    } while (!pkmn_result_type(result));
-
+    }
     switch (pkmn_result_type(result)) {
     case PKMN_RESULT_WIN: {
       return 1.0;
