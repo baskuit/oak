@@ -1,3 +1,5 @@
+rm -r libpkmn;
+mkdir libpkmn;
 cd extern/engine;
 zig build -Dshowdown -Dpic -Doptimize=Debug -Dlog --prefix-lib-dir ../../../libpkmn/client;
 zig build -Dshowdown -Dpic -Doptimize=Debug -Doption=ebc=false -Doption=miss=false -Doption=advance=false -Doption=key=true -Dchance -Dcalc --prefix-lib-dir ../../../libpkmn/chance;
