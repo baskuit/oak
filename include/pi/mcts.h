@@ -31,6 +31,7 @@ public:
     total_depth = 0;
     for (auto iteration = 0; iteration < iterations; ++iteration) {
       auto battle_copy = *battle;
+      assert(std::memcmp(battle->bytes, battle_copy.bytes, 384) == 0);
       auto *battle_seed =
           std::bit_cast<uint64_t *>(battle_copy.bytes + offset::seed);
       *battle_seed = prng.uniform_64();
@@ -80,15 +81,15 @@ private:
       print(node->stats().visit_string());
 
       pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
-      pkmn_gen1_battle_update(battle, c1, c2, &options);
+      result = pkmn_gen1_battle_update(battle, c1, c2, &options);
       const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
           *pkmn_gen1_battle_options_chance_actions(&options));
 
+      print("Obs: " + buffer_to_string(obs.data(), 16));
       auto *child = (*node)(outcome.p1_index, outcome.p2_index, obs);
       outcome.value = run_iteration(prng, child, battle, result, depth + 1);
       node->stats().update(outcome);
 
-      print("Obs: " + buffer_to_string(obs.data(), 16));
       print("value: " + std::to_string(outcome.value));
 
       return outcome.value;
@@ -96,13 +97,11 @@ private:
 
     total_depth += depth;
 
-    print("Node not initialized - maybe terminal", depth);
-
     switch (pkmn_result_type(result)) {
     case PKMN_RESULT_NONE:
       [[likely]] {
         ++total_nodes;
-        print("Initializing node", depth);
+        print("Initializing node");
         return init_stats_and_rollout(node->stats(), prng, battle, result);
       }
     case PKMN_RESULT_WIN: {
@@ -124,48 +123,19 @@ private:
   float init_stats_and_rollout(auto &stats, auto &prng,
                                pkmn_gen1_battle *battle, pkmn_result result) {
 
-    auto seed = prng.uniform_64();
+    //auto seed = prng.uniform_64();
     auto m =
         pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
                                  choices.data(), PKMN_GEN1_MAX_CHOICES);
-    auto c1 = choices[seed % m];
+    //auto c1 = choices[seed % m];
     auto n =
         pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2, pkmn_result_p2(result),
                                  choices.data(), PKMN_GEN1_MAX_CHOICES);
-    seed >>= 32;
-    auto c2 = choices[seed % n];
-    pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
-    result = pkmn_gen1_battle_update(battle, c1, c2, &options);
+    //seed >>= 32;
+    //auto c2 = choices[seed % n];
+    //pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
+    //result = pkmn_gen1_battle_update(battle, c1, c2, &options);
     stats.init(m, n);
-
-    while (!pkmn_result_type(result)) {
-      seed = prng.uniform_64();
-      m = pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1,
-                                   pkmn_result_p1(result), choices.data(),
-                                   PKMN_GEN1_MAX_CHOICES);
-      c1 = choices[seed % m];
-      n = pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2,
-                                   pkmn_result_p2(result), choices.data(),
-                                   PKMN_GEN1_MAX_CHOICES);
-      seed >>= 32;
-      c2 = choices[seed % n];
-      pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
-      result = pkmn_gen1_battle_update(battle, c1, c2, &options);
-    }
-    switch (pkmn_result_type(result)) {
-    case PKMN_RESULT_WIN: {
-      return 1.0;
-    }
-    case PKMN_RESULT_LOSE: {
-      return 0.0;
-    }
-    case PKMN_RESULT_TIE: {
-      return 0.5;
-    }
-    default: {
-      assert(false);
-      return 0.5;
-    }
-    };
+    return .5;
   }
 };
