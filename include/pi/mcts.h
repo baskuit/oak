@@ -19,6 +19,7 @@ constexpr auto seed = 376;
 template <bool debug_print = false> class MCTS {
 public:
   pkmn_gen1_battle_options options;
+  pkmn_gen1_chance_options chance_options;
   size_t total_nodes;
   size_t total_depth;
   std::array<pkmn_choice, 9> choices;
@@ -34,42 +35,38 @@ public:
           std::bit_cast<uint64_t *>(battle_copy.bytes + offset::seed);
       *battle_seed = prng.uniform_64();
 
-      pkmn_gen1_chance_options chance_options{};
+      chance_options = {};
       chance_options.durations = *durations;
-      pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
 
       run_iteration(prng, &node, &battle_copy, result);
-      print("", 0);
     }
 
     struct Output {};
   }
 
 private:
-  void print(const auto data, size_t depth) {
-    if constexpr (!debug_print) {
-      return;
-    }
-    for (auto i = 0; i < depth; ++i) {
-      std::cout << '\t';
-    }
-    //   std::cout << std::string('\t', depth);
-    std::cout << data << std::endl;
-  }
-
   float run_iteration(auto &prng, auto *node, pkmn_gen1_battle *battle,
                       pkmn_result result, size_t depth = 0) {
+    const auto print = [depth](const auto data, bool endl = true) {
+      if constexpr (!debug_print) {
+        return;
+      }
+      for (auto i = 0; i < depth; ++i) {
+        std::cout << "  ";
+      }
+      std::cout << data;
+      if (endl) {
+        std::cout << std::endl;
+      }
+    };
 
     if (node->stats().is_init()) {
       using Bandit = std::remove_reference_t<decltype(node->stats())>;
       using Outcome = typename Bandit::Outcome;
-      Outcome outcome;
 
       // do bandit
+      Outcome outcome;
       node->stats().select(prng, outcome);
-
-      auto visit_string = node->stats().visit_string();
-      print(visit_string, depth);
 
       pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
                                choices.data(), PKMN_GEN1_MAX_CHOICES);
@@ -79,23 +76,20 @@ private:
       const auto c2 = choices[outcome.p2_index];
 
       print("P1: " + side_choice_string(battle->bytes, c1) +
-                " P2: " + side_choice_string(battle->bytes + Offsets::side, c2),
-            depth);
+            " P2: " + side_choice_string(battle->bytes + Offsets::side, c2));
+      print(node->stats().visit_string());
 
+      pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
       pkmn_gen1_battle_update(battle, c1, c2, &options);
-      const auto *chance_actions =
-          pkmn_gen1_battle_options_chance_actions(&options);
-      const auto &obs =
-          std::bit_cast<std::array<uint8_t, 16>>(chance_actions->bytes);
-
-      print("Obs: " + buffer_to_string(obs.data(), 16), depth);
+      const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
+          *pkmn_gen1_battle_options_chance_actions(&options));
 
       auto *child = (*node)(outcome.p1_index, outcome.p2_index, obs);
       outcome.value = run_iteration(prng, child, battle, result, depth + 1);
-
       node->stats().update(outcome);
 
-      print("value: " + std::to_string(outcome.value), depth);
+      print("Obs: " + buffer_to_string(obs.data(), 16));
+      print("value: " + std::to_string(outcome.value));
 
       return outcome.value;
     }
@@ -148,6 +142,8 @@ private:
           battle, PKMN_PLAYER_P2, pkmn_result_p2(result), choices.data(),
           PKMN_GEN1_MAX_CHOICES);
       const auto c2 = choices[seed % cols];
+
+      pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
       result = pkmn_gen1_battle_update(battle, c1, c2, &options);
     } while (!pkmn_result_type(result));
 
