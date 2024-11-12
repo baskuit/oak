@@ -1,2 +1,0 @@
-sudo su
-echo "255" > /sys/class/backlight/amdgpu_bl1/brightness
