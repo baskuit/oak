@@ -25,4 +25,4 @@ auto get_choices(const pkmn_gen1_battle *const battle, pkmn_result result)
   return {p1_choices, p2_choices};
 }
 
-} // namespace Util
+} // namespace Helper

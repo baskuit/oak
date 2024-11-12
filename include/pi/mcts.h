@@ -6,7 +6,6 @@
 #include <utility>
 
 #include <data/strings.h>
-// #include <battle/helper.h>
 #include <pi/exp3.h>
 
 #include <pkmn.h>
@@ -50,15 +49,18 @@ public:
       size_t iterations;
       float total_value;
       float average_value;
-      std::remove_reference_t<decltype(node.stats())> stats;
+      std::vector<float> p1;
+      std::vector<float> p2;
     };
 
     Output output;
     output.iterations = iterations;
     output.total_value = total_value;
     output.average_value = total_value / iterations;
-    output.stats = node.stats();
     // const auto [c1, c2] = Helper::get_choices(battle, result);
+    const auto [p1, p2] = node.stats().policies(iterations);
+    output.p1 = p1;
+    output.p2 = p2;
     return output;
   }
 

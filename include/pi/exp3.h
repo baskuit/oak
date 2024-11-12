@@ -27,6 +27,8 @@ struct uint24_t {
             (static_cast<uint32_t>(_data[2]) << 16));
   }
 
+  constexpr auto value() const noexcept { return static_cast<uint32_t>(*this); }
+
   constexpr uint24_t &operator++() noexcept {
     uint32_t value = static_cast<uint32_t>(*this) + 1;
     *this = uint24_t(value);
@@ -142,6 +144,22 @@ public:
     }
     sstream.flush();
     return sstream.str();
+  }
+
+  std::pair<std::vector<float>, std::vector<float>>
+  policies(float iterations) const {
+
+    std::vector<float> p1{};
+    p1.resize(_rows);
+    for (auto i = 0; i < _rows; ++i) {
+      p1[i] = p1_visits[i].value() / (iterations - 1);
+    }
+    std::vector<float> p2{};
+    p2.resize(_cols);
+    for (auto i = 0; i < _cols; ++i) {
+      p2[i] = p2_visits[i].value() / (iterations - 1);
+    }
+    return {p1, p2};
   }
 
 private:

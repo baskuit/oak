@@ -1,6 +1,7 @@
 #include <data/sample-teams.h>
 #include <data/strings.h>
 
+#include <battle/helper.h>
 #include <battle/init.h>
 
 #include <pi/exp3.h>
@@ -94,9 +95,22 @@ int all_1v1(int argc, char **argv) {
   Types::Node node{};
   pkmn_gen1_chance_durations durations{};
 
-  const auto output = search.run(iterations, device, node, &battle, result, &durations);
-
-  std::cout << "value: " << output.average_value << std::endl;
+  const auto output =
+      search.run(iterations, device, node, &battle, result, &durations);
+  const auto [p1_choices, p2_choices] = Helper::get_choices(&battle, result);
+  std::cout << "P1 Policy:" << std::endl;
+  const auto m = output.p1.size();
+  for (auto i = 0; i < m; ++i) {
+    std::cout << side_choice_string(battle.bytes, p1_choices[i]) << " : "
+              << output.p1[i] << std::endl;
+  }
+  std::cout << "P2 Policy:" << std::endl;
+  const auto n = output.p2.size();
+  for (auto i = 0; i < n; ++i) {
+    std::cout << side_choice_string(battle.bytes + Offsets::side, p2_choices[i])
+              << " : " << output.p2[i] << std::endl;
+  }
+  std::cout << "Value: " << output.average_value << std::endl;
 
   return 0;
 }
