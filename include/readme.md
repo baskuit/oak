@@ -7,15 +7,15 @@
 
 This directory fleshes out the barebones libpkmn C API. It duplicates the basic enum definitions and ancillary data (base power, pp, base stats) that libpkmn does not expose.
 
-strings.h
+* strings.h
 
-String utilities.
+String utilities: decoding/formatting byte data, move/species names, etc.
 
 ## /battle
 
 * debug-log.h
 
-`DebugLog<size_t log_size>` is a helper struct for creating debug logs. It stores the binary data in standard arrays and merely wraps the battle update function
+`DebugLog<size_t log_size>` is a helper struct for creating debug logs. It provides a wrapper for `pkmn_gen1_battle_update` that stores the frame data of each update.
 
 * init.h
 
@@ -23,32 +23,32 @@ String utilities.
 
 ## /pi
 
-abstract.h
+* abstract.h
 
 Abstract:: defines structs that bucket similar states together by approximating hp, stats, etc.
 This means that states with only small continuous differences can be treated as the same.
 
 The headers below define two different kinds of perfect info search. The first is a provably correct approach that uses chance action 'keys' to keep track of states. The second is a fast approach that uses an imperfect hash and bandit algorithm.
 
-eval.h
+* eval.h
 
 A hand crafted eval that uses precomputed 1v1 values and combines them into a crude full battle estimate TODO
 
-exp3.h
+* exp3.h
 
-`` is a 128 byte struct that holds joint Exp3 bandit data for both players. To manage this it uses 24bit integers for
+`Exp3::JointBanditData` is a compact struct that contains exp3 stats for both players. It holds visit counts and gains for up to 18 actions in only 128 bytes - two cache lines on most processors.
 
-mcts.h
+* mcts.h
 
 Supports vanilla monte-carlo and eval.h for leaf value estimation.
 
-tree.h
+* tree.h
 
 This structure stores all the search stats in a way that guarantees no "collisions". No two different histories will access the same stats.
 
 
-tt.h
-ucb.h
+* tt.h
+* ucb.h
 
 ## /ii
 
