@@ -1,3 +1,5 @@
+ 
+
 #pragma once
 
 #include <algorithm>
@@ -49,6 +51,18 @@ struct uint24_t_test {
   }
   // static_assert(static_cast<uint32_t>(overflow()) == 0);
 };
+
+template <bool enabled>
+struct VisitData;
+
+template <>
+struct VisitData<true> {
+ std::array<uint24_t, 9> p1_visits;
+ std::array<uint24_t, 9> p2_visits;
+};
+
+template <>
+struct VisitData<false> {};
 
 #pragma pack(push, 1)
 class JointBanditData {

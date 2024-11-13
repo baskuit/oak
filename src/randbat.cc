@@ -22,6 +22,9 @@ int benchmark(int argc, char **argv) {
 
 int generate_team(int argc, char **argv) {
   if (argc != 5) {
+    std::cout << "Usage: Enter 4 numbers representing the pokemon-showdown "
+                 "seed; Recieve team"
+              << std::endl;
     return 1;
   }
 
