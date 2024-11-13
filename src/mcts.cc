@@ -8,7 +8,7 @@
 #include <pi/mcts.h>
 #include <pi/tree.h>
 
-#include <types/random.h>
+#include <util/random.h>
 
 #include <iostream>
 #include <numeric>

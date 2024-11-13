@@ -927,4 +927,11 @@ static constexpr std::array<SpeciesData, 151> SPECIES_DATA{
         {Types::Psychic, Types::Psychic},
     }};
 
+constexpr auto get_species_data(Species species) noexcept {
+  return SPECIES_DATA[static_cast<uint8_t>(species) - 1];
+}
+constexpr auto get_types(Species species) noexcept {
+  return SPECIES_DATA[static_cast<uint8_t>(species) - 1].types;
+}
+
 } // namespace Data

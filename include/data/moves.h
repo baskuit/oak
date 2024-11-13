@@ -1774,4 +1774,12 @@ static constexpr std::array<uint8_t, 165> PP{
 
 static_assert(sizeof(Moves) == 1);
 
+constexpr auto get_move_data(const Moves move) {
+  return MOVE_DATA[static_cast<uint8_t>(move) - 1];
+}
+
+constexpr uint8_t get_max_pp(const Moves move) {
+  return std::min(PP[static_cast<uint8_t>(move) - 1] / 5 * 8, 63);
+}
+
 } // namespace Data

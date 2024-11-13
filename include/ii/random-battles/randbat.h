@@ -1,6 +1,7 @@
 #pragma once
 
-#include <types/vector.h>
+#include <data/strings.h>
+#include <util/vector.h>
 
 #include <array>
 #include <bit>
@@ -10,8 +11,6 @@
 #include <unordered_map>
 
 #include <ii/random-battles/random-set-data.h>
-
-#include <battle/util.h>
 
 // WIP clone of the official showdown random team generator
 namespace RandomBattles {
@@ -29,7 +28,11 @@ public:
   }
 
   // OrderedArrayBasedSet& operator=(const OrderedArrayBasedSet&) = default;
-  bool operator==(const OrderedArrayBasedSet&) const noexcept = default;
+  bool operator==(const OrderedArrayBasedSet &) const noexcept = default;
+
+  bool operator<(const OrderedArrayBasedSet &other) const noexcept {
+    return _data < other._data;
+  }
 
   bool insert(const T &val) noexcept {
     auto free_index = -1;
@@ -139,38 +142,38 @@ using Seed = int64_t;
 
 namespace PRNG2 {
 
-  constexpr void next(Seed& seed) noexcept {
-    static constexpr int64_t a{0x5D588B656C078965};
-    static constexpr int64_t c{0x0000000000269EC3};
-    seed = a * seed + c;
-  }
+constexpr void next(Seed &seed) noexcept {
+  static constexpr int64_t a{0x5D588B656C078965};
+  static constexpr int64_t c{0x0000000000269EC3};
+  seed = a * seed + c;
+}
 
-  constexpr auto next(Seed& seed, auto to) noexcept {
-    next(seed);
-    const uint32_t top = seed >> 32;
-    return to * ((double)top / 0x100000000);
-  }
+constexpr auto next(Seed &seed, auto to) noexcept {
+  next(seed);
+  const uint32_t top = seed >> 32;
+  return to * ((double)top / 0x100000000);
+}
 
-  constexpr auto next(Seed& seed, auto from, auto to) noexcept {
-    next(seed);
-    const uint32_t top = seed >> 32;
-    return from + (to - from) * ((double)top / 0x100000000);
-  }
+constexpr auto next(Seed &seed, auto from, auto to) noexcept {
+  next(seed);
+  const uint32_t top = seed >> 32;
+  return from + (to - from) * ((double)top / 0x100000000);
+}
 
-  template <typename Container>
-  void shuffle(Seed& seed, Container &items) noexcept {
-    auto start = 0;
-    const auto end = items.size();
-    while(start < end - 1) {
-      const auto nextIndex = next(start, end);
-      if (start != nextIndex) {
-        std::swap(items[start], items[nextIndex]);
-      }
-      ++start;
+template <typename Container>
+void shuffle(Seed &seed, Container &items) noexcept {
+  auto start = 0;
+  const auto end = items.size();
+  while (start < end - 1) {
+    const auto nextIndex = next(start, end);
+    if (start != nextIndex) {
+      std::swap(items[start], items[nextIndex]);
     }
+    ++start;
   }
+}
 
-};
+}; // namespace PRNG2
 
 struct PRNG {
   int64_t seed;
@@ -410,25 +413,25 @@ public:
     }
   }
 
-  void finishTeam(PartialTeam& partial) {
+  void finishTeam(PartialTeam &partial) {
     using Arr = ArrayBasedVector<146>::Vector<Data::Species>;
 
-  //   const bool species_done = !std::any();
+    //   const bool species_done = !std::any();
 
-  //   if (!species_done) {
-  //     // get valid species, add to partial
-  //     Arr pokemonPool{RandomBattlesData::pokemonPool};
-  //     Arr validPool{}
-  //   }
+    //   if (!species_done) {
+    //     // get valid species, add to partial
+    //     Arr pokemonPool{RandomBattlesData::pokemonPool};
+    //     Arr validPool{}
+    //   }
 
-  //   for (auto p = 0; p < 6; ++p) {
-  //     const auto pair = partial.species_slots[p];
-  //     const auto& set = partial.move_sets[pair.second];
-  //     if (std::any()) {
-  //       set = finishSet(set);
-  //     }
-  //   }
-  //   partial.sort();
+    //   for (auto p = 0; p < 6; ++p) {
+    //     const auto pair = partial.species_slots[p];
+    //     const auto& set = partial.move_sets[pair.second];
+    //     if (std::any()) {
+    //       set = finishSet(set);
+    //     }
+    //   }
+    //   partial.sort();
   }
 };
 

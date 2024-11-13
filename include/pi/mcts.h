@@ -10,8 +10,6 @@
 
 #include <pkmn.h>
 
-#include <types/random.h>
-
 namespace offset {
 constexpr auto seed = 376;
 };

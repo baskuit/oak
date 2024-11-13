@@ -15,26 +15,10 @@
 #include <pkmn.h>
 
 namespace {
+using Data::get_species_data;
+using Data::get_types;
 using Data::Moves;
-using Data::PP;
 using Data::Species;
-using Data::SPECIES_DATA;
-
-constexpr auto get_types(const Species species) noexcept {
-  return SPECIES_DATA[static_cast<uint8_t>(species) - 1].types;
-}
-
-constexpr auto get_move_data(const Moves move) noexcept {
-  return SPECIES_DATA[static_cast<uint8_t>(move) - 1];
-}
-
-constexpr uint8_t get_max_pp(const Moves move) noexcept {
-  return std::min(PP[static_cast<uint8_t>(move) - 1] / 5 * 8, 61);
-}
-
-constexpr auto get_species_data(const Species species) noexcept {
-  return SPECIES_DATA[static_cast<uint8_t>(species) - 1];
-}
 
 constexpr uint16_t compute_stat(uint8_t base, bool hp = false) noexcept {
   const uint16_t evs = 255;

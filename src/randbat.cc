@@ -1,3 +1,4 @@
+#include <map>
 #include <mutex>
 #include <random>
 #include <thread>
@@ -75,34 +76,6 @@ void sample_teams(Sync *sync, const RandomBattles::PartialTeam partial) {
   }
 }
 
-consteval auto get_partial() noexcept {
-  RandomBattles::PartialTeam partial{};
-  partial.species_slots[0] = {Data::Species::Jolteon, 0};
-  partial.move_sets[0] = {Data::Moves::Agility, Data::Moves::ThunderWave,
-                          Data::Moves::Thunderbolt, Data::Moves::None};
-
-  partial.species_slots[1] = {Data::Species::Shellder, 1};
-  partial.move_sets[1] = {Data::Moves::Explosion, Data::Moves::Blizzard,
-                          Data::Moves::Surf, Data::Moves::None};
-
-  partial.species_slots[2] = {Data::Species::Grimer, 2};
-  partial.move_sets[2] = {Data::Moves::Explosion, Data::Moves::FireBlast,
-                          Data::Moves::MegaDrain, Data::Moves::None};
-
-  // partial.species_slots[3] = {Data::Species::Farfetchd, 3};
-  // partial.move_sets[3] = {Data::Moves::Slash, Data::Moves::Agility,
-  //                         Data::Moves::BodySlam, Data::Moves::None};
-
-  // partial.species_slots[4] = {Data::Species::Bellsprout, 4};
-  // partial.move_sets[4] = {Data::Moves::SleepPowder, Data::Moves::StunSpore,
-  //                         Data::Moves::RazorLeaf, Data::Moves::None};
-
-  // partial.species_slots[5] = {Data::Species::None, 5};
-  // partial.move_sets[5] = {Data::Moves::None, Data::Moves::None,
-  //                         Data::Moves::None, Data::Moves::None};
-  return partial;
-}
-
 int try_generate_all_sets(int argc, char **argv) {
   std::mt19937_64 rng{};
   rng.seed(std::random_device{}());
@@ -110,7 +83,8 @@ int try_generate_all_sets(int argc, char **argv) {
   RandomBattles::PRNG prng{initial_seed};
 
   const size_t tries_per_species = 10000;
-  using Map = LinearScanMap<RandomBattles::PartialSet, bool>;
+  // using Map = LinearScanMap<RandomBattles::PartialSet, bool>;
+  using Map = std::map<RandomBattles::PartialSet, bool>;
   constexpr auto n_species = RandomBattlesData::pokemonPool.size();
   std::array<Map, n_species> sets{};
   auto total_sets = 0;
@@ -127,7 +101,7 @@ int try_generate_all_sets(int argc, char **argv) {
     total_sets += sets[i].size();
     std::cout << Names::species_string(species) << " : " << sets[i].size()
               << std::endl;
-    for (const auto &pair : sets[i].data) {
+    for (const auto &pair : sets[i]) {
       const auto &arr = pair.first._data;
       for (const auto move : arr) {
         std::cout << Names::move_string(move) << "(" << static_cast<int>(move)
@@ -140,31 +114,4 @@ int try_generate_all_sets(int argc, char **argv) {
   return 0;
 }
 
-int deep_sample(int argc, char **argv) {
-
-  if (argc != 2) {
-    std::cout << "Usage: enter thread count to sample/match against 'partial; "
-                 "The program will display output continuously.'"
-              << std::endl;
-    return 1;
-  }
-
-  const auto partial = get_partial();
-  const int n_threads = std::atoi(argv[1]);
-
-  Sync sync{};
-
-  auto *const thread_arr = new std::thread[n_threads];
-  for (auto i = 0; i < n_threads; ++i) {
-    thread_arr[i] = std::thread(&sample_teams<Sync>, &sync, partial);
-  }
-
-  for (auto i = 0; i < n_threads; ++i) {
-    thread_arr[i].join();
-  }
-
-  delete[] thread_arr;
-  return 0;
-}
-
-int main(int argc, char **argv) { return try_generate_all_sets(argc, argv); }
+int main(int argc, char **argv) { return generate_team(argc, argv); }

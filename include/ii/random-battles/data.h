@@ -1,6 +1,8 @@
 #pragma once
 
-#include <battle/util.h>
+#include <data/moves.h>
+#include <data/species.h>
+#include <data/types.h>
 
 namespace RandomBattlesData {
 
