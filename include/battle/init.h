@@ -10,6 +10,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstring>
+#include <stdexcept>
 #include <type_traits>
 
 #include <pkmn.h>
@@ -72,7 +73,11 @@ constexpr void init_pokemon(const auto &pokemon,
   }
 
   if constexpr (requires { pokemon.hp; }) {
-    u16_ptr[9] = pokemon.hp;
+    if constexpr (std::is_floating_point_v<decltype(pokemon.hp)>) {
+      u16_ptr[9] = std::min(std::max(pokemon.hp, 0.0), 1.0) * u16_ptr[0];
+    } else {
+      u16_ptr[9] = pokemon.hp;
+    }
   } else {
     u16_ptr[9] = u16_ptr[0];
   }
@@ -119,6 +124,33 @@ constexpr auto battle(const auto &p1, const auto &p2,
   ptr_64[1] = seed;
   return battle;
 }
+
+pkmn_result update(pkmn_gen1_battle &battle, const auto c1, const auto c2,
+                   pkmn_gen1_battle_options &options) {
+  const auto get_choice = [](const auto c, const uint8_t *side) -> pkmn_choice {
+    if constexpr (std::is_same_v<typeof(c), Species>) {
+      for (int i = 0; i < 6; ++i) {
+        if (static_cast<uint8_t>(c) == side[24 * i + 23]) {
+          return {};
+        }
+      }
+      throw std::runtime_error{"Init::update - invalid switch"};
+    } else if constexpr (std::is_same_v<typeof(c), Moves>) {
+      for (int i = 0; i < 4; ++i) {
+      }
+      throw std::runtime_error{"Init::update - invalid move"};
+    } else {
+      static_assert(false, "Invalid type for Init::update");
+    }
+    return {};
+  };
+
+  pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
+  return pkmn_gen1_battle_update(&battle, get_choice(c1, battle.bytes),
+                                 get_choice(c1, battle.bytes + Offsets::side),
+                                 &options);
+}
+
 } // namespace Init
 
 static_assert(compute_stat(100, false) == 298);
