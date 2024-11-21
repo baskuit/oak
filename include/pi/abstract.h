@@ -1,6 +1,7 @@
 #include <array>
 
-#include <battle/util.h>
+#include <data/offsets.h>
+
 #include <bit>
 
 #include <pkmn.h>
@@ -20,55 +21,58 @@ enum class HP : std::underlying_type_t<std::byte> {
 
 // number of observed turns spent asleep. REST_2 is identical to SLP_6
 enum class Status : std::underlying_type_t<std::byte> {
-  None,
-  PAR,
-  BRN,
-  FRZ,
-  PSN,
-  SLP_0,
-  SLP_1,
-  SLP_2,
-  SLP_3,
-  SLP_4,
-  SLP_5,
-  SLP_6,
-  REST_0,
-  REST_1, // 14
+  CLR = 0b00000000,
+  PSN = 0b00001000,
+  BRN = 0b00010000,
+  FRZ = 0b00100000,
+  PAR = 0b01000000,
+  TOX = 0b10001000, // not used in eval currently
+  SP0 = 0b00000001,
+  SP1 = 0b00000010,
+  SP2 = 0b00000011,
+  SP3 = 0b00000100,
+  SP4 = 0b00000101,
+  SP5 = 0b00000110,
+  SP6 = 0b00000111,
+  RS0 = 0b10000001,
+  RS1 = 0b10000010,
+  RS2 = 0b10000011,
 };
 
 // 2 byte
+#pragma pack(push, 1)
 struct Bench {
   HP hp;
   Status status;
 
-  static constexpr uint8_t get_hp_bucket(const uint8_t *const bytes) {
-    const uint16_t current = bytes[18] + 256 * bytes[19];
-    const uint16_t max = bytes[0] + 256 * bytes[1];
-    return std::min(7, 8 * (current + max / 8) / max);
+  static constexpr HP get_hp(const uint8_t *const bytes) {
+    const auto cur = std::bit_cast<const uint8_t *const>(bytes)[9];
+    const auto max = std::bit_cast<const uint8_t *const>(bytes)[0];
+    return std::min(7, 8 * (cur + max / 8) / max);
   }
 
-  constexpr Bench() : hp{HP::SEVEN}, status{Status::None} {}
-  constexpr Bench(const uint8_t *bytes)
-      : hp{get_hp_bucket(bytes)}, status{bytes[20]} {}
-};
+  static constexpr Status get_status(const uint8_t byte, const uint8_t dur) {
+    if (byte & 0b00000111) {
+      if (!(byte & 0b10000000)) {
+        return static_cast<Status>(static_cast<uint8_t>(Status::SP0) + dur);
+      }
+    }
+    return static_cast<Status>(byte);
+  }
 
-namespace BenchTest {
-constexpr std::array<uint8_t, 24> mon{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                      0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
-constexpr std::array<uint8_t, 24> mon_low{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                          0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0};
-constexpr std::array<uint8_t, 24> mon_kod{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static_assert(Bench{mon.data()}.hp == HP::SEVEN);
-static_assert(Bench{mon_low.data()}.hp == HP::ONE);
-static_assert(Bench{mon_kod.data()}.hp == HP::KO);
-}; // namespace BenchTest
+  constexpr Bench() : hp{HP::SEVEN}, status{Status::CLR} {}
+  constexpr Bench(const uint8_t *const bytes) : hp{get_hp(bytes)}, status{} {}
+  constexpr Bench(const uint8_t *const bytes, const uint8_t dur)
+      : hp{get_hp(bytes)}, status{get_status(bytes[20], dur)} {}
+};
+#pragma pack(pop)
 
 constexpr int8_t stat_log_ratio(uint16_t current, uint16_t base) {
   const float f = std::log(4 * current / base);
   return f;
 }
 
+#pragma pack(push, 1)
 struct Active {
   std::array<int8_t, 5> stats;
   uint8_t reflect;
@@ -81,39 +85,55 @@ struct Active {
       : stats{}, reflect{bytes[32]}, light_screen{bytes[31]},
         slot{bytes[176 - 144]}, padding{} {}
 };
+#pragma pack(pop)
 
-// 20 + 12 = 32 byte
+#pragma pack(push, 1)
 struct Side {
   Active active;
   std::array<Bench, 6> bench;
 
   Side() = default;
-  constexpr Side(const uint8_t *bytes) noexcept
-      : active{bytes + 144},
-        bench{Bench{bytes},      Bench{bytes + 24}, Bench{bytes + 48},
-              Bench{bytes + 72}, Bench{bytes + 96}, Bench{bytes + 120}} {}
-};
+  constexpr Side(const uint8_t *const bytes)
+      : active{bytes + Offsets::active},
+        bench{Bench{bytes + 0 * Offsets::pokemon},
+              Bench{bytes + 1 * Offsets::pokemon},
+              Bench{bytes + 2 * Offsets::pokemon},
+              Bench{bytes + 3 * Offsets::pokemon},
+              Bench{bytes + 4 * Offsets::pokemon},
+              Bench{bytes + 5 * Offsets::pokemon}} {}
 
-// 64 byte
+  void update(const uint8_t *const side) noexcept {}
+};
+#pragma pack(pop)
+
 struct Battle {
   std::array<Side, 2> sides;
 
   Battle() = default;
 
-  constexpr Battle(const uint8_t *bytes) noexcept : sides{bytes, bytes + 184} {}
+  constexpr Battle(const uint8_t *const bytes) noexcept
+      : sides{bytes, bytes + Offsets::side} {}
+
+  void update(const pkmn_gen1_battle *const battle) noexcept {}
 };
 
+namespace Test {
+static_assert(sizeof(Bench) == 2);
+using PokemonBuffer = std::array<uint8_t, 24>;
+constexpr PokemonBuffer mon{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
+constexpr PokemonBuffer mon_low{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0};
+constexpr PokemonBuffer mon_kod{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static_assert(Bench{mon.data()}.hp == HP::SEVEN);
+static_assert(Bench{mon_low.data()}.hp == HP::ONE);
+static_assert(Bench{mon_kod.data()}.hp == HP::KO);
+} // namespace Test
+
+static_assert(sizeof(Active) == 20);
+static_assert(sizeof(Bench) == 2);
+static_assert(sizeof(Side) == 32);
 static_assert(sizeof(Battle) == 64);
 
 }; // namespace Abstract
-
-template <typename State> class WithAbstractBattle : public State {
-public:
-  Abstract::Battle abstract;
-
-  // template <typename... Args>
-  // WithAbstractBattle(Args... args)
-  //     : State{args}, abstract{static_cast<State>(*this).battle().bytes} {}
-
-  void apply_actions() {}
-};
