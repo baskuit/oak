@@ -16,7 +16,7 @@
 namespace Eval {
 
 // The eval currently only uses hp and status information to bucket states.
-// pp, 
+// pp,
 constexpr size_t n_hp = 4;
 constexpr size_t n_status = 16;
 
@@ -61,10 +61,7 @@ float from_matrix(const auto &expected_values, const auto m, const auto n) {
   return sigmoid(material_difference);
 }
 
-void from_matrix_test()
-{
-
-}
+void from_matrix_test() {}
 
 using MEM = float[n_hp][n_status][n_hp][n_status];
 
