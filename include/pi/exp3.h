@@ -1,4 +1,4 @@
- 
+
 
 #pragma once
 
@@ -7,9 +7,23 @@
 #include <assert.h>
 #include <cmath>
 #include <cstdint>
+#include <sstream>
+#include <string>
 #include <vector>
 
 namespace Exp3 {
+
+void softmax(auto &forecast, const auto &gains, const auto k, float eta) {
+  float sum = 0;
+  for (auto i = 0; i < k; ++i) {
+    const float y = std::exp(gains[i] * eta);
+    forecast[i] = y;
+    sum += y;
+  }
+  for (auto i = 0; i < k; ++i) {
+    forecast[i] /= sum;
+  }
+}
 
 #pragma pack(push, 1)
 struct uint24_t {
@@ -52,30 +66,33 @@ struct uint24_t_test {
   // static_assert(static_cast<uint32_t>(overflow()) == 0);
 };
 
-template <bool enabled>
-struct VisitData;
+template <bool enabled> struct JointBanditDataBase;
 
-template <>
-struct VisitData<true> {
- std::array<uint24_t, 9> p1_visits;
- std::array<uint24_t, 9> p2_visits;
-};
-
-template <>
-struct VisitData<false> {};
-
-#pragma pack(push, 1)
-class JointBanditData {
-  // private:
-public:
+template <> struct JointBanditDataBase<true> {
   std::array<float, 9> p1_gains;
   std::array<float, 9> p2_gains;
   std::array<uint24_t, 9> p1_visits;
   std::array<uint24_t, 9> p2_visits;
   uint8_t _rows;
   uint8_t _cols;
+};
 
+template <> struct JointBanditDataBase<false> {
+  std::array<float, 9> p1_gains;
+  std::array<float, 9> p2_gains;
+  uint8_t _rows;
+  uint8_t _cols;
+};
+
+#pragma pack(push, 1)
+template <bool enable_visits>
+class JointBanditData : public JointBanditDataBase<enable_visits> {
 public:
+  using JointBanditDataBase<enable_visits>::p1_gains;
+  using JointBanditDataBase<enable_visits>::p2_gains;
+  using JointBanditDataBase<enable_visits>::_rows;
+  using JointBanditDataBase<enable_visits>::_cols;
+
   struct Outcome {
     float value;
     float p1_mu;
@@ -88,16 +105,23 @@ public:
     _rows = rows;
     _cols = cols;
     std::fill(p1_gains.begin(), p1_gains.begin() + rows, 0);
-    std::fill(p1_visits.begin(), p1_visits.begin() + rows, uint24_t{});
     std::fill(p2_gains.begin(), p2_gains.begin() + cols, 0);
-    std::fill(p2_visits.begin(), p2_visits.begin() + cols, uint24_t{});
+    if constexpr (enable_visits) {
+      std::fill(this->p1_visits.begin(), this->p1_visits.begin() + rows,
+                uint24_t{});
+      std::fill(this->p2_visits.begin(), this->p2_visits.begin() + cols,
+                uint24_t{});
+    }
   }
 
-  bool is_init() const noexcept { return _rows != 0; }
+  bool is_init() const noexcept { return this->_rows != 0; }
 
   template <typename Outcome> void update(const Outcome &outcome) noexcept {
-    ++p1_visits[outcome.p1_index];
-    ++p2_visits[outcome.p2_index];
+    if constexpr (enable_visits) {
+      ++this->p1_visits[outcome.p1_index];
+      ++this->p2_visits[outcome.p2_index];
+    }
+
     if ((p1_gains[outcome.p1_index] += outcome.value / outcome.p1_mu) >= 0) {
       const auto max = p1_gains[outcome.p1_index];
       for (auto &v : p1_gains) {
@@ -148,15 +172,17 @@ public:
 
   std::string visit_string() const {
     std::stringstream sstream{};
-    sstream << "V1: ";
-    for (auto i = 0; i < _rows; ++i) {
-      sstream << std::to_string(p1_visits[i]) << " ";
+    if constexpr (enable_visits) {
+      sstream << "V1: ";
+      for (auto i = 0; i < _rows; ++i) {
+        sstream << std::to_string(this->p1_visits[i]) << " ";
+      }
+      sstream << "V2: ";
+      for (auto i = 0; i < _cols; ++i) {
+        sstream << std::to_string(this->p2_visits[i]) << " ";
+      }
+      sstream.flush();
     }
-    sstream << "V2: ";
-    for (auto i = 0; i < _cols; ++i) {
-      sstream << std::to_string(p2_visits[i]) << " ";
-    }
-    sstream.flush();
     return sstream.str();
   }
 
@@ -164,37 +190,28 @@ public:
   policies(float iterations) const {
 
     std::vector<float> p1{};
-    p1.resize(_rows);
-    for (auto i = 0; i < _rows; ++i) {
-      p1[i] = p1_visits[i].value() / (iterations - 1);
-    }
     std::vector<float> p2{};
+
+    p1.resize(_rows);
     p2.resize(_cols);
-    for (auto i = 0; i < _cols; ++i) {
-      p2[i] = p2_visits[i].value() / (iterations - 1);
+
+    if constexpr (enable_visits) {
+      for (auto i = 0; i < _rows; ++i) {
+        p1[i] = this->p1_visits[i].value() / (iterations - 1);
+      }
+      for (auto i = 0; i < _cols; ++i) {
+        p2[i] = this->p2_visits[i].value() / (iterations - 1);
+      }
     }
     return {p1, p2};
   }
-
-private:
-  void softmax(auto &forecast, const auto &gains, const auto k,
-               float eta) const {
-    float sum = 0;
-    for (auto i = 0; i < k; ++i) {
-      const float y = std::exp(gains[i] * eta);
-      forecast[i] = y;
-      sum += y;
-    }
-    for (auto i = 0; i < k; ++i) {
-      forecast[i] /= sum;
-    }
-  };
 };
 #pragma pack(pop)
 
 struct JointBanditDataTest {
   // hopefully that shit about double cache lines is true
-  static_assert(sizeof(JointBanditData) == 128);
+  static_assert(sizeof(JointBanditData<true>) == 128);
+  static_assert(sizeof(JointBanditData<false>) == 76);
 };
 
 template <typename Container>

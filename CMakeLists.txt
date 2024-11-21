@@ -34,3 +34,8 @@ add_executable(mcts src/mcts.cc)
 add_dependencies(mcts build_chance_release)
 target_include_directories(mcts PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(mcts PRIVATE libpkmn_chance)
+
+add_executable(benchmark src/benchmark.cc)
+add_dependencies(benchmark build_chance_release)
+target_include_directories(benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(benchmark PRIVATE libpkmn_chance)

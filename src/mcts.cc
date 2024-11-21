@@ -57,7 +57,7 @@ std::string set_string(auto set) {
 
 struct Types {
   using Obs = std::array<uint8_t, 16>;
-  using Node = Tree::Node<Exp3::JointBanditData, Obs>;
+  using Node = Tree::Node<Exp3::JointBanditData<true>, Obs>;
 };
 
 int all_1v1(int argc, char **argv) {
@@ -90,7 +90,7 @@ int all_1v1(int argc, char **argv) {
 
   auto battle = Init::battle(std::vector<SampleTeams::Set>{set_a},
                              std::vector<SampleTeams::Set>{set_b});
-  MCTS<false> search{};
+  MCTS<true> search{};
   auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
   Types::Node node{};
   pkmn_gen1_chance_durations durations{};
