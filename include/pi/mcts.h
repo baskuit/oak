@@ -7,12 +7,14 @@
 
 #include <data/strings.h>
 #include <pi/exp3.h>
+#include <pi/tree.h>
 
 #include <pkmn.h>
 
-namespace offset {
-constexpr auto seed = 376;
-};
+#include <data/offsets.h>
+#include <data/options.h>
+
+static_assert(Options::chance && Options::calc && !Options::log);
 
 template <bool debug_print = false, bool clamp_rolls = true> class MCTS {
 public:
@@ -22,47 +24,70 @@ public:
   size_t total_nodes;
   size_t total_depth;
   std::array<pkmn_choice, 9> choices;
+  std::array<std::array<uint32_t, 9>, 9> visit_matrix;
+
+  struct Output {
+    size_t iterations;
+    float total_value;
+    float average_value;
+    std::vector<float> p1;
+    std::vector<float> p2;
+    std::array<std::array<uint32_t, 9>, 9> visit_matrix;
+  };
 
   auto run(const auto iterations, auto &prng, auto &node,
            const pkmn_gen1_battle *const battle, const pkmn_result result,
            const pkmn_gen1_chance_durations *const durations) {
+
     chance_options = {};
     calc_options = {};
     total_nodes = 0;
     total_depth = 0;
+    constexpr bool enable_visit_matrix = true;
+    if constexpr (enable_visit_matrix) {
+      visit_matrix = {};
+    }
     float total_value = 0;
     for (auto iteration = 0; iteration < iterations; ++iteration) {
       auto battle_copy = *battle;
       auto *battle_seed =
-          std::bit_cast<uint64_t *>(battle_copy.bytes + offset::seed);
+          std::bit_cast<uint64_t *>(battle_copy.bytes + Offsets::seed);
       *battle_seed = prng.uniform_64();
 
       chance_options.durations = *durations;
       pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
 
-      total_value += run_iteration(prng, &node, &battle_copy, result);
+      total_value +=
+          run_iteration<enable_visit_matrix>(prng, &node, &battle_copy, result);
     }
-
-    struct Output {
-      size_t iterations;
-      float total_value;
-      float average_value;
-      std::vector<float> p1;
-      std::vector<float> p2;
-    };
 
     Output output;
     output.iterations = iterations;
     output.total_value = total_value;
     output.average_value = total_value / iterations;
-    // const auto [c1, c2] = Helper::get_choices(battle, result);
-    const auto [p1, p2] = node.stats().policies(iterations);
-    output.p1 = p1;
-    output.p2 = p2;
+    const auto [c1, c2] = Helper::get_choices(battle, result);
+    output.p1.resize(c1.size());
+    output.p2.resize(c2.size());
+    if constexpr (enable_visit_matrix) {
+      for (int i = 0; i < c1.size(); ++i) {
+        for (int j = 0; j < c2.size(); ++j) {
+          output.p1[i] += visit_matrix[i][j];
+          output.p2[j] += visit_matrix[i][j];
+        }
+      }
+      for (int i = 0; i < c1.size(); ++i) {
+        output.p1[i] /= (float)iterations;
+      }
+      for (int j = 0; j < c2.size(); ++j) {
+        output.p2[j] /= (float)iterations;
+      }
+      output.visit_matrix = visit_matrix;
+    }
     return output;
   }
 
 private:
+  template <bool enable_visit_matrix>
   float run_iteration(auto &prng, auto *node, pkmn_gen1_battle *battle,
                       pkmn_result result, size_t depth = 0) {
     const auto print = [depth](const auto data, bool endl = true) {
@@ -101,6 +126,12 @@ private:
       Outcome outcome;
       node->stats().select(prng, outcome);
 
+      if constexpr (enable_visit_matrix) {
+        if (depth == 0) {
+          ++visit_matrix[outcome.p1_index][outcome.p2_index];
+        }
+      }
+
       pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
                                choices.data(), PKMN_GEN1_MAX_CHOICES);
       const auto c1 = choices[outcome.p1_index];
@@ -119,7 +150,8 @@ private:
 
       print("Obs: " + buffer_to_string(obs.data(), 16));
       auto *child = (*node)(outcome.p1_index, outcome.p2_index, obs);
-      outcome.value = run_iteration(prng, child, battle, result, depth + 1);
+      outcome.value = run_iteration<enable_visit_matrix>(prng, child, battle,
+                                                         result, depth + 1);
       node->stats().update(outcome);
 
       print("value: " + std::to_string(outcome.value));
