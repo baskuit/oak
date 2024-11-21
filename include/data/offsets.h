@@ -9,4 +9,6 @@ constexpr size_t side{184};
 
 constexpr size_t pokemon{24};
 constexpr size_t order{176};
+constexpr size_t active{144};
+
 } // namespace Offsets
