@@ -8,10 +8,10 @@
 #include <chrono>
 
 namespace Types {
-  constexpr bool enable_visits{false};
-  using Obs = std::array<uint8_t, 16>;
-  using Node = Tree::Node<Exp3::JointBanditData<enable_visits>, Obs>;
-};
+constexpr bool enable_visits{false};
+using Obs = std::array<uint8_t, 16>;
+using Node = Tree::Node<Exp3::JointBanditData<enable_visits>, Obs>;
+}; // namespace Types
 
 int benchmark() {
   const auto p1 = SampleTeams::teams[0];

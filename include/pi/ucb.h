@@ -1,20 +1,14 @@
-#include <types/matrix.h>
-#include <types/random.h>
-#include <types/vector.h>
-
 #include <algorithm>
 #include <assert.h>
 #include <bit>
 #include <cstring>
 #include <memory>
 
-#include "hash.h"
-
 namespace UCB {
 
 namespace Precomputed {
 
-constexpr auto generate_row_col_map() {
+consteval auto generate_row_col_map() {
   std::array<std::array<uint8_t, 2>, 81 * 2> result{};
   for (uint8_t i = 1; i <= 9; ++i) {
     for (uint8_t j = 1; j <= 9; ++j) {
@@ -130,7 +124,6 @@ class UCBNodeTest {
 // This does MatrixUCB instead of joint UCB, also stores tree-wide data like 'c'
 struct RootUCBNode {
   float c_uct{2};
-
   Matrix<RootUCBEntry, std::vector> empirical_matrix;
 
   RootUCBNode(float c_uct) : c_uct{c_uct} {}

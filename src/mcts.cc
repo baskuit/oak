@@ -14,6 +14,10 @@
 #include <numeric>
 #include <sstream>
 
+#include <data/options.h>
+
+static_assert(Options::calc && Options::chance && !Options::log);
+
 namespace Sets {
 struct SetCompare {
   constexpr bool operator()(SampleTeams::Set a, SampleTeams::Set b) const {
@@ -57,7 +61,7 @@ std::string set_string(auto set) {
 
 struct Types {
   using Obs = std::array<uint8_t, 16>;
-  using Node = Tree::Node<Exp3::JointBanditData<true>, Obs>;
+  using Node = Tree::Node<Exp3::JointBanditData<false>, Obs>;
 };
 
 int all_1v1(int argc, char **argv) {
@@ -90,7 +94,8 @@ int all_1v1(int argc, char **argv) {
 
   auto battle = Init::battle(std::vector<SampleTeams::Set>{set_a},
                              std::vector<SampleTeams::Set>{set_b});
-  MCTS<true> search{};
+  constexpr bool debug_print = false;
+  MCTS<debug_print> search{};
   auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
   Types::Node node{};
   pkmn_gen1_chance_durations durations{};
@@ -111,6 +116,14 @@ int all_1v1(int argc, char **argv) {
               << " : " << output.p2[i] << std::endl;
   }
   std::cout << "Value: " << output.average_value << std::endl;
+
+  std::cout << "Visits Matrix:" << std::endl;
+  for (int i = 0; i < m; ++i) {
+    for (int j = 0; j < n; ++j) {
+      std::cout << output.visit_matrix[i][j] << "\t";
+    }
+    std::cout << std::endl;
+  }
 
   return 0;
 }
