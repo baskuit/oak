@@ -13,6 +13,10 @@ create_library(libpkmn_client release client)
 create_library(libpkmn_chance release chance)
 create_library(libpkmn_fast release fast)
 
+target_compile_definitions(libpkmn_client INTERFACE LOG)
+target_compile_definitions(libpkmn_chance INTERFACE CHANCE CALC)
+target_compile_definitions(libpkmn_fast INTERFACE LOG)
+
 add_custom_target(build_client_debug ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpkmn/debug/client/libpkmn-showdown.a)
 add_custom_target(build_chance_debug ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpkmn/debug/chance/libpkmn-showdown.a)
 add_custom_target(build_fast_debug ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpkmn/debug/fast/libpkmn-showdown.a)
