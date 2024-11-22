@@ -74,8 +74,9 @@ constexpr void init_pokemon(const auto &pokemon,
   }
 
   if constexpr (requires { pokemon.hp; }) {
-    if constexpr (std::is_floating_point_v<decltype(pokemon.hp)>) {
-      u16_ptr[9] = std::min(std::max(pokemon.hp, 0.0), 1.0) * u16_ptr[0];
+    using HP = std::decay_t<decltype(pokemon.hp)>;
+    if constexpr (std::is_floating_point_v<HP>) {
+      u16_ptr[9] = std::min(std::max(pokemon.hp, HP{0}), HP{1}) * u16_ptr[0];
     } else {
       u16_ptr[9] = pokemon.hp;
     }
