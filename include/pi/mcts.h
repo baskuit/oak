@@ -5,6 +5,8 @@
 #include <type_traits>
 #include <utility>
 
+
+#include <battle/helper.h>
 #include <data/strings.h>
 #include <pi/exp3.h>
 #include <pi/tree.h>
@@ -16,8 +18,7 @@
 
 static_assert(Options::chance && Options::calc && !Options::log);
 
-template <bool debug_print = false, bool clamp_rolls = true> class MCTS {
-public:
+template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
   pkmn_gen1_battle_options options;
   pkmn_gen1_chance_options chance_options;
   pkmn_gen1_calc_options calc_options;
@@ -25,6 +26,7 @@ public:
   size_t total_depth;
   std::array<pkmn_choice, 9> choices;
   std::array<std::array<uint32_t, 9>, 9> visit_matrix;
+  int i;
 
   struct Output {
     size_t iterations;
@@ -86,7 +88,6 @@ public:
     return output;
   }
 
-private:
   template <bool enable_visit_matrix>
   float run_iteration(auto &prng, auto *node, pkmn_gen1_battle *battle,
                       pkmn_result result, size_t depth = 0) {
@@ -184,6 +185,7 @@ private:
     };
   }
 
+
   float init_stats_and_rollout(auto &stats, auto &prng,
                                pkmn_gen1_battle *battle, pkmn_result result) {
 
@@ -213,6 +215,7 @@ private:
       c2 = choices[seed % n];
       pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
       result = pkmn_gen1_battle_update(battle, c1, c2, &options);
+      ++MCTS::i;
     }
     switch (pkmn_result_type(result)) {
     case PKMN_RESULT_WIN: {

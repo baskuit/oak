@@ -13,15 +13,21 @@ using Obs = std::array<uint8_t, 16>;
 using Node = Tree::Node<Exp3::JointBanditData<enable_visits>, Obs>;
 }; // namespace Types
 
-int benchmark() {
+int benchmark(int argc, char **argv) {
+
   const auto p1 = SampleTeams::teams[0];
   const auto p2 = SampleTeams::teams[1];
-  const uint64_t seed = 123456789;
+  const uint64_t seed = 1111111;
   prng device{seed};
   auto battle = Init::battle(p1, p2, seed);
 
   MCTS<false> search{};
-  size_t iterations = 1 << 20;
+  int exp = 20;
+  if (argc == 2) {
+    exp = std::atoi(argv[1]);
+  }
+  exp = std::max(0, std::min(20, exp));
+  size_t iterations = 1 << exp;
   auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
   Types::Node node{};
   pkmn_gen1_chance_durations durations{};
@@ -33,7 +39,11 @@ int benchmark() {
   const auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   std::cout << duration.count() << " ms." << std::endl;
+
+
+  std::cout << "Average rollout length: " << search.i / (float) iterations << std::endl;
+
   return 0;
 }
 
-int main() { return benchmark(); }
+int main(int argc, char **argv) { return benchmark(argc, argv); }
