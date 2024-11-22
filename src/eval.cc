@@ -1,3 +1,4 @@
+#include <battle/debug-log.h>
 #include <battle/init.h>
 #include <data/options.h>
 #include <data/sample-teams.h>
@@ -21,11 +22,19 @@ int abstract_test(int argc, char **argv) {
 
   prng device{seed};
 
-  auto battle = Init::battle(SampleTeams::teams[0], SampleTeams::teams[1]);
+  auto battle = Init::battle(SampleTeams::teams[i], SampleTeams::teams[j]);
   pkmn_gen1_battle_options options;
   auto result = Init::update(battle, 0, 0, options);
-
   Abstract::Battle abstract{battle};
+
+  int t = 0;
+  while (!pkmn_result_type(result)) {
+    const auto [choices1, choices2] = Init::choices(battle, result);
+    auto c1 = choices1[device.random_int(choices1.size())];
+    auto c2 = choices2[device.random_int(choices2.size())];
+    result = Init::update(battle, c1, c2, options);
+    ++t;
+  }
 
   return 0;
 }

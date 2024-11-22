@@ -64,7 +64,7 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
     output.iterations = iterations;
     output.total_value = total_value;
     output.average_value = total_value / iterations;
-    const auto [c1, c2] = Init::choices(battle, result);
+    const auto [c1, c2] = Init::choices(*battle, result);
     output.p1.resize(c1.size());
     output.p2.resize(c2.size());
     if constexpr (enable_visit_matrix) {
