@@ -26,26 +26,28 @@ String utilities: decoding/formatting byte data, move/species names, etc.
 * abstract.h
 
 Abstract:: defines structs that bucket similar states together by approximating hp, stats, etc.
-This means that states with only small continuous differences can be treated as the same.
-
-The headers below define two different kinds of perfect info search. The first is a provably correct approach that uses chance action 'keys' to keep track of states. The second is a fast approach that uses an imperfect hash and bandit algorithm.
-
-* eval.h
-
-A hand crafted eval that uses precomputed 1v1 values and combines them into a crude full battle estimate TODO
+This means states that are only perturbed can be treated as the same.
 
 * exp3.h
 
-`Exp3::JointBanditData` is a compact struct that contains exp3 stats for both players. It holds visit counts and gains for up to 18 actions in only 128 bytes - two cache lines on most processors.
+`Exp3::JointBanditData` is a compact struct that stores Exp3 bandit data for both players, with implementations for selection and update.
 
 * mcts.h
 
-Supports vanilla monte-carlo and eval.h for leaf value estimation.
+Basic Monte Carlo tree search with actions clamping and duration sampling (TODO)
 
 * tree.h
 
 This structure stores all the search stats in a way that guarantees no "collisions". No two different histories will access the same stats.
 
+* eval.h
+
+The previous `/pi` headers create a bootstrap for our HCE. We can take the average MCTS root value as an estimate for the value of a 1v1
+
+These values are cached or computed at initialization and then combined into a value estimator for the full 6v6 game.
+
+This HCE can then be used with `mcts.h` as a replacement for the slow monte-carlo rollout eval
+Or it can be used in the forthcoming *graph search* that uses the abstract battle to produce a hash for a transposition table
 
 * tt.h
 * ucb.h
