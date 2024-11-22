@@ -27,6 +27,17 @@ struct SetCompare {
       return a.species < b.species;
     }
   }
+<<<<<<< Updated upstream
+=======
+  std::cout << container[n - 1] << std::endl;
+}
+
+struct Types {
+  using State = Battle<0, true, true>;
+  using Model = MonteCarloModel<prng, State, 1>;
+  using Obs = std::array<uint8_t, 16>;
+  using Node = Tree::Node<Exp3::JointBanditData, Obs>;
+>>>>>>> Stashed changes
 };
 
 auto get_sorted_set_array() {
