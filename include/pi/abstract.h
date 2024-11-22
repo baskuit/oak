@@ -1,3 +1,5 @@
+#pragma once
+
 #include <array>
 
 #include <data/offsets.h>
@@ -60,10 +62,12 @@ struct Bench {
     return static_cast<Status>(byte);
   }
 
+  bool operator==(const Bench &) const = default;
+
   constexpr Bench() : hp{HP::SEVEN}, status{Status::CLR} {}
   constexpr Bench(const uint8_t *const bytes) : hp{get_hp(bytes)}, status{} {}
-  constexpr Bench(const uint8_t *const bytes, const uint8_t dur)
-      : hp{get_hp(bytes)}, status{get_status(bytes[20], dur)} {}
+  // constexpr Bench(const uint8_t *const bytes, const uint8_t dur)
+  //     : hp{get_hp(bytes)}, status{get_status(bytes[20], dur)} {}
 };
 #pragma pack(pop)
 
@@ -80,10 +84,10 @@ struct Active {
   uint8_t slot;
   uint8_t padding[20 - 8];
 
+  bool operator==(const Active &) const = default;
+
   Active() = default;
-  constexpr Active(const uint8_t *bytes)
-      : stats{}, reflect{bytes[32]}, light_screen{bytes[31]},
-        slot{bytes[176 - 144]}, padding{} {}
+  constexpr Active(const uint8_t *bytes) : slot{bytes[176 - 144]} {}
 };
 #pragma pack(pop)
 
@@ -91,6 +95,8 @@ struct Active {
 struct Side {
   Active active;
   std::array<Bench, 6> bench;
+
+  bool operator==(const Side &) const = default;
 
   Side() = default;
   constexpr Side(const uint8_t *const bytes)
@@ -111,10 +117,22 @@ struct Battle {
 
   Battle() = default;
 
+  bool operator==(const Battle &) const = default;
+
   constexpr Battle(const pkmn_gen1_battle &battle) noexcept
       : sides{battle.bytes, battle.bytes + Offsets::side} {}
 
-  void update(const pkmn_gen1_battle *const battle) noexcept {}
+  void update(const pkmn_gen1_battle &battle) noexcept {
+    const auto active_1 = battle.bytes[Offsets::order];
+    sides[0].bench[active_1 - 1] =
+        Bench{battle.bytes + Offsets::pokemon * (active_1 - 1)};
+    sides[0].active.slot = active_1;
+
+    const auto active_2 = battle.bytes[Offsets::side + Offsets::order];
+    sides[1].bench[active_2 - 1] =
+        Bench{battle.bytes + Offsets::side + Offsets::pokemon * (active_2 - 1)};
+    sides[1].active.slot = active_2;
+  }
 };
 
 // namespace Test {
