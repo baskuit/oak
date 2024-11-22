@@ -27,6 +27,16 @@ Typescript code and showdown dev scripts will usually require that the `pokemon-
 cd extern/pokemon-showdown && node build
 ```
 
+The `pkmn-debug` utility is built via
+```
+cd extern/engine
+npm install && npm run compile
+```
+and run with 
+```
+./extern/engine/src/bin/pkmn-debug
+```
+
 # Status
 
 This repo is far from completion. The following is completed
