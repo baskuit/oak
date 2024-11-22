@@ -48,8 +48,8 @@ struct Bench {
   Status status;
 
   static constexpr HP get_hp(const uint8_t *const bytes) {
-    const auto cur = std::bit_cast<const uint8_t *const>(bytes)[9];
-    const auto max = std::bit_cast<const uint8_t *const>(bytes)[0];
+    const auto cur = std::bit_cast<const uint16_t *const>(bytes)[9];
+    const auto max = std::bit_cast<const uint16_t *const>(bytes)[0];
     return static_cast<HP>(std::min(7, 8 * (cur + max / 8) / max));
   }
 

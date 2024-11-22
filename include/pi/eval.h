@@ -68,11 +68,11 @@ void print_mem(MEM &mem) {
 MEM compute_table(auto set1, auto set2, const auto seed,
                   const auto iterations) {
   MEM result;
-  for (int hp1 = 0; hp1 < 3; ++hp1) {
-    for (int hp2 = 0; hp2 < 3; ++hp2) {
-      set1.hp = hp1 / 4.0;
-      set2.hp = hp2 / 4.0;
-      result[hp1][hp2] = get_value(set1, set2, iterations, seed);
+  for (int hp1 = 1; hp1 <= 3; ++hp1) {
+    for (int hp2 = 1; hp2 <= 3; ++hp2) {
+      set1.hp = hp1 / 3.0;
+      set2.hp = hp2 / 3.0;
+      result[hp1 - 1][hp2 - 1] = get_value(set1, set2, iterations, seed);
     }
   }
   return result;
@@ -166,7 +166,6 @@ public:
         std::cout << "cant read value: " << g << std::endl;
         return false;
       }
-      std::cout << key.first << " " << key.second << std::endl;
       MEMData[key] = value;
     }
 
@@ -199,6 +198,61 @@ public:
         mem_matrix[i][j] = global(p1[i], p2[j]);
       }
     }
+  }
+
+  float value(const Abstract::Battle &battle) {
+
+    static constexpr int HP_Numerators[] = {
+        0, // KO (not used, but added for completeness)
+        1, // ONE
+        1, // TWO
+        2, // THREE
+        2, // FOUR
+        2, // FIVE
+        3, // SIX
+        3  // SEVEN
+    };
+
+    const auto sigmoid = [](float x) { return 1 / (1 + std::exp(-x)); };
+    const auto inv_sigmoid = [](float y) { return -std::log((1 / y) - 1); };
+    const auto not_ko = [](const auto &elem) {
+      return elem.hp != Abstract::HP::KO;
+    };
+
+    float m1 = 0;
+    float m2 = 0;
+    const auto b1 = battle.sides[0].bench;
+    const auto b2 = battle.sides[1].bench;
+
+    size_t m = std::count_if(b1.begin(), b1.end(), not_ko);
+    size_t n = std::count_if(b2.begin(), b2.end(), not_ko);
+
+    for (int i = 0; i < 6; ++i) {
+      if (b1[i].hp == Abstract::HP::KO) {
+        continue;
+      }
+      for (int j = 0; j < 6; ++j) {
+        if (b2[j].hp == Abstract::HP::KO) {
+          continue;
+        }
+        const auto &mem = mem_matrix[i][j];
+        const auto v = mem[HP_Numerators[static_cast<uint8_t>(b1[i].hp)]]
+                          [HP_Numerators[static_cast<uint8_t>(b2[j].hp)]];
+        const auto logit = inv_sigmoid(v);
+        constexpr float bound = 3;
+        // for stability
+        const auto clamped = std::max(std::min(logit, bound), -bound);
+
+        std::cout << v << '/' << clamped << ' ';
+
+        m1 += clamped / n;
+        m2 -= clamped / m;
+      }
+      std::cout << std::endl;
+
+      std::cout << "m1: " << m1 << " m2: " << m2 << std::endl;
+    }
+    return sigmoid((m1 - m2) / (2));
   }
 
   // expected values is [0, 1]
