@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <mutex>
 #include <numeric>
 #include <type_traits>
 #include <vector>
@@ -79,12 +80,6 @@ MEM compute_table(auto set1, auto set2, const auto seed,
 
 class GlobalMEM {
 public:
-  struct Set {
-    Data::Species species;
-    std::array<Data::Moves, 4> moves;
-    int level;
-  };
-
   using SetID = uint32_t;
 
   constexpr MEM switch_sides(const MEM &mem) const noexcept {
@@ -110,6 +105,14 @@ public:
     }
     id *= 100;
     return id;
+  }
+
+  void add_matchups(const auto &p1, const auto &p2) {
+    for (const auto &set1 : p1) {
+      for (const auto &set2 : p2) {
+        (*this)(set1, set2);
+      }
+    }
   }
 
   MEM operator()(const auto &p1_set, const auto &p2_set) {
@@ -145,25 +148,26 @@ public:
     std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary);
     if (!file.is_open()) {
       std::cout << "cant open file" << std::endl;
-
       return false;
     }
 
     file.seekg(0, std::ios::beg);
-    while (file) {
+    while (file.peek() != EOF) {
       std::pair<SetID, SetID> key;
       MEM value;
 
       file.read(std::bit_cast<char *>(&key), sizeof(key));
-      if (file.gcount() != sizeof(key)) {
+      if (const auto g = file.gcount(); g != sizeof(key)) {
+        std::cout << "cant read key: " << gamma << std::endl;
         return false;
       }
       file.read(std::bit_cast<char *>(value.data()), sizeof(value));
-      if (file.gcount() != sizeof(value)) {
+      if (const auto g = file.gcount(); g != sizeof(value)) {
+        std::cout << "cant read value: " << g << std::endl;
         return false;
       }
+      std::cout << key.first << " " << key.second << std::endl;
       MEMData[key] = value;
-      std::cout << key.first << std::endl;
     }
 
     file.close();
@@ -173,6 +177,7 @@ public:
 private:
   std::map<std::pair<SetID, SetID>, MEM> MEMData{};
   prng device{9348509345830};
+  std::mutex mutex{};
 };
 
 class CachedEval {
@@ -182,47 +187,50 @@ public:
   }
 
   std::array<std::array<MEM, 6>, 6> mem_matrix;
-  std::array<std::array<float, 6>, 6> value_matrix;
 
   float value() const { return 0; }
 
-  CachedEval() = default;
-
-  // compute on the spot, 36 * 9 searches
-  CachedEval(const pkmn_gen1_battle &battle) {}
-
-  CachedEval(const pkmn_gen1_battle &battle, const auto &global) {}
-};
-
-// expected values is [0, 1]
-float from_matrix(const auto &expected_values, const auto m, const auto n) {
-  std::vector<float> p1_material;
-  std::vector<float> p2_material;
-  p1_material.resize(m);
-  p2_material.resize(n);
-
-  const auto sigmoid = [](float x) { return 1 / (1 + std::exp(-x)); };
-  const auto inv_sigmoid = [](float y) { return -std::log((1 / y) - 1); };
-
-  for (int i = 0; i < m; ++i) {
-    for (int j = 0; j < n; ++j) {
-      const auto p = expected_values[i][j];
-      const auto logit = inv_sigmoid(p);
-      constexpr auto bound = 1000;
-      // for stability
-      const auto clamped = std::max(std::min(logit, bound), -bound);
-
-      p1_material[i] += clamped / n;
-      p2_material[j] -= clamped / m;
+  CachedEval(const auto &p1, const auto &p2, GlobalMEM &global) {
+    global.add_matchups(p1, p2);
+    const auto m = p1.size();
+    const auto n = p2.size();
+    for (auto i = 0; i < m; ++i) {
+      for (auto j = 0; j < n; ++j) {
+        mem_matrix[i][j] = global(p1[i], p2[j]);
+      }
     }
   }
 
-  // we could also e.g. give extra weight to the actives
-  const float p1_sum =
-      std::accumulate(p1_material.begin(), p1_material.end(), 0);
-  const float p2_sum =
-      std::accumulate(p2_material.begin(), p2_material.end(), 0);
-  const float material_difference = (p1_sum - p2_sum) / 2;
-  return sigmoid(material_difference);
-}
-}; // namespace Eval
+  // expected values is [0, 1]
+  float from_matrix(const auto &expected_values, const auto m, const auto n) {
+    std::vector<float> p1_material;
+    std::vector<float> p2_material;
+    p1_material.resize(m);
+    p2_material.resize(n);
+
+    const auto sigmoid = [](float x) { return 1 / (1 + std::exp(-x)); };
+    const auto inv_sigmoid = [](float y) { return -std::log((1 / y) - 1); };
+
+    for (int i = 0; i < m; ++i) {
+      for (int j = 0; j < n; ++j) {
+        const auto p = expected_values[i][j];
+        const auto logit = inv_sigmoid(p);
+        constexpr auto bound = 1000;
+        // for stability
+        const auto clamped = std::max(std::min(logit, bound), -bound);
+
+        p1_material[i] += clamped / n;
+        p2_material[j] -= clamped / m;
+      }
+    }
+
+    // we could also e.g. give extra weight to the actives
+    const float p1_sum =
+        std::accumulate(p1_material.begin(), p1_material.end(), 0);
+    const float p2_sum =
+        std::accumulate(p2_material.begin(), p2_material.end(), 0);
+    const float material_difference = (p1_sum - p2_sum) / 2;
+    return sigmoid(material_difference);
+  }
+};
+} // namespace Eval
