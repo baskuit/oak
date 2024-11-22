@@ -20,28 +20,26 @@ template <size_t log_size = 64> struct DebugLog {
   Header header;
   std::vector<Frame> frames;
 
-  void set_header(const pkmn_gen1_battle *battle) {
+  void set_header(const pkmn_gen1_battle &battle) {
     header[0] = 1;
     header[1] = 1;
     header[2] = log_size % 256;
     header[3] = log_size / 256;
     std::memset(header.data() + 4, 0, 4);
-    std::memcpy(header.data() + 8, battle->bytes, PKMN_GEN1_BATTLE_SIZE);
+    std::memcpy(header.data() + 8, battle.bytes, PKMN_GEN1_BATTLE_SIZE);
   }
 
-  pkmn_result update_battle(pkmn_gen1_battle *battle,
-                            pkmn_gen1_battle_options *options, pkmn_choice c1,
-                            pkmn_choice c2) {
+  pkmn_result update(pkmn_gen1_battle &battle, const pkmn_choice c1,
+                     const pkmn_choice c2, pkmn_gen1_battle_options &options) {
 
     frames.emplace_back();
     auto *frame_data = frames.back().data();
     pkmn_gen1_log_options log_options{frame_data, log_size};
-    pkmn_gen1_battle_options_set(options, &log_options, nullptr, nullptr);
-
-    auto result = pkmn_gen1_battle_update(battle, c1, c2, options);
+    pkmn_gen1_battle_options_set(&options, &log_options, nullptr, nullptr);
+    const auto result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
 
     frame_data += log_size;
-    std::memcpy(frame_data, battle->bytes, PKMN_GEN1_BATTLE_SIZE);
+    std::memcpy(frame_data, battle.bytes, PKMN_GEN1_BATTLE_SIZE);
     frame_data += PKMN_GEN1_BATTLE_SIZE;
     frame_data[0] = result;
     frame_data[1] = c1;
