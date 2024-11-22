@@ -40,9 +40,6 @@ int benchmark(int argc, char **argv) {
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   std::cout << duration.count() << " ms." << std::endl;
 
-
-  std::cout << "Average rollout length: " << search.i / (float) iterations << std::endl;
-
   return 0;
 }
 

@@ -12,6 +12,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <type_traits>
+#include <vector>
 
 #include <pkmn.h>
 
@@ -128,27 +129,48 @@ constexpr auto battle(const auto &p1, const auto &p2,
 pkmn_result update(pkmn_gen1_battle &battle, const auto c1, const auto c2,
                    pkmn_gen1_battle_options &options) {
   const auto get_choice = [](const auto c, const uint8_t *side) -> pkmn_choice {
-    if constexpr (std::is_same_v<typeof(c), Species>) {
-      for (int i = 0; i < 6; ++i) {
-        if (static_cast<uint8_t>(c) == side[24 * i + 23]) {
-          return {};
+    if constexpr (std::is_same_v<decltype(c), Species>) {
+      for (int i = 1; i < 6; ++i) {
+        const auto slot = side[Offsets::order + i] - 1;
+        if (static_cast<uint8_t>(c) == side[24 * slot + Offsets::species]) {
+          return (i << 2) | 2;
         }
       }
       throw std::runtime_error{"Init::update - invalid switch"};
-    } else if constexpr (std::is_same_v<typeof(c), Moves>) {
+    } else if constexpr (std::is_same_v<decltype(c), Moves>) {
       for (int i = 0; i < 4; ++i) {
+        if (static_cast<uint8_t>(c) == side[Offsets::active_moves + 2 * i]) {
+          return (i << 2) | 1;
+        }
       }
       throw std::runtime_error{"Init::update - invalid move"};
+    } else if constexpr (std::is_integral_v<decltype(c)>) {
+      return c;
     } else {
-      static_assert(false, "Invalid type for Init::update");
+      static_assert(false);
     }
-    return {};
   };
-
   pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
   return pkmn_gen1_battle_update(&battle, get_choice(c1, battle.bytes),
                                  get_choice(c1, battle.bytes + Offsets::side),
                                  &options);
+}
+
+auto choices(const pkmn_gen1_battle *const battle, pkmn_result result)
+    -> std::pair<std::vector<pkmn_choice>, std::vector<pkmn_choice>> {
+  std::vector<pkmn_choice> p1_choices;
+  std::vector<pkmn_choice> p2_choices;
+  p1_choices.resize(PKMN_GEN1_MAX_CHOICES);
+  p2_choices.resize(PKMN_GEN1_MAX_CHOICES);
+  auto m =
+      pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
+                               p1_choices.data(), PKMN_GEN1_MAX_CHOICES);
+  auto n =
+      pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2, pkmn_result_p2(result),
+                               p2_choices.data(), PKMN_GEN1_MAX_CHOICES);
+  p1_choices.resize(m);
+  p2_choices.resize(n);
+  return {p1_choices, p2_choices};
 }
 
 } // namespace Init

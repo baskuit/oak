@@ -5,8 +5,6 @@
 #include <type_traits>
 #include <utility>
 
-
-#include <battle/helper.h>
 #include <data/strings.h>
 #include <pi/exp3.h>
 #include <pi/tree.h>
@@ -26,7 +24,6 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
   size_t total_depth;
   std::array<pkmn_choice, 9> choices;
   std::array<std::array<uint32_t, 9>, 9> visit_matrix;
-  int i;
 
   struct Output {
     size_t iterations;
@@ -67,7 +64,7 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
     output.iterations = iterations;
     output.total_value = total_value;
     output.average_value = total_value / iterations;
-    const auto [c1, c2] = Helper::get_choices(battle, result);
+    const auto [c1, c2] = Init::choices(battle, result);
     output.p1.resize(c1.size());
     output.p2.resize(c2.size());
     if constexpr (enable_visit_matrix) {
@@ -185,7 +182,6 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
     };
   }
 
-
   float init_stats_and_rollout(auto &stats, auto &prng,
                                pkmn_gen1_battle *battle, pkmn_result result) {
 
@@ -215,7 +211,6 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
       c2 = choices[seed % n];
       pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
       result = pkmn_gen1_battle_update(battle, c1, c2, &options);
-      ++MCTS::i;
     }
     switch (pkmn_result_type(result)) {
     case PKMN_RESULT_WIN: {

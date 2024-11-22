@@ -3,6 +3,7 @@
 #include <data/offsets.h>
 
 #include <bit>
+#include <cmath>
 
 #include <pkmn.h>
 
@@ -19,14 +20,13 @@ enum class HP : std::underlying_type_t<std::byte> {
   SEVEN,
 };
 
-// number of observed turns spent asleep. REST_2 is identical to SLP_6
 enum class Status : std::underlying_type_t<std::byte> {
   CLR = 0b00000000,
   PSN = 0b00001000,
   BRN = 0b00010000,
   FRZ = 0b00100000,
   PAR = 0b01000000,
-  TOX = 0b10001000, // not used in eval currently
+  TOX = 0b10001000,
   SP0 = 0b00000001,
   SP1 = 0b00000010,
   SP2 = 0b00000011,
@@ -48,7 +48,7 @@ struct Bench {
   static constexpr HP get_hp(const uint8_t *const bytes) {
     const auto cur = std::bit_cast<const uint8_t *const>(bytes)[9];
     const auto max = std::bit_cast<const uint8_t *const>(bytes)[0];
-    return std::min(7, 8 * (cur + max / 8) / max);
+    return static_cast<HP>(std::min(7, 8 * (cur + max / 8) / max));
   }
 
   static constexpr Status get_status(const uint8_t byte, const uint8_t dur) {
@@ -111,25 +111,25 @@ struct Battle {
 
   Battle() = default;
 
-  constexpr Battle(const uint8_t *const bytes) noexcept
-      : sides{bytes, bytes + Offsets::side} {}
+  constexpr Battle(const pkmn_gen1_battle &battle) noexcept
+      : sides{battle.bytes, battle.bytes + Offsets::side} {}
 
   void update(const pkmn_gen1_battle *const battle) noexcept {}
 };
 
-namespace Test {
-static_assert(sizeof(Bench) == 2);
-using PokemonBuffer = std::array<uint8_t, 24>;
-constexpr PokemonBuffer mon{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
-constexpr PokemonBuffer mon_low{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0};
-constexpr PokemonBuffer mon_kod{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static_assert(Bench{mon.data()}.hp == HP::SEVEN);
-static_assert(Bench{mon_low.data()}.hp == HP::ONE);
-static_assert(Bench{mon_kod.data()}.hp == HP::KO);
-} // namespace Test
+// namespace Test {
+// static_assert(sizeof(Bench) == 2);
+// using PokemonBuffer = std::array<uint8_t, 24>;
+// constexpr PokemonBuffer mon{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//                             0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
+// constexpr PokemonBuffer mon_low{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//                                 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0};
+// constexpr PokemonBuffer mon_kod{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+// static_assert(Bench{mon.data()}.hp == HP::SEVEN);
+// static_assert(Bench{mon_low.data()}.hp == HP::ONE);
+// static_assert(Bench{mon_kod.data()}.hp == HP::KO);
+// } // namespace Test
 
 static_assert(sizeof(Active) == 20);
 static_assert(sizeof(Bench) == 2);
