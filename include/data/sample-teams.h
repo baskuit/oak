@@ -14,6 +14,7 @@ using enum Moves;
 struct Set {
   Species species;
   std::array<Moves, 4> moves;
+  float hp = 1;
 };
 
 constexpr std::array<std::array<Set, 6>, 100> teams{

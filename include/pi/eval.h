@@ -55,13 +55,23 @@ float get_value(const auto &set1, const auto &set2, size_t iterations,
 
 using MEM = std::array<std::array<float, n_hp>, n_hp>;
 
-MEM compute_table(auto set1, auto set2, const auto seed) {
+void print_mem(MEM &mem) {
+  for (int i = 0; i < n_hp; ++i) {
+    for (int j = 0; j < n_hp; ++j) {
+      std::cout << mem[i][j] << '\t';
+    }
+    std::cout << std::endl;
+  }
+}
+
+MEM compute_table(auto set1, auto set2, const auto seed,
+                  const auto iterations) {
   MEM result;
   for (int hp1 = 0; hp1 < 3; ++hp1) {
     for (int hp2 = 0; hp2 < 3; ++hp2) {
       set1.hp = hp1 / 4.0;
       set2.hp = hp2 / 4.0;
-      result[hp1][hp2] = get_value(set1, set2, 1 << 20, seed);
+      result[hp1][hp2] = get_value(set1, set2, iterations, seed);
     }
   }
   return result;
@@ -102,17 +112,19 @@ public:
     return id;
   }
 
-  // const MEM &operator()(const auto &p1_set, const auto &p2_set) const {
-  //   SetID id1 = toID(p1_set);
-  //   SetID id2 = toID(p2_set);
-  //   // if (id1 > id2) {
+  MEM operator()(const auto &p1_set, const auto &p2_set) {
+    SetID id1 = toID(p1_set);
+    SetID id2 = toID(p2_set);
 
-  //   // } else {
-
-  //   // }
-  //   // return MEMData.at({});
-
-  // }
+    if (MEMData.contains({id1, id2})) {
+      return MEMData[{id1, id2}];
+    } else if (MEMData.contains({id2, id1})) {
+      return switch_sides(MEMData[{id2, id1}]);
+    } else {
+      return MEMData[{id1, id2}] =
+                 compute_table(p1_set, p2_set, device.uniform_64(), 1 << 16);
+    }
+  }
 
   bool save(const std::filesystem::path path) const {
     std::ofstream file(path, std::ios::binary | std::ios::trunc);
@@ -132,6 +144,8 @@ public:
   bool load(const std::filesystem::path path) {
     std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary);
     if (!file.is_open()) {
+      std::cout << "cant open file" << std::endl;
+
       return false;
     }
 
@@ -141,20 +155,24 @@ public:
       MEM value;
 
       file.read(std::bit_cast<char *>(&key), sizeof(key));
-      file.read(std::bit_cast<char *>(value.data()), sizeof(value));
-
-      if (file.gcount() == sizeof(key) + sizeof(value)) {
-        MEMData[key] = value;
-      } else {
+      if (file.gcount() != sizeof(key)) {
         return false;
       }
+      file.read(std::bit_cast<char *>(value.data()), sizeof(value));
+      if (file.gcount() != sizeof(value)) {
+        return false;
+      }
+      MEMData[key] = value;
+      std::cout << key.first << std::endl;
     }
+
     file.close();
     return true;
   }
 
 private:
-  std::map<std::pair<SetID, SetID>, MEM> MEMData;
+  std::map<std::pair<SetID, SetID>, MEM> MEMData{};
+  prng device{9348509345830};
 };
 
 class CachedEval {
@@ -170,6 +188,7 @@ public:
 
   CachedEval() = default;
 
+  // compute on the spot, 36 * 9 searches
   CachedEval(const pkmn_gen1_battle &battle) {}
 
   CachedEval(const pkmn_gen1_battle &battle, const auto &global) {}
@@ -206,5 +225,4 @@ float from_matrix(const auto &expected_values, const auto m, const auto n) {
   const float material_difference = (p1_sum - p2_sum) / 2;
   return sigmoid(material_difference);
 }
-
 }; // namespace Eval
