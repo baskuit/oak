@@ -93,7 +93,7 @@ void print_score(bool *flag, size_t *n, size_t *score) {
   while (!*flag) {
     float n_ = static_cast<float>(*n) + 1.0f * (*n == 0);
     float avg = static_cast<float>(*score) / 2 / n_;
-    std::cout << "avg: " << avg << std::endl;
+    std::cout << "n: " << n <<  " avg: " << avg << std::endl;
     sleep(10);
   }
 }
