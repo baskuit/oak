@@ -94,7 +94,7 @@ constexpr std::array<std::string, 152> SPECIES_STRING{
     "Zapdos",     "Moltres",    "Dratini",    "Dragonair",  "Dragonite",
     "Mewtwo",     "Mew"};
 
-constexpr std::string species_string(const Data::Species species) {
+constexpr std::string species_string(const auto species) {
   return SPECIES_STRING[static_cast<uint8_t>(species)];
 }
 
