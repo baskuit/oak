@@ -36,7 +36,7 @@ struct Pokemon {
   float hp = 1.0;
 };
 
-struct BattleData {
+struct Input {
   pkmn_gen1_battle battle;
   pkmn_gen1_chance_durations durations;
   Abstract::Battle abstract;
@@ -58,8 +58,7 @@ float get_value(const auto &set1, const auto &set2, size_t iterations,
   MCTS search;
   input.result = Init::update(input.battle, 0, 0, search.options);
   pkmn_gen1_chance_durations durations{};
-  const auto output =
-      search.run(iterations, node, input, model);
+  const auto output = search.run(iterations, node, input, model);
   return output.average_value;
 }
 
