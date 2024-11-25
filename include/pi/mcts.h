@@ -72,18 +72,19 @@ struct MCTS {
     };
 
     *this = {};
-    Output output;
+    Output output{};
 
     if constexpr (requires {
-                    std::chrono::duration_cast<std::chrono::seconds>(dur);
+                    std::chrono::duration_cast<std::chrono::milliseconds>(dur);
                   }) {
       const auto start = std::chrono::high_resolution_clock::now();
-      using Duration = decltype(dur);
-      Duration elapsed{};
-      while (elapsed < dur) {
+      const auto duration =
+          std::chrono::duration_cast<std::chrono::milliseconds>(dur);
+      std::chrono::milliseconds elapsed{};
+      while (elapsed < duration) {
         output.total_value += iter();
         ++output.iterations;
-        elapsed = std::chrono::duration_cast<Duration>(
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - start);
       }
       output.duration =

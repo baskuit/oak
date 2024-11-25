@@ -174,6 +174,27 @@ auto choices(const pkmn_gen1_battle &battle, const pkmn_result result)
   return {p1_choices, p2_choices};
 }
 
+auto score(const pkmn_result result) {
+  switch (pkmn_result_type(result)) {
+  case PKMN_RESULT_NONE: {
+    return .5;
+  }
+  case PKMN_RESULT_WIN: {
+    return 1.0;
+  }
+  case PKMN_RESULT_LOSE: {
+    return 0.0;
+  }
+  case PKMN_RESULT_TIE: {
+    return 0.5;
+  }
+  default: {
+    assert(false);
+    return 0.5;
+  }
+  }
+}
+
 } // namespace Init
 
 static_assert(compute_stat(100, false) == 298);
