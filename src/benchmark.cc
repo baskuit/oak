@@ -7,38 +7,44 @@
 
 #include <chrono>
 
-namespace Types {
-constexpr bool enable_visits{false};
-using Obs = std::array<uint8_t, 16>;
-using Node = Tree::Node<Exp3::JointBanditData<enable_visits>, Obs>;
-}; // namespace Types
+struct BattleData {
+  pkmn_gen1_battle battle;
+  pkmn_gen1_chance_durations durations;
+  pkmn_result result;
+};
+
+struct Model {
+  prng device;
+};
+
+namespace Types {}; // namespace Types
 
 int benchmark(int argc, char **argv) {
+  constexpr bool mcts_root_visits{false};
+
+  using Obs = std::array<uint8_t, 16>;
+  using Node = Tree::Node<Exp3::JointBanditData<mcts_root_visits>, Obs>;
 
   const auto p1 = SampleTeams::teams[0];
   const auto p2 = SampleTeams::teams[1];
   const uint64_t seed = 1111111;
-  prng device{seed};
-  auto battle = Init::battle(p1, p2, seed);
+  Model model;
+  model.device = prng{seed};
+  BattleData input{};
+  input.battle = Init::battle(p1, p2, seed);
 
-  MCTS<false> search{};
+  MCTS search{};
   int exp = 20;
   if (argc == 2) {
     exp = std::atoi(argv[1]);
   }
   exp = std::max(0, std::min(20, exp));
   size_t iterations = 1 << exp;
-  auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
-  Types::Node node{};
-  pkmn_gen1_chance_durations durations{};
+  input.result = Init::update(input.battle, 0, 0, search.options);
+  Node node{};
 
-  const auto start = std::chrono::high_resolution_clock::now();
-  const auto output =
-      search.run(iterations, device, node, battle, result, durations);
-  const auto end = std::chrono::high_resolution_clock::now();
-  const auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-  std::cout << duration.count() << " ms." << std::endl;
+  const auto output = search.run(iterations, node, input, model);
+  std::cout << output.duration.count() << " ms." << std::endl;
 
   return 0;
 }

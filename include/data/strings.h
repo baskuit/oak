@@ -57,7 +57,7 @@ constexpr std::array<std::string, 166> MOVE_STRING{
     "Conversion",   "TriAttack",    "SuperFang",   "Slash",
     "Substitute",   "Struggle"};
 
-constexpr std::string move_string(const Data::Moves move) {
+constexpr std::string move_string(const auto move) {
   return MOVE_STRING[static_cast<uint8_t>(move)];
 }
 

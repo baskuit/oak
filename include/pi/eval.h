@@ -36,21 +36,30 @@ struct Pokemon {
   float hp = 1.0;
 };
 
+struct BattleData {
+  pkmn_gen1_battle battle;
+  pkmn_gen1_chance_durations durations;
+  Abstract::Battle abstract;
+  pkmn_result result;
+};
+
 // basic mcts util that conducts a search to populate the Mono E Mono data
 float get_value(const auto &set1, const auto &set2, size_t iterations,
                 auto seed) {
   std::array<std::remove_reference_t<decltype(set1)>, 1> p1{set1};
   std::array<std::remove_reference_t<decltype(set2)>, 1> p2{set2};
   prng device{seed};
-  auto battle = Init::battle(p1, p2, device.uniform_64());
+  MonteCarlo::Model model{device.uniform_64()};
+  MonteCarlo::Input input;
+  input.battle = Init::battle(p1, p2, device.uniform_64());
   using Node =
       Tree::Node<Exp3::JointBanditData<false>, std::array<uint8_t, 16>>;
   Node node{};
-  MCTS<false, true> search;
-  auto result = Init::update(battle, 0, 0, search.options);
+  MCTS search;
+  input.result = Init::update(input.battle, 0, 0, search.options);
   pkmn_gen1_chance_durations durations{};
   const auto output =
-      search.run(iterations, device, node, battle, result, durations);
+      search.run(iterations, node, input, model);
   return output.average_value;
 }
 
@@ -287,4 +296,10 @@ public:
     return sigmoid(material_difference);
   }
 };
+
+struct Model {
+  prng device;
+  Eval::CachedEval eval;
+};
+
 } // namespace Eval

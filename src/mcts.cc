@@ -58,17 +58,44 @@ std::string set_string(auto set) {
 }
 } // namespace Sets
 
-struct Types {
-  using Obs = std::array<uint8_t, 16>;
-  using Node = Tree::Node<Exp3::JointBanditData<false>, Obs>;
-};
+void print_output(const auto &battle_data, const auto &output) {
 
-int all_1v1(int argc, char **argv) {
+  const auto [p1_choices, p2_choices] =
+      Init::choices(battle_data.battle, battle_data.result);
+  std::cout << "P1 Policy:" << std::endl;
+  const auto m = output.p1.size();
+  for (auto i = 0; i < m; ++i) {
+    std::cout << side_choice_string(battle_data.battle.bytes, p1_choices[i])
+              << " : " << output.p1[i] << std::endl;
+  }
+  std::cout << "P2 Policy:" << std::endl;
+  const auto n = output.p2.size();
+  for (auto i = 0; i < n; ++i) {
+    std::cout << side_choice_string(battle_data.battle.bytes + Offsets::side,
+                                    p2_choices[i])
+              << " : " << output.p2[i] << std::endl;
+  }
+  std::cout << "Value: " << output.average_value << std::endl;
+
+  std::cout << "Visits Matrix:" << std::endl;
+  for (int i = 0; i < m; ++i) {
+    for (int j = 0; j < n; ++j) {
+      std::cout << output.visit_matrix[i][j] << "\t";
+    }
+    std::cout << std::endl;
+  }
+}
+
+int print1v1(int argc, char **argv) {
   if (argc != 5) {
     std::cout << "Usage: provide seed, two set indices, and mcts iterations"
               << std::endl;
     return 1;
   }
+
+  using Obs = std::array<uint8_t, 16>;
+  using Node = Tree::Node<Exp3::JointBanditData<false>, Obs>;
+
   const uint64_t seed = std::atoi(argv[1]);
   const int i = std::atoi(argv[2]);
   const int j = std::atoi(argv[3]);
@@ -91,40 +118,21 @@ int all_1v1(int argc, char **argv) {
 
   std::cout << set_a_str << " vs " << set_b_str << std::endl;
 
-  auto battle = Init::battle(std::vector<SampleTeams::Set>{set_a},
-                             std::vector<SampleTeams::Set>{set_b});
-  constexpr bool debug_print = false;
-  MCTS<debug_print> search{};
-  auto result = pkmn_gen1_battle_update(&battle, 0, 0, &search.options);
-  Types::Node node{};
+  MonteCarlo::Input battle_data;
+  battle_data.battle = Init::battle(std::vector<SampleTeams::Set>{set_a},
+                                    std::vector<SampleTeams::Set>{set_b});
+  MonteCarlo::Model model;
+  model.device = prng{device.uniform_64()};
+  MCTS search{};
+  battle_data.result = Init::update(battle_data.battle, 0, 0, search.options);
+  Node node{};
   pkmn_gen1_chance_durations durations{};
 
-  const auto output =
-      search.run(iterations, device, node, battle, result, durations);
-  const auto [p1_choices, p2_choices] = Init::choices(battle, result);
-  std::cout << "P1 Policy:" << std::endl;
-  const auto m = output.p1.size();
-  for (auto i = 0; i < m; ++i) {
-    std::cout << side_choice_string(battle.bytes, p1_choices[i]) << " : "
-              << output.p1[i] << std::endl;
-  }
-  std::cout << "P2 Policy:" << std::endl;
-  const auto n = output.p2.size();
-  for (auto i = 0; i < n; ++i) {
-    std::cout << side_choice_string(battle.bytes + Offsets::side, p2_choices[i])
-              << " : " << output.p2[i] << std::endl;
-  }
-  std::cout << "Value: " << output.average_value << std::endl;
+  const auto output = search.run(iterations, node, battle_data, model);
 
-  std::cout << "Visits Matrix:" << std::endl;
-  for (int i = 0; i < m; ++i) {
-    for (int j = 0; j < n; ++j) {
-      std::cout << output.visit_matrix[i][j] << "\t";
-    }
-    std::cout << std::endl;
-  }
+  print_output(battle_data, output);
 
   return 0;
 }
 
-int main(int argc, char **argv) { return all_1v1(argc, argv); }
+int main(int argc, char **argv) { return print1v1(argc, argv); }

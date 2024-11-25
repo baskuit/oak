@@ -51,6 +51,10 @@ std::string pokemon_to_string(const uint8_t *const data) {
   }
   sstream << status(data[20]);
   for (int m = 0; m < 4; ++m) {
+    if (data[2 * m + 10] != 0) {
+      sstream << Names::move_string(data[2 * m + 10]) << ": "
+              << (int)data[2 * m + 11] << " ";
+    }
   }
 
   sstream.flush();
