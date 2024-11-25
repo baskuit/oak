@@ -12,7 +12,8 @@ static_assert(Options::calc && Options::chance && !Options::log);
 
 int abstract_test(int argc, char **argv) {
 
-  prng device{std::atoi(argv[1])};
+  const uint64_t seed = std::atoi(argv[1]);
+  prng device{seed};
 
   const auto p1 = SampleTeams::teams[0];
   const auto p2 = SampleTeams::teams[1];

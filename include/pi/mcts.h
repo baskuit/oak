@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <data/strings.h>
+#include <pi/abstract.h>
 #include <pi/exp3.h>
 #include <pi/tree.h>
 
@@ -35,8 +36,8 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
   };
 
   auto run(const auto iterations, auto &prng, auto &node,
-           const pkmn_gen1_battle *const battle, const pkmn_result result,
-           const pkmn_gen1_chance_durations *const durations) {
+           const pkmn_gen1_battle &battle, const pkmn_result result,
+           const pkmn_gen1_chance_durations &durations) {
 
     chance_options = {};
     calc_options = {};
@@ -48,23 +49,23 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
     }
     float total_value = 0;
     for (auto iteration = 0; iteration < iterations; ++iteration) {
-      auto battle_copy = *battle;
+      auto battle_copy = battle;
       auto *battle_seed =
           std::bit_cast<uint64_t *>(battle_copy.bytes + Offsets::seed);
       *battle_seed = prng.uniform_64();
 
-      chance_options.durations = *durations;
+      chance_options.durations = durations;
       pkmn_gen1_battle_options_set(&options, nullptr, &chance_options, nullptr);
 
       total_value +=
-          run_iteration<enable_visit_matrix>(prng, &node, &battle_copy, result);
+          run_iteration<enable_visit_matrix>(prng, &node, battle_copy, result);
     }
 
     Output output;
     output.iterations = iterations;
     output.total_value = total_value;
     output.average_value = total_value / iterations;
-    const auto [c1, c2] = Init::choices(*battle, result);
+    const auto [c1, c2] = Init::choices(battle, result);
     output.p1.resize(c1.size());
     output.p2.resize(c2.size());
     if constexpr (enable_visit_matrix) {
@@ -86,9 +87,9 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
   }
 
   template <bool enable_visit_matrix>
-  float run_iteration(auto &prng, auto *node, pkmn_gen1_battle *battle,
+  float run_iteration(auto &prng, auto *node, pkmn_gen1_battle &battle,
                       pkmn_result result, size_t depth = 0) {
-    const auto print = [depth](const auto data, bool endl = true) {
+    const auto print = [depth](const auto &data, bool endl = true) -> void {
       if constexpr (!debug_print) {
         return;
       }
@@ -101,14 +102,14 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
       }
     };
 
-    const auto battle_options_set = [this, battle]() {
+    const auto battle_options_set = [this, &battle]() {
       if constexpr (clamp_rolls) {
         constexpr auto rolls = 3;
         constexpr int step = 38 / (rolls - 1);
         this->calc_options.overrides.bytes[0] =
-            217 + step * (battle->bytes[Offsets::seed + 7] % rolls);
+            217 + step * (battle.bytes[Offsets::seed + 7] % rolls);
         this->calc_options.overrides.bytes[8] =
-            217 + step * (battle->bytes[Offsets::seed + 8] % rolls);
+            217 + step * (battle.bytes[Offsets::seed + 8] % rolls);
         pkmn_gen1_battle_options_set(&this->options, NULL, NULL,
                                      &this->calc_options);
       } else {
@@ -130,19 +131,19 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
         }
       }
 
-      pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
+      pkmn_gen1_battle_choices(&battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
                                choices.data(), PKMN_GEN1_MAX_CHOICES);
       const auto c1 = choices[outcome.p1_index];
-      pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2, pkmn_result_p2(result),
+      pkmn_gen1_battle_choices(&battle, PKMN_PLAYER_P2, pkmn_result_p2(result),
                                choices.data(), PKMN_GEN1_MAX_CHOICES);
       const auto c2 = choices[outcome.p2_index];
 
-      print("P1: " + side_choice_string(battle->bytes, c1) +
-            " P2: " + side_choice_string(battle->bytes + Offsets::side, c2));
+      print("P1: " + side_choice_string(battle.bytes, c1) +
+            " P2: " + side_choice_string(battle.bytes + Offsets::side, c2));
       print(node->stats().visit_string());
 
       battle_options_set();
-      result = pkmn_gen1_battle_update(battle, c1, c2, &options);
+      result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
       const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
           *pkmn_gen1_battle_options_chance_actions(&options));
 
@@ -183,34 +184,34 @@ template <bool debug_print = false, bool clamp_rolls = true> struct MCTS {
   }
 
   float init_stats_and_rollout(auto &stats, auto &prng,
-                               pkmn_gen1_battle *battle, pkmn_result result) {
+                               pkmn_gen1_battle &battle, pkmn_result result) {
 
     auto seed = prng.uniform_64();
-    auto m =
-        pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1, pkmn_result_p1(result),
-                                 choices.data(), PKMN_GEN1_MAX_CHOICES);
+    auto m = pkmn_gen1_battle_choices(&battle, PKMN_PLAYER_P1,
+                                      pkmn_result_p1(result), choices.data(),
+                                      PKMN_GEN1_MAX_CHOICES);
     auto c1 = choices[seed % m];
-    auto n =
-        pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2, pkmn_result_p2(result),
-                                 choices.data(), PKMN_GEN1_MAX_CHOICES);
+    auto n = pkmn_gen1_battle_choices(&battle, PKMN_PLAYER_P2,
+                                      pkmn_result_p2(result), choices.data(),
+                                      PKMN_GEN1_MAX_CHOICES);
     seed >>= 32;
     auto c2 = choices[seed % n];
     pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
-    result = pkmn_gen1_battle_update(battle, c1, c2, &options);
+    result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
     stats.init(m, n);
     while (!pkmn_result_type(result)) {
       seed = prng.uniform_64();
-      m = pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P1,
+      m = pkmn_gen1_battle_choices(&battle, PKMN_PLAYER_P1,
                                    pkmn_result_p1(result), choices.data(),
                                    PKMN_GEN1_MAX_CHOICES);
       c1 = choices[seed % m];
-      n = pkmn_gen1_battle_choices(battle, PKMN_PLAYER_P2,
+      n = pkmn_gen1_battle_choices(&battle, PKMN_PLAYER_P2,
                                    pkmn_result_p2(result), choices.data(),
                                    PKMN_GEN1_MAX_CHOICES);
       seed >>= 32;
       c2 = choices[seed % n];
       pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
-      result = pkmn_gen1_battle_update(battle, c1, c2, &options);
+      result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
     }
     switch (pkmn_result_type(result)) {
     case PKMN_RESULT_WIN: {

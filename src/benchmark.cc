@@ -34,7 +34,7 @@ int benchmark(int argc, char **argv) {
 
   const auto start = std::chrono::high_resolution_clock::now();
   const auto output =
-      search.run(iterations, device, node, &battle, result, &durations);
+      search.run(iterations, device, node, battle, result, durations);
   const auto end = std::chrono::high_resolution_clock::now();
   const auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

@@ -100,7 +100,7 @@ int all_1v1(int argc, char **argv) {
   pkmn_gen1_chance_durations durations{};
 
   const auto output =
-      search.run(iterations, device, node, &battle, result, &durations);
+      search.run(iterations, device, node, battle, result, durations);
   const auto [p1_choices, p2_choices] = Init::choices(battle, result);
   std::cout << "P1 Policy:" << std::endl;
   const auto m = output.p1.size();

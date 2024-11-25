@@ -50,7 +50,7 @@ float get_value(const auto &set1, const auto &set2, size_t iterations,
   auto result = Init::update(battle, 0, 0, search.options);
   pkmn_gen1_chance_durations durations{};
   const auto output =
-      search.run(iterations, device, node, &battle, result, &durations);
+      search.run(iterations, device, node, battle, result, durations);
   return output.average_value;
 }
 
