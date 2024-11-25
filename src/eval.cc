@@ -13,12 +13,21 @@
 
 static_assert(Options::calc && Options::chance && !Options::log);
 
+struct PokeModel {
+  prng device;
+  struct Eval {
+    float value(const pkmn_gen1_battle &battle) const {
+      return PokeEngine::evaluate_battle(battle);
+    }
+  };
+  Eval eval{};
+};
+
 template <typename Team, typename Dur>
 void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
             size_t *n, size_t *score) {
 
   using Obs = std::array<uint8_t, 16>;
-  using Node = Tree::Node<Exp3::JointBanditData<.15f, false>, Obs>;
 
   const auto half = [dur](auto x, auto y, auto seed) -> float {
     auto battle = Init::battle(x, y);
@@ -32,6 +41,7 @@ void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
     MCTS search{};
     MonteCarlo::Model mcm{seed};
     Eval::Model eval{mcm.device.uniform_64(), Eval::CachedEval{x, y, global}};
+    PokeModel poke_eval{mcm.device.uniform_64()};
 
     while (!pkmn_result_type(result)) {
 
@@ -39,6 +49,7 @@ void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
 
       auto i = 0;
       if (choices1.size() > 1) {
+        using Node = Tree::Node<Exp3::JointBanditData<.15f, false>, Obs>;
         Node node{};
         MonteCarlo::Input mc_input{battle, durations, result};
         auto mc_output = search.run(dur, node, mc_input, mcm);
@@ -48,9 +59,10 @@ void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
 
       auto j = 0;
       if (choices2.size() > 1) {
+        using Node = Tree::Node<Exp3::JointBanditData<.03f, false>, Obs>;
         Node node{};
         Eval::Input eval_input{battle, durations, battle, result};
-        auto eval_output = search.run(dur, node, eval_input, eval);
+        auto eval_output = search.run(dur, node, eval_input, poke_eval);
         // print(eval_output.p2);
         j = eval.device.sample_pdf(eval_output.p2);
       }
@@ -90,23 +102,23 @@ int abstract_test(int argc, char **argv) {
 
   using Team = std::array<SampleTeams::Set, 6>;
 
+  size_t ms = 100;
+  size_t threads = 1;
+  size_t trials = 5;
+  uint64_t seed = 9028342938;
+
   if (argc != 5) {
     std::cerr << "Usage: ms, threads, trials, seed" << std::endl;
     return 1;
   }
-
-  size_t ms;
-  size_t threads;
-  size_t trials;
-  uint64_t seed = 9028342938;
 
   ms = std::atoi(argv[1]);
   threads = std::atoi(argv[2]);
   trials = std::atoi(argv[3]);
   seed = std::atoi(argv[4]);
 
-  std::cout << "Input: " << ms << ' ' << threads << ' ' << trials << ' '
-            << seed << std::endl;
+  std::cout << "Input: " << ms << ' ' << threads << ' ' << trials << ' ' << seed
+            << std::endl;
 
   prng device{seed};
 

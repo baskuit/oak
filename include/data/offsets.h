@@ -13,4 +13,7 @@ constexpr size_t order{176};
 constexpr size_t active{144};
 constexpr size_t active_moves{active + 24};
 
+constexpr size_t moves{10};
+constexpr size_t status{20};
+
 } // namespace Offsets

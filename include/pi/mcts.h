@@ -221,7 +221,7 @@ struct MCTS {
         ++total_nodes;
         if constexpr (requires { model.eval; }) {
           init_stats(node->stats(), battle, result);
-          return model.eval.value(input.abstract);
+          return model.eval.value(input.battle);
         } else {
           return init_stats_and_rollout(node->stats(), device, battle, result);
         }

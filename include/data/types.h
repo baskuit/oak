@@ -70,6 +70,14 @@ consteval auto get_effectiveness(Types attacking, Types defending) noexcept {
                    [static_cast<uint8_t>(defending)];
 }
 
+constexpr bool is_special(const auto type) {
+  return static_cast<uint8_t>(type) >= 8;
+}
+
+constexpr bool is_physical(const auto type) {
+  return static_cast<uint8_t>(type) < 8;
+}
+
 static_assert(sizeof(Types) == 1);
 
 } // namespace Data
