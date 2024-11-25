@@ -53,7 +53,7 @@ float get_value(const auto &set1, const auto &set2, size_t iterations,
   MonteCarlo::Input input;
   input.battle = Init::battle(p1, p2, device.uniform_64());
   using Node =
-      Tree::Node<Exp3::JointBanditData<false>, std::array<uint8_t, 16>>;
+      Tree::Node<Exp3::JointBanditData<.03f, false>, std::array<uint8_t, 16>>;
   Node node{};
   MCTS search;
   input.result = Init::update(input.battle, 0, 0, search.options);
@@ -246,19 +246,18 @@ public:
         const auto &mem = mem_matrix[i][j];
         const auto v = mem[HP_Numerators[static_cast<uint8_t>(b1[i].hp)]]
                           [HP_Numerators[static_cast<uint8_t>(b2[j].hp)]];
-        const auto logit = inv_sigmoid(v);
-        constexpr float bound = 3;
-        // for stability
-        const auto clamped = std::max(std::min(logit, bound), -bound);
+        // const auto logit = inv_sigmoid(v);
+        // constexpr float bound = 3;
+        // // for stability
+        // const auto clamped = std::max(std::min(logit, bound), -bound);
 
-        std::cout << v << '/' << clamped << ' ';
+        // std::cout << v << '/' << clamped << ' ';
 
-        m1 += clamped / n;
-        m2 -= clamped / m;
+        m1 += v / n;
+        m2 += (1 - v) / m;
       }
-      std::cout << std::endl;
-
-      std::cout << "m1: " << m1 << " m2: " << m2 << std::endl;
+      // std::cout << std::endl;
+      // std::cout << "m1: " << m1 << " m2: " << m2 << std::endl;
     }
     return sigmoid((m1 - m2) / (2));
   }

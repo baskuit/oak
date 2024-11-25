@@ -85,7 +85,7 @@ template <> struct JointBanditDataBase<false> {
 };
 
 #pragma pack(push, 1)
-template <bool enable_visits>
+template <float gamma = .1f, bool enable_visits = false>
 class JointBanditData : public JointBanditDataBase<enable_visits> {
 public:
   using JointBanditDataBase<enable_visits>::p1_gains;
@@ -139,7 +139,6 @@ public:
 
   template <typename PRNG, typename Outcome>
   void select(PRNG &device, Outcome &outcome) const noexcept {
-    constexpr float gamma = .03f;
     constexpr float one_minus_gamma = 1 - gamma;
     std::array<float, 9> forecast{};
     if (_rows == 1) {
@@ -210,8 +209,8 @@ public:
 
 struct JointBanditDataTest {
   // hopefully that shit about double cache lines is true
-  static_assert(sizeof(JointBanditData<true>) == 128);
-  static_assert(sizeof(JointBanditData<false>) == 76);
+  static_assert(sizeof(JointBanditData<.1f, true>) == 128);
+  static_assert(sizeof(JointBanditData<.1f, false>) == 76);
 };
 
 template <typename Container>

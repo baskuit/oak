@@ -94,7 +94,7 @@ int print1v1(int argc, char **argv) {
   }
 
   using Obs = std::array<uint8_t, 16>;
-  using Node = Tree::Node<Exp3::JointBanditData<false>, Obs>;
+  using Node = Tree::Node<Exp3::JointBanditData<.03f, false>, Obs>;
 
   const uint64_t seed = std::atoi(argv[1]);
   const int i = std::atoi(argv[2]);

@@ -45,6 +45,8 @@ struct MCTS {
     size_t iterations;
     float total_value;
     float average_value;
+    std::vector<pkmn_choice> choices1;
+    std::vector<pkmn_choice> choices2;
     std::vector<float> p1;
     std::vector<float> p2;
     std::array<std::array<uint32_t, 9>, 9> visit_matrix;
@@ -56,10 +58,10 @@ struct MCTS {
 
   template <bool enable_visit_matrix = true, bool debug_print = false,
             bool clamp_rolls = true, bool max_roll = false>
-  auto run(const auto dur, auto &node, auto &battle_data, auto &model) {
+  auto run(const auto dur, auto &node, auto &input, auto &model) {
 
-    const auto iter = [this, &battle_data, &model, &node]() -> float {
-      auto copy = battle_data;
+    const auto iter = [this, &input, &model, &node]() -> float {
+      auto copy = input;
       std::bit_cast<uint64_t *>(copy.battle.bytes + Offsets::seed)[0] =
           model.device.uniform_64();
       chance_options.durations = copy.durations;
@@ -98,7 +100,9 @@ struct MCTS {
     }
 
     output.average_value = output.total_value / output.iterations;
-    const auto [c1, c2] = Init::choices(battle_data.battle, battle_data.result);
+    const auto [c1, c2] = Init::choices(input.battle, input.result);
+    output.choices1 = c1;
+    output.choices2 = c2;
     output.p1.resize(c1.size());
     output.p2.resize(c2.size());
 
@@ -123,12 +127,11 @@ struct MCTS {
 
   template <bool enable_visit_matrix = true, bool debug_print = false,
             bool clamp_rolls = true, bool max_roll = false>
-  float run_iteration(auto *node, auto &battle_data, auto &model,
-                      size_t depth = 0) {
+  float run_iteration(auto *node, auto &input, auto &model, size_t depth = 0) {
 
-    auto &battle = battle_data.battle;
-    auto &durations = battle_data.durations;
-    auto &result = battle_data.result;
+    auto &battle = input.battle;
+    auto &durations = input.durations;
+    auto &result = input.result;
     auto &device = model.device;
 
     const auto print = [depth](const auto &data, bool endl = true) -> void {
@@ -190,8 +193,8 @@ struct MCTS {
 
       battle_options_set();
       result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
-      if constexpr (requires { battle_data.abstract; }) {
-        battle_data.abstract.update(battle);
+      if constexpr (requires { input.abstract; }) {
+        input.abstract.update(battle);
       }
       const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
           *pkmn_gen1_battle_options_chance_actions(&options));
@@ -200,7 +203,7 @@ struct MCTS {
       auto *child = (*node)(outcome.p1_index, outcome.p2_index, obs);
       outcome.value =
           run_iteration<enable_visit_matrix, debug_print, clamp_rolls,
-                        max_roll>(child, battle_data, model, depth + 1);
+                        max_roll>(child, input, model, depth + 1);
       node->stats().update(outcome);
 
       print("value: " + std::to_string(outcome.value));
@@ -217,7 +220,7 @@ struct MCTS {
         ++total_nodes;
         if constexpr (requires { model.eval; }) {
           init_stats(node->stats(), battle, result);
-          return model.eval.value(battle_data.abstract);
+          return model.eval.value(input.abstract);
         } else {
           return init_stats_and_rollout(node->stats(), device, battle, result);
         }

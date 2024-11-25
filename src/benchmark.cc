@@ -23,7 +23,7 @@ int benchmark(int argc, char **argv) {
   constexpr bool mcts_root_visits{false};
 
   using Obs = std::array<uint8_t, 16>;
-  using Node = Tree::Node<Exp3::JointBanditData<mcts_root_visits>, Obs>;
+  using Node = Tree::Node<Exp3::JointBanditData<.03f, mcts_root_visits>, Obs>;
 
   const auto p1 = SampleTeams::teams[0];
   const auto p2 = SampleTeams::teams[1];
