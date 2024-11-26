@@ -86,13 +86,18 @@ void thread_fn(std::atomic<int> *const atomic,
 }
 
 int generate(int argc, char **argv) {
-
+  
   size_t threads = 2;
   size_t exp = 16;
-  if (argc >= 3) {
+  if (argc >= 2) {
     threads = std::atoi(argv[1]);
+  }
+
+  if (argc >= 3) {
     exp = std::atoi(argv[2]);
   }
+
+  std::cout << "Usage: ./generate threasd exp (2^exp search iterations)" << std::endl;
 
   const auto sorted_set_array = Sets::get_sorted_set_array();
   std::vector<SampleTeams::Set> sets{};
@@ -100,6 +105,8 @@ int generate(int argc, char **argv) {
     const auto &set = pair.first;
     sets.emplace_back(set);
   }
+
+  std::cout << "Number of sets:" << sets.size() << std::endl;
 
   auto *thread_pool = new std::thread[threads];
 
