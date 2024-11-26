@@ -23,18 +23,12 @@
 #include <type_traits>
 #include <vector>
 
+const auto sigmoid(float x) { return 1 / (1 + std::exp(-x)); }
+
 namespace Eval {
 
-// The eval currently only uses hp and status information to bucket states.
-// pp,
 constexpr size_t n_hp = 3;
-constexpr size_t n_status = 1;
-
-struct Pokemon {
-  Data::Species species;
-  std::array<Data::Moves, 4> moves;
-  float hp = 1.0;
-};
+constexpr size_t n_status = 5;
 
 struct Input {
   pkmn_gen1_battle battle;
@@ -43,107 +37,122 @@ struct Input {
   pkmn_result result;
 };
 
-// basic mcts util that conducts a search to populate the Mono E Mono data
 float get_value(const auto &set1, const auto &set2, size_t iterations,
                 auto seed) {
   std::array<std::remove_reference_t<decltype(set1)>, 1> p1{set1};
   std::array<std::remove_reference_t<decltype(set2)>, 1> p2{set2};
   prng device{seed};
   MonteCarlo::Model model{device.uniform_64()};
-  MonteCarlo::Input input;
+  MonteCarlo::Input input{};
   input.battle = Init::battle(p1, p2, device.uniform_64());
   using Node =
       Tree::Node<Exp3::JointBanditData<.03f, false>, std::array<uint8_t, 16>>;
   Node node{};
   MCTS search;
   input.result = Init::update(input.battle, 0, 0, search.options);
-  pkmn_gen1_chance_durations durations{};
+  // This rolls for sleep turns at the start of each MCTS iteration
+  if (set1.status & 7) {
+    input.durations.bytes[0] = 1;
+  }
+  if (set2.status & 7) {
+    input.durations.bytes[4] = 1;
+  }
   const auto output = search.run(iterations, node, input, model);
   return output.average_value;
 }
 
-using MEM = std::array<std::array<float, n_hp>, n_hp>;
+using OVO = std::array<
+    std::array<std::array<std::array<float, n_status>, n_hp>, n_status>, n_hp>;
 
-void print_mem(MEM &mem) {
-  for (int i = 0; i < n_hp; ++i) {
-    for (int j = 0; j < n_hp; ++j) {
-      std::cout << mem[i][j] << '\t';
-    }
-    std::cout << std::endl;
-  }
-}
-
-MEM compute_table(auto set1, auto set2, const auto seed,
-                  const auto iterations) {
-  MEM result;
-  for (int hp1 = 1; hp1 <= 3; ++hp1) {
-    for (int hp2 = 1; hp2 <= 3; ++hp2) {
-      set1.hp = hp1 / 3.0;
-      set2.hp = hp2 / 3.0;
-      result[hp1 - 1][hp2 - 1] = get_value(set1, set2, iterations, seed);
+OVO compute_table(auto set1, auto set2, const auto iterations,
+                  const auto seed) {
+  OVO result;
+  // clr, slp, psn, brn, par
+  std::array<uint8_t, 6> STATUS{0b00000000, 0b00000100, 0b00001000, 0b00010000,
+                                0b01000000};
+  for (int h1 = 0; h1 < n_hp; ++h1) {
+    for (int s1 = 0; s1 < n_status; ++s1) {
+      for (int h2 = 0; h2 < n_hp; ++h2) {
+        for (int s2 = 0; s2 < n_status; ++s2) {
+          set1.hp = (h1 + 1) / 3.0;
+          set2.hp = (h2 + 1) / 3.0;
+          set1.status = STATUS[s1];
+          set2.status = STATUS[s2];
+          result[h1][s1][h2][s2] = get_value(set1, set2, iterations, seed);
+          // std::cout << h1 << ' ' << s1 << ' ' << h2 << ' ' << s2 << " : "
+          //           << result[h1][s1][h2][s2] << std::endl;
+        }
+      }
     }
   }
   return result;
 }
 
-class GlobalMEM {
-public:
-  using SetID = uint32_t;
-
-  constexpr MEM switch_sides(const MEM &mem) const noexcept {
-    MEM switched{};
-    for (int i = 0; i < n_hp; ++i) {
-      for (int j = 0; j < n_hp; ++j) {
-        switched[i][j] = 1 - mem[j][i];
+constexpr OVO ovo_mirror(const OVO &ovo) noexcept {
+  OVO mirrored{};
+  for (int h1 = 0; h1 < n_hp; ++h1) {
+    for (int s1 = 0; s1 < n_status; ++s1) {
+      for (int h2 = 0; h2 < n_hp; ++h2) {
+        for (int s2 = 0; s2 < n_status; ++s2) {
+          mirrored[h1][s1][h2][s2] = 1 - ovo[h2][s2][h1][s1];
+        }
       }
     }
-    return switched;
   }
+  return mirrored;
+}
+
+class OVODict {
+public:
+  using SetID = uint64_t;
 
   constexpr SetID toID(const auto &set) const noexcept {
+    constexpr auto n_moves_with_none = 166;
     assert(set.species != Data::Species::None);
     std::array<Data::Moves, 4> ordered_moves{};
     std::copy(set.moves.begin(), set.moves.begin() + 4, ordered_moves.begin());
     std::sort(ordered_moves.begin(), ordered_moves.end(),
               std::greater<Data::Moves>());
-    uint32_t id = (static_cast<uint32_t>(set.species) - 1);
+    SetID id = (static_cast<SetID>(set.species) - 1);
     for (int i = 0; i < 4; ++i) {
-      id *= 166;
-      id += static_cast<uint32_t>(ordered_moves[0]);
+      id *= n_moves_with_none;
+      id += static_cast<SetID>(ordered_moves[i]);
     }
-    id *= 100;
     return id;
   }
 
   void add_matchups(const auto &p1, const auto &p2) {
     for (const auto &set1 : p1) {
       for (const auto &set2 : p2) {
-        (*this)(set1, set2);
+        add(set1, set2);
       }
     }
   }
 
-  MEM operator()(const auto &p1_set, const auto &p2_set) {
+  OVO add(const auto &p1_set, const auto &p2_set) {
     SetID id1 = toID(p1_set);
     SetID id2 = toID(p2_set);
 
-    if (MEMData.contains({id1, id2})) {
-      return MEMData[{id1, id2}];
-    } else if (MEMData.contains({id2, id1})) {
-      return switch_sides(MEMData[{id2, id1}]);
+    std::unique_lock lock{mutex};
+
+    if (OVOData.contains({id1, id2})) {
+      return OVOData[{id1, id2}];
+    } else if (OVOData.contains({id2, id1})) {
+      return ovo_mirror(OVOData[{id2, id1}]);
     } else {
-      return MEMData[{id1, id2}] =
-                 compute_table(p1_set, p2_set, device.uniform_64(), 1 << 16);
+      return OVOData[{id1, id2}] =
+                 compute_table(p1_set, p2_set, iterations, device.uniform_64());
     }
   }
 
-  bool save(const std::filesystem::path path) const {
+  bool save(const std::filesystem::path path) {
+    std::unique_lock lock{mutex};
     std::ofstream file(path, std::ios::binary | std::ios::trunc);
     if (!file.is_open()) {
       return false;
     }
 
-    for (const auto &[key, value] : MEMData) {
+    for (const auto &[key, value] : OVOData) {
       file.write(std::bit_cast<const char *>(&key), sizeof(key));
       file.write(std::bit_cast<const char *>(value.data()), sizeof(value));
     }
@@ -153,6 +162,7 @@ public:
   }
 
   bool load(const std::filesystem::path path) {
+    std::unique_lock lock{mutex};
     std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary);
     if (!file.is_open()) {
       std::cout << "cant open file" << std::endl;
@@ -162,7 +172,7 @@ public:
     file.seekg(0, std::ios::beg);
     while (file.peek() != EOF) {
       std::pair<SetID, SetID> key;
-      MEM value;
+      OVO value;
 
       file.read(std::bit_cast<char *>(&key), sizeof(key));
       if (const auto g = file.gcount(); g != sizeof(key)) {
@@ -174,124 +184,87 @@ public:
         std::cout << "cant read value: " << g << std::endl;
         return false;
       }
-      MEMData[key] = value;
+      OVOData[key] = value;
     }
 
     file.close();
     return true;
   }
 
+  size_t iterations = 1 << 18;
+
 private:
-  std::map<std::pair<SetID, SetID>, MEM> MEMData{};
+  std::map<std::pair<SetID, SetID>, OVO> OVOData{};
   prng device{9348509345830};
   std::mutex mutex{};
+
+  static_assert(sizeof(decltype(*OVOData.begin())) == 920);
 };
 
 class CachedEval {
-public:
-  static constexpr auto status_index(Abstract::Status status) noexcept {
-    return 0;
+public: // clr, slp, psn, brn, par
+  static constexpr auto status_index(uint8_t status) noexcept {
+    if (status & 7) {
+      return 1;
+    }
+    switch (static_cast<uint8_t>(status)) {
+    case 0b00000000:
+      return 0;
+    case 0b00001000:
+      return 2;
+    case 0b00010000:
+      return 3;
+    case 0b00100000:
+      return 0;
+    case 0b01000000:
+      return 4;
+    case 0b10001000:
+      return 2;
+    }
   }
 
-  std::array<std::array<MEM, 6>, 6> mem_matrix;
+  std::array<std::array<OVO, 6>, 6> mem_matrix;
 
-  float value() const { return 0; }
+  int m;
+  int n;
 
-  CachedEval(const auto &p1, const auto &p2, GlobalMEM &global) {
+  std::array<std::array<float, 6>, 6> value_matrix;
+  std::array<float, 6> pieces1{};
+  std::array<float, 6> pieces2{};
+
+  void update(const Abstract::Battle &battle) {
+
+    const auto i = battle.sides[0].active.slot;
+    for (int j = 0; j < 6; ++j) {
+      pieces1[j] -= value_matrix[i][j];
+      value_matrix[i][j] = mem_matrix[i][j][0][0][0][0];
+      pieces1[j] += value_matrix[i][j];
+    }
+
+    const auto j = battle.sides[1].active.slot;
+    for (int i = 0; i < 6; ++i) {
+      value_matrix[i][j] = mem_matrix[i][j][0][0][0][0];
+    }
+  }
+
+  float value() const {
+    const auto x = std::accumulate(pieces1.begin(), pieces1.end(), 0.0f);
+    const auto y = std::accumulate(pieces1.begin(), pieces1.end(), 0.0f);
+    return sigmoid(x - y);
+  }
+
+  CachedEval(const auto &p1, const auto &p2, OVODict &global) {
     global.add_matchups(p1, p2);
     const auto m = p1.size();
     const auto n = p2.size();
     for (auto i = 0; i < m; ++i) {
       for (auto j = 0; j < n; ++j) {
         mem_matrix[i][j] = global(p1[i], p2[j]);
+        value_matrix[i][j] = 0;
+        pieces1[i] += value_matrix[i][j];
+        pieces2[j] += value_matrix[i][j];
       }
     }
-  }
-
-  float value(const Abstract::Battle &battle) {
-
-    static constexpr int HP_Numerators[] = {
-        0, // KO (not used, but added for completeness)
-        1, // ONE
-        1, // TWO
-        2, // THREE
-        2, // FOUR
-        2, // FIVE
-        3, // SIX
-        3  // SEVEN
-    };
-
-    const auto sigmoid = [](float x) { return 1 / (1 + std::exp(-x)); };
-    const auto inv_sigmoid = [](float y) { return -std::log((1 / y) - 1); };
-    const auto not_ko = [](const auto &elem) {
-      return elem.hp != Abstract::HP::KO;
-    };
-
-    float m1 = 0;
-    float m2 = 0;
-    const auto b1 = battle.sides[0].bench;
-    const auto b2 = battle.sides[1].bench;
-
-    size_t m = std::count_if(b1.begin(), b1.end(), not_ko);
-    size_t n = std::count_if(b2.begin(), b2.end(), not_ko);
-
-    for (int i = 0; i < 6; ++i) {
-      if (b1[i].hp == Abstract::HP::KO) {
-        continue;
-      }
-      for (int j = 0; j < 6; ++j) {
-        if (b2[j].hp == Abstract::HP::KO) {
-          continue;
-        }
-        const auto &mem = mem_matrix[i][j];
-        const auto v = mem[HP_Numerators[static_cast<uint8_t>(b1[i].hp)]]
-                          [HP_Numerators[static_cast<uint8_t>(b2[j].hp)]];
-        // const auto logit = inv_sigmoid(v);
-        // constexpr float bound = 3;
-        // // for stability
-        // const auto clamped = std::max(std::min(logit, bound), -bound);
-
-        // std::cout << v << '/' << clamped << ' ';
-
-        m1 += v / n;
-        m2 += (1 - v) / m;
-      }
-      // std::cout << std::endl;
-      // std::cout << "m1: " << m1 << " m2: " << m2 << std::endl;
-    }
-    return sigmoid((m1 - m2) / (2));
-  }
-
-  // expected values is [0, 1]
-  float from_matrix(const auto &expected_values, const auto m, const auto n) {
-    std::vector<float> p1_material;
-    std::vector<float> p2_material;
-    p1_material.resize(m);
-    p2_material.resize(n);
-
-    const auto sigmoid = [](float x) { return 1 / (1 + std::exp(-x)); };
-    const auto inv_sigmoid = [](float y) { return -std::log((1 / y) - 1); };
-
-    for (int i = 0; i < m; ++i) {
-      for (int j = 0; j < n; ++j) {
-        const auto p = expected_values[i][j];
-        const auto logit = inv_sigmoid(p);
-        constexpr auto bound = 1000;
-        // for stability
-        const auto clamped = std::max(std::min(logit, bound), -bound);
-
-        p1_material[i] += clamped / n;
-        p2_material[j] -= clamped / m;
-      }
-    }
-
-    // we could also e.g. give extra weight to the actives
-    const float p1_sum =
-        std::accumulate(p1_material.begin(), p1_material.end(), 0);
-    const float p2_sum =
-        std::accumulate(p2_material.begin(), p2_material.end(), 0);
-    const float material_difference = (p1_sum - p2_sum) / 2;
-    return sigmoid(material_difference);
   }
 };
 
@@ -432,6 +405,7 @@ float evaluate_side(const uint8_t *data) {
     }
   }
 
+  // TODO bad casts
   const auto active = data + Offsets::active;
   score += get_boost_multiplier(active[12] & 15) * POKEMON_ATTACK_BOOST;
   score += get_boost_multiplier(active[12] >> 4) * POKEMON_DEFENSE_BOOST;
@@ -448,8 +422,6 @@ float evaluate_side(const uint8_t *data) {
   score += reflect * REFLECT;
   return score;
 }
-
-const auto sigmoid(float x) { return 1 / (1 + std::exp(-x)); }
 
 float evaluate_battle(const pkmn_gen1_battle &battle) {
   float p1_score = evaluate_side(battle.bytes);

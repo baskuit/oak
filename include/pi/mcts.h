@@ -59,12 +59,16 @@ struct MCTS {
       const auto side = battle.bytes + s * Offsets::side;
       const auto order = side + Offsets::order;
       for (auto p = 0; p < 6; ++p) {
-        if (const auto d = Durations::duration(durations, s, p)) {
-          const uint8_t max = 8 - d;
+        if (const auto d = Durations::sleep(durations, s, p)) {
           const auto slot = order[p] - 1;
           const auto pokemon = side + Offsets::pokemon * slot;
-          pokemon[Offsets::status] >>= 3;
-          pokemon[Offsets::status] <<= 3;
+
+          if (0b10000000 & pokemon[Offsets::status]) {
+            continue;
+          }
+
+          const uint8_t max = 8 - d;
+          pokemon[Offsets::status] &= 0b11111000;
           pokemon[Offsets::status] |=
               static_cast<uint8_t>(device.random_int(max) + 1);
         }
@@ -212,6 +216,9 @@ struct MCTS {
       result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
       if constexpr (requires { input.abstract; }) {
         input.abstract.update(battle);
+      }
+      if constexpr (requires { input.eval.update(battle); }) {
+        input.eval.update(battle);
       }
       const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
           *pkmn_gen1_battle_options_chance_actions(&options));

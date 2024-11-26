@@ -34,8 +34,10 @@ std::string status(const auto status) {
   case 0b00010000:
     return "BRN";
   case 0b00100000:
-    return "";
+    return "FRZ";
   case 0b01000000:
+    return "PAR";
+  case 0b10001000:
     return "TOX";
   default:
     assert(false);

@@ -36,7 +36,7 @@ void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
     pkmn_gen1_battle_options options{};
     auto result = Init::update(battle, 0, 0, options);
 
-    Eval::GlobalMEM global{};
+    Eval::OVODict global{};
     global.load("./global");
 
     MCTS search{};
