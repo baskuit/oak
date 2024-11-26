@@ -112,7 +112,6 @@ int generate(int argc, char **argv) {
     const auto &set = pair.first;
     sets.emplace_back(set);
   }
-  sets.resize(10);
 
   // std::cout << "Number of sets:" << sets.size() << std::endl;
 
