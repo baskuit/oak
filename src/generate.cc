@@ -88,8 +88,10 @@ void thread_fn(std::atomic<int> *const atomic,
 int generate(int argc, char **argv) {
 
   size_t threads = 2;
-  if (argc >= 2) {
+  size_t exp = 16;
+  if (argc >= 3) {
     threads = std::atoi(argv[1]);
+    exp = std::atoi(argv[2]);
   }
 
   const auto sorted_set_array = Sets::get_sorted_set_array();
@@ -104,7 +106,7 @@ int generate(int argc, char **argv) {
   std::atomic<int> index{};
 
   Eval::OVODict global{};
-  global.iterations = 1 << 18;
+  global.iterations = 1 << exp;
 
   for (auto i = 0; i < threads; ++i) {
     thread_pool[i] = std::thread{&thread_fn, &index, &sets, &global};
