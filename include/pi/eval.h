@@ -124,12 +124,12 @@ public:
   void add_matchups(const auto &p1, const auto &p2) {
     for (const auto &set1 : p1) {
       for (const auto &set2 : p2) {
-        add(set1, set2);
+        get(set1, set2);
       }
     }
   }
 
-  OVO add(const auto &p1_set, const auto &p2_set) {
+  OVO get(const auto &p1_set, const auto &p2_set) {
     SetID id1 = toID(p1_set);
     SetID id2 = toID(p2_set);
 

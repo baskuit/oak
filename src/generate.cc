@@ -73,10 +73,11 @@ void thread_fn(std::atomic<int> *const atomic,
         if (k == index) {
           auto s1 = (*sets)[i];
           auto s2 = (*sets)[j];
-          dict->add(s1, s2);
+          dict->get(s1, s2);
           dict->save("./cache");
           std::cout << Sets::set_string(s1) << " vs " << Sets::set_string(s2)
                     << std::endl;
+          std::cout << "value: " << dict->get(s1, s2)[2][0][2][0] << std::endl;
           break;
         }
         ++k;
@@ -86,7 +87,7 @@ void thread_fn(std::atomic<int> *const atomic,
 }
 
 int generate(int argc, char **argv) {
-  
+
   size_t threads = 2;
   size_t exp = 16;
   if (argc >= 2) {
@@ -96,7 +97,8 @@ int generate(int argc, char **argv) {
     exp = std::atoi(argv[2]);
   }
 
-  // std::cout << "Usage: ./generate threasd exp (2^exp search iterations)" << std::endl;
+  // std::cout << "Usage: ./generate threasd exp (2^exp search iterations)" <<
+  // std::endl;
 
   const auto sorted_set_array = Sets::get_sorted_set_array();
   std::vector<SampleTeams::Set> sets{};
@@ -113,6 +115,8 @@ int generate(int argc, char **argv) {
 
   Eval::OVODict global{};
   global.iterations = 1 << exp;
+
+  global.load("./cache");
 
   for (auto i = 0; i < threads; ++i) {
     thread_pool[i] = std::thread{&thread_fn, &index, &sets, &global};
