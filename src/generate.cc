@@ -61,12 +61,10 @@ std::string set_string(auto set) {
 } // namespace Sets
 
 void thread_fn(std::atomic<int> *const atomic,
-               const std::vector<SampleTeams::Set> *sets, Eval::OVODict *dict) {
+               const std::vector<SampleTeams::Set> *sets, Eval::OVODict *dict,
+               std::mutex *mutex) {
   const auto n = sets->size();
-  const auto max = n * (n - 1) / 2;
-  auto index = 0;
-  while ((index = atomic->fetch_add(1)) < max) {
-    // seek manually lol
+  const auto seek = [sets, dict, n, mutex](const auto index) {
     auto k = 0;
     for (auto i = 0; i < n; ++i) {
       for (auto j = i + 1; j < n; ++j) {
@@ -75,14 +73,23 @@ void thread_fn(std::atomic<int> *const atomic,
           auto s2 = (*sets)[j];
           dict->get(s1, s2);
           dict->save("./cache");
-          std::cout << Sets::set_string(s1) << " vs " << Sets::set_string(s2)
-                    << std::endl;
-          std::cout << "value: " << dict->get(s1, s2)[2][0][2][0] << std::endl;
-          break;
+          {
+            std::unique_lock lock{*mutex};
+            std::cout << index << " " << i << " " << j << std::endl;
+            std::cout << Sets::set_string(s1) << " vs " << Sets::set_string(s2)
+                      << std::endl;
+            std::cout << "value: " << dict->get(s1, s2)[2][0][2][0]
+                      << std::endl;
+          }
+          return true;
         }
         ++k;
       }
     }
+    return false;
+  };
+
+  while (seek(atomic->fetch_add(1))) {
   }
 }
 
@@ -112,6 +119,7 @@ int generate(int argc, char **argv) {
   auto *thread_pool = new std::thread[threads];
 
   std::atomic<int> index{};
+  std::mutex write{};
 
   Eval::OVODict global{};
   global.iterations = 1 << exp;
@@ -119,7 +127,7 @@ int generate(int argc, char **argv) {
   global.load("./cache");
 
   for (auto i = 0; i < threads; ++i) {
-    thread_pool[i] = std::thread{&thread_fn, &index, &sets, &global};
+    thread_pool[i] = std::thread{&thread_fn, &index, &sets, &global, &write};
   }
   for (auto i = 0; i < threads; ++i) {
     thread_pool[i].join();
