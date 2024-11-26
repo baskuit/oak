@@ -15,6 +15,7 @@
 
 #include <pkmn.h>
 
+#include <data/durations.h>
 #include <data/offsets.h>
 #include <data/options.h>
 
@@ -53,8 +54,23 @@ struct MCTS {
     std::chrono::milliseconds duration;
   };
 
-  void set_sleep(const auto &device, auto &battle,
-                 const auto &durations) const {}
+  void set_sleep(auto &device, auto &battle, const auto &durations) const {
+    for (auto s = 0; s < 2; ++s) {
+      const auto side = battle.bytes + s * Offsets::side;
+      const auto order = side + Offsets::order;
+      for (auto p = 0; p < 6; ++p) {
+        if (const auto d = Durations::duration(durations, s, p)) {
+          const uint8_t max = 7 - d;
+          const auto slot = order[p] - 1;
+          const auto pokemon = side + Offsets::pokemon * slot;
+          pokemon[Offsets::status] >>= 3;
+          pokemon[Offsets::status] <<= 3;
+          pokemon[Offsets::status] |=
+              static_cast<uint8_t>(device.random_int(max) + 1);
+        }
+      }
+    }
+  }
 
   template <bool enable_visit_matrix = true, bool debug_print = false,
             bool clamp_rolls = true, bool max_roll = false>
