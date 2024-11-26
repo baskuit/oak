@@ -69,7 +69,7 @@ void thread_fn(std::atomic<int> *const atomic,
     // seek manually lol
     auto k = 0;
     for (auto i = 0; i < n; ++i) {
-      for (auto j = i + 1; j < n; ++i) {
+      for (auto j = i + 1; j < n; ++j) {
         if (k == index) {
           auto s1 = (*sets)[i];
           auto s2 = (*sets)[j];
@@ -92,12 +92,11 @@ int generate(int argc, char **argv) {
   if (argc >= 2) {
     threads = std::atoi(argv[1]);
   }
-
   if (argc >= 3) {
     exp = std::atoi(argv[2]);
   }
 
-  std::cout << "Usage: ./generate threasd exp (2^exp search iterations)" << std::endl;
+  // std::cout << "Usage: ./generate threasd exp (2^exp search iterations)" << std::endl;
 
   const auto sorted_set_array = Sets::get_sorted_set_array();
   std::vector<SampleTeams::Set> sets{};
@@ -106,7 +105,7 @@ int generate(int argc, char **argv) {
     sets.emplace_back(set);
   }
 
-  std::cout << "Number of sets:" << sets.size() << std::endl;
+  // std::cout << "Number of sets:" << sets.size() << std::endl;
 
   auto *thread_pool = new std::thread[threads];
 
