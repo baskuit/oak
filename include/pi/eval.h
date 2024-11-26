@@ -155,6 +155,8 @@ public:
     for (const auto &[key, value] : OVOData) {
       file.write(std::bit_cast<const char *>(&key), sizeof(key));
       file.write(std::bit_cast<const char *>(value.data()), sizeof(value));
+      static_assert(sizeof(value) == 9 * 25 * 4);
+      static_assert(sizeof(key) == 16);
     }
     file.close();
 
@@ -192,9 +194,9 @@ public:
   }
 
   size_t iterations = 1 << 18;
+  std::map<std::pair<SetID, SetID>, OVO> OVOData{};
 
 private:
-  std::map<std::pair<SetID, SetID>, OVO> OVOData{};
   prng device{9348509345830};
   std::mutex mutex{};
 

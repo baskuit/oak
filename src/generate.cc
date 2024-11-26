@@ -67,12 +67,11 @@ void thread_fn(std::atomic<int> *const atomic,
   const auto seek = [sets, dict, n, mutex](const auto index) {
     auto k = 0;
     for (auto i = 0; i < n; ++i) {
-      for (auto j = i + 1; j < n; ++j) {
+      for (auto j = i; j < n; ++j) {
         if (k == index) {
           auto s1 = (*sets)[i];
           auto s2 = (*sets)[j];
           dict->get(s1, s2);
-          dict->save("./cache");
           {
             std::unique_lock lock{*mutex};
             std::cout << index << " " << i << " " << j << std::endl;
@@ -113,6 +112,7 @@ int generate(int argc, char **argv) {
     const auto &set = pair.first;
     sets.emplace_back(set);
   }
+  sets.resize(10);
 
   // std::cout << "Number of sets:" << sets.size() << std::endl;
 
@@ -124,14 +124,26 @@ int generate(int argc, char **argv) {
   Eval::OVODict global{};
   global.iterations = 1 << exp;
 
-  global.load("./cache");
-
   for (auto i = 0; i < threads; ++i) {
     thread_pool[i] = std::thread{&thread_fn, &index, &sets, &global, &write};
   }
   for (auto i = 0; i < threads; ++i) {
     thread_pool[i].join();
   }
+
+  global.save("./cache");
+  global.save("./test");
+  Eval::OVODict test{};
+  test.load("./test");
+
+  for (const auto& pair : global.OVOData) {
+    assert(test.OVOData[pair.first] == pair.second);
+    if (test.OVOData[pair.first] != pair.second) {
+      std::cout << '!' << std::endl;
+      return 1;
+    }
+  }
+
 
   return 0;
 }
