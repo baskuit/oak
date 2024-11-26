@@ -52,29 +52,24 @@ void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
       if (choices1.size() > 1) {
         using Node = Tree::Node<Exp3::JointBanditData<.15f, false>, Obs>;
         Node node{};
-        MonteCarlo::Input mc_input{battle, durations, result};
-        auto mc_output = search.run(dur, node, mc_input, mcm);
+        MonteCarlo::Input input1{battle, durations, result};
+        auto output1 = search.run(dur, node, input1, poke_eval);
         // print(mc_output.p1);
-        i = mcm.device.sample_pdf(mc_output.p1);
+        i = poke_eval.device.sample_pdf(output1.p1);
       }
 
       auto j = 0;
       if (choices2.size() > 1) {
         using Node = Tree::Node<Exp3::JointBanditData<.03f, false>, Obs>;
         Node node{};
-        Eval::Input eval_input{battle, durations, battle, result};
-        auto eval_output = search.run(dur, node, eval_input, poke_eval);
+        Eval::Input input2{battle, durations, battle, result};
+        auto output2 = search.run(dur, node, input2, eval);
         // print(eval_output.p2);
-        j = eval.device.sample_pdf(eval_output.p2);
+        j = eval.device.sample_pdf(output2.p2);
       }
 
       result = Init::update(battle, choices1[i], choices2[j], options);
       durations = *pkmn_gen1_battle_options_chance_durations(&options);
-
-      // std::cout << side_choice_string(battle.bytes, choices1[i]) << ", "
-      //           << side_choice_string(battle.bytes + Offsets::side,
-      //           choices2[i])
-      //           << std::endl;
     }
     return Init::score(result);
   };
@@ -104,9 +99,9 @@ int abstract_test(int argc, char **argv) {
   using Team = std::array<SampleTeams::Set, 6>;
 
   size_t ms = 100;
-  size_t threads = 1;
-  size_t trials = 5;
-  uint64_t seed = 9028342938;
+  size_t threads = 3;
+  size_t trials = 50;
+  uint64_t seed = 2934828342938;
 
   if (argc != 5) {
     std::cerr << "Usage: ms, threads, trials, seed" << std::endl;

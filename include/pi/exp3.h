@@ -165,6 +165,11 @@ public:
       outcome.p2_index = device.sample_pdf(forecast);
       outcome.p2_mu = forecast[outcome.p2_index];
     }
+    
+    // TODO
+    outcome.p1_index = std::min(outcome.p1_index, uint8_t{_rows - 1});
+    outcome.p2_index = std::min(outcome.p2_index, uint8_t{_cols - 1});
+
     assert(outcome.p1_index < _rows);
     assert(outcome.p2_index < _cols);
   }

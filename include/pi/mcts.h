@@ -60,7 +60,7 @@ struct MCTS {
       const auto order = side + Offsets::order;
       for (auto p = 0; p < 6; ++p) {
         if (const auto d = Durations::duration(durations, s, p)) {
-          const uint8_t max = 7 - d;
+          const uint8_t max = 8 - d;
           const auto slot = order[p] - 1;
           const auto pokemon = side + Offsets::pokemon * slot;
           pokemon[Offsets::status] >>= 3;
@@ -237,7 +237,11 @@ struct MCTS {
         ++total_nodes;
         if constexpr (requires { model.eval; }) {
           init_stats(node->stats(), battle, result);
-          return model.eval.value(input.battle);
+          if constexpr (requires { model.eval.value(input.battle); }) {
+            return model.eval.value(input.battle);
+          } else {
+            return model.eval.value(input.abstract);
+          }
         } else {
           return init_stats_and_rollout(node->stats(), device, battle, result);
         }

@@ -10,7 +10,7 @@ function(create_library target mode dir)
 endfunction()
 
 create_library(libpkmn_client release client)
-create_library(libpkmn_chance debug chance)
+create_library(libpkmn_chance release chance)
 create_library(libpkmn_fast release fast)
 
 target_compile_definitions(libpkmn_client INTERFACE LOG)
