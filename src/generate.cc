@@ -101,7 +101,6 @@ int generate(int argc, char **argv) {
     const auto &set = pair.first;
     sets.emplace_back(set);
   }
-
   // std::cout << "Number of sets:" << sets.size() << std::endl;
 
   std::atomic<int> index{};
@@ -111,49 +110,7 @@ int generate(int argc, char **argv) {
   Eval::OVODict global{};
   global.iterations = 1 << exp;
 
-  global.load("/home/user/oak/cache");
-  // global.print();
-
-  for (int i = 0; i < 10000; ++i) {
-
-    auto a = device.random_int(100);
-    auto b = device.random_int(100);
-    const auto p1 = SampleTeams::teams[a];
-    const auto p2 = SampleTeams::teams[b];
-
-    auto battle = Init::battle(p1, p2, device.uniform_64());
-    auto options = Init::options();
-    auto result = Init::update(battle, 0, 0, options);
-    auto abstract = Abstract::Battle{battle};
-    auto turn = 0;
-
-    Eval::CachedEval model{p1, p2, global};
-    std::vector<float> values{};
-    while (!pkmn_result_type(result)) {
-      float v = model.value(abstract);
-      values.emplace_back(v);
-
-      const auto [choices1, choices2] = Init::choices(battle, result);
-      result =
-          Init::update(battle, choices1[device.random_int(choices1.size())],
-                       choices2[device.random_int(choices2.size())], options);
-      abstract.update(battle);
-      auto clone = Abstract::Battle{battle};
-      assert(abstract.sides[0].active == clone.sides[0].active);
-      assert(abstract.sides[0].bench == clone.sides[0].bench);
-      assert(abstract.sides[1].active == clone.sides[1].active);
-      assert(abstract.sides[1].bench == clone.sides[1].bench);
-      // std::cout << "turn: " << ++turn << std::endl;
-    }
-
-    values.emplace_back(Init::score(result));
-    for (const auto v : values) {
-      std::cout << v << ' ';
-    }
-    std::cout << std::endl;
-  }
-
-  return 0;
+  // global.load("/home/user/oak/cache");
 
   auto *thread_pool = new std::thread[threads];
 
@@ -163,6 +120,8 @@ int generate(int argc, char **argv) {
   for (auto i = 0; i < threads; ++i) {
     thread_pool[i].join();
   }
+
+  delete[] thread_pool;
 
   global.save("./cache");
   global.save("./test");
@@ -177,7 +136,6 @@ int generate(int argc, char **argv) {
     }
   }
 
-  delete[] thread_pool;
 
   return 0;
 }
