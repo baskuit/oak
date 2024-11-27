@@ -242,6 +242,67 @@ public: // clr, slp, psn, brn, par
   std::array<float, 6> pieces1{};
   std::array<float, 6> pieces2{};
 
+  float value(const Abstract::Battle &battle) {
+
+    pieces1 = {};
+    pieces2 = {};
+    for (int i = 0; i < 6; ++i) {
+      for (int j = 0; j < 6; ++j) {
+        value_matrix[i][j] = -1;
+      }
+    }
+
+    for (int i = 0; i < 6; ++i) {
+      const auto &p1 = battle.sides[0].bench[i];
+      if (p1.hp == Abstract::HP::HP0) {
+        continue;
+      }
+      for (int j = 0; j < 6; ++j) {
+        const auto &p2 = battle.sides[1].bench[j];
+        if (p2.hp == Abstract::HP::HP0) {
+          continue;
+        }
+
+        if (p1.status == Abstract::Status::Freeze) {
+          if (p2.status != Abstract::Status::Freeze) {
+            pieces2[j] += 1;
+            continue;
+          }
+        }
+        if (p2.status == Abstract::Status::Freeze) {
+          pieces1[i] += 1;
+          continue;
+        }
+
+        const auto &ovo = mem_matrix[i][j];
+        const auto value =
+            ovo[static_cast<uint8_t>(p1.hp) - 1][static_cast<uint8_t>(
+                p1.status)][static_cast<uint8_t>(p2.hp) - 1]
+               [static_cast<uint8_t>(p2.status)];
+        value_matrix[i][j] = value;
+        pieces1[i] += value;
+        pieces2[j] += 1 - value;
+      }
+    }
+
+    // for (int i = 0; i < 6; ++i) {
+    //   for (int j = 0; j < 6; ++j) {
+    //     std::cout << value_matrix[i][j] << ' ';
+    //   }
+    //   std::cout << std::endl;
+    // }
+
+    const auto a = battle.sides[0].active.n_alive;
+    const auto b = battle.sides[1].active.n_alive;
+
+    const auto m1 = std::accumulate(pieces1.begin(), pieces1.end(), 0.0f);
+    const auto m2 = std::accumulate(pieces2.begin(), pieces2.end(), 0.0f);
+    const auto v = sigmoid(2 * (m1 / b - m2 / a));
+    // std::cout << a << " " << b << std::endl;
+    // std::cout << m1 << " : " << m2 << " = " << v << std::endl;
+    return v;
+  }
+
   void update(const Abstract::Battle &battle) {
 
     const auto i = battle.sides[0].active.slot;
@@ -273,7 +334,7 @@ public: // clr, slp, psn, brn, par
     const auto n = p2.size();
     for (auto i = 0; i < m; ++i) {
       for (auto j = 0; j < n; ++j) {
-        mem_matrix[i][j] = global(p1[i], p2[j]);
+        mem_matrix[i][j] = global.get(p1[i], p2[j]);
         value_matrix[i][j] = 0;
         pieces1[i] += value_matrix[i][j];
         pieces2[j] += value_matrix[i][j];
