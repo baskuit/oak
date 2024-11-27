@@ -80,6 +80,8 @@ template <> struct JointBanditDataBase<true> {
 template <> struct JointBanditDataBase<false> {
   std::array<float, 9> p1_gains;
   std::array<float, 9> p2_gains;
+  std::array<uint8_t, 9> p1_policy;
+  std::array<uint8_t, 9> p2_policy;
   uint8_t _rows;
   uint8_t _cols;
 };
@@ -217,7 +219,7 @@ public:
 struct JointBanditDataTest {
   // hopefully that shit about double cache lines is true
   static_assert(sizeof(JointBanditData<.1f, true>) == 128);
-  static_assert(sizeof(JointBanditData<.1f, false>) == 76);
+  static_assert(sizeof(JointBanditData<.1f, false>) == 92);
 };
 
 template <typename Container>

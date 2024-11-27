@@ -108,6 +108,12 @@ OVO compute_table(auto set1, auto set2, const auto iterations,
   // clr, slp, psn, brn, par
   std::array<uint8_t, 6> STATUS{0b00000000, 0b00000100, 0b00001000, 0b00010000,
                                 0b01000000};
+  std::array<Abstract::HP, 3> HP{Abstract::HP::HP1, Abstract::HP::HP2,
+                                 Abstract::HP::HP3};
+  // for (const auto hp : HP) {
+  //   for (const auto status :)
+  // }
+
   for (int h1 = 0; h1 < n_hp; ++h1) {
     for (int s1 = 0; s1 < n_status; ++s1) {
       for (int h2 = 0; h2 < n_hp; ++h2) {
