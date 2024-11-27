@@ -264,7 +264,6 @@ public:
       return !(p.status() == Data::Status::Freeze && p.hp() == 0);
     };
 
-
     int m = 0;
     int n = 0;
     for (int i = 0; i < 6; ++i) {
@@ -345,6 +344,9 @@ public:
           if (p2.status != Abstract::Status::Freeze) {
             pieces2[j] += 1;
             continue;
+          } else {
+            pieces1[i] += .5;
+            pieces2[j] += .5;
           }
         }
         if (p2.status == Abstract::Status::Freeze) {
@@ -380,29 +382,6 @@ public:
     // std::cout << m1 << " : " << m2 << " = " << v << std::endl;
     return v;
   }
-
-  // float value(const Abstract::Battle &battle) {
-  //   float m1 = 0;
-  //   float m2 = 0;
-
-  //   for (auto i = 0; i < 6; ++i) {
-  //     const auto &p1 = battle.sides[0].bench[i];
-  //     if (p1.alive_and_unfrozen()) {
-  //       m1 += pieces1[i];
-  //     }
-  //     const auto &p2 = battle.sides[1].bench[i];
-  //     if (p2.alive_and_unfrozen()) {
-  //       m2 += pieces2[i];
-  //     }
-  //   }
-
-  //   const auto a = battle.sides[0].active.n_alive;
-  //   const auto b = battle.sides[1].active.n_alive;
-  //   const auto v = sigmoid(2 * (m1 / b - m2 / a));
-  //   // std::cout << a << " " << b << std::endl;
-  //   // std::cout << m1 << " : " << m2 << " = " << v << std::endl;
-  //   return v;
-  // }
 
   void update(const Abstract::Battle &battle) {
     {
@@ -447,6 +426,29 @@ public:
     }
   }
 };
+
+// float value(const Abstract::Battle &battle) {
+//   float m1 = 0;
+//   float m2 = 0;
+
+//   for (auto i = 0; i < 6; ++i) {
+//     const auto &p1 = battle.sides[0].bench[i];
+//     if (p1.alive_and_unfrozen()) {
+//       m1 += pieces1[i];
+//     }
+//     const auto &p2 = battle.sides[1].bench[i];
+//     if (p2.alive_and_unfrozen()) {
+//       m2 += pieces2[i];
+//     }
+//   }
+
+//   const auto a = battle.sides[0].active.n_alive;
+//   const auto b = battle.sides[1].active.n_alive;
+//   const auto v = sigmoid(2 * (m1 / b - m2 / a));
+//   // std::cout << a << " " << b << std::endl;
+//   // std::cout << m1 << " : " << m2 << " = " << v << std::endl;
+//   return v;
+// }
 
 struct Model {
   prng device;
