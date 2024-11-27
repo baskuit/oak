@@ -37,7 +37,7 @@ void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
     auto result = Init::update(battle, 0, 0, options);
 
     Eval::OVODict global{};
-    global.load("./global");
+    global.load("./cache");
 
     MCTS search{};
     MonteCarlo::Model mcm{seed};
@@ -53,9 +53,8 @@ void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
         using Node = Tree::Node<Exp3::JointBanditData<.15f, false>, Obs>;
         Node node{};
         MonteCarlo::Input input1{battle, durations, result};
-        auto output1 = search.run(dur, node, input1, poke_eval);
-        // print(mc_output.p1);
-        i = poke_eval.device.sample_pdf(output1.p1);
+        auto output1 = search.run(dur, node, input1, mcm);
+        i = mcm.device.sample_pdf(output1.p1);
       }
 
       auto j = 0;
@@ -64,7 +63,6 @@ void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
         Node node{};
         Eval::Input input2{battle, durations, battle, result};
         auto output2 = search.run(dur, node, input2, eval);
-        // print(eval_output.p2);
         j = eval.device.sample_pdf(output2.p2);
       }
 
@@ -98,20 +96,24 @@ int abstract_test(int argc, char **argv) {
 
   using Team = std::array<SampleTeams::Set, 6>;
 
+  int i;
+  int j;
   size_t ms = 100;
   size_t threads = 3;
   size_t trials = 50;
   uint64_t seed = 2934828342938;
 
-  if (argc != 5) {
-    std::cerr << "Usage: ms, threads, trials, seed" << std::endl;
+  if (argc != 7) {
+    std::cerr << "Usage: team 1, team 2, ms, threads, trials, seed" << std::endl;
     return 1;
   }
 
-  ms = std::atoi(argv[1]);
-  threads = std::atoi(argv[2]);
-  trials = std::atoi(argv[3]);
-  seed = std::atoi(argv[4]);
+  i = std::atoi(argv[1]);
+  j = std::atoi(argv[2]);
+  ms = std::atoi(argv[3]);
+  threads = std::atoi(argv[4]);
+  trials = std::atoi(argv[5]);
+  seed = std::atoi(argv[6]);
 
   std::cout << "Input: " << ms << ' ' << threads << ' ' << trials << ' ' << seed
             << std::endl;
