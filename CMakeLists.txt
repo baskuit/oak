@@ -24,6 +24,16 @@ add_custom_target(build_client_release ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/l
 add_custom_target(build_chance_release ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpkmn/release/chance/libpkmn-showdown.a)
 add_custom_target(build_fast_release ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpkmn/release/fast/libpkmn-showdown.a)
 
+add_executable(benchmark src/benchmark.cc)
+add_dependencies(benchmark build_chance_release)
+target_include_directories(benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(benchmark PRIVATE libpkmn_chance)
+
+add_executable(benchmark-eval src/benchmark.cc)
+add_dependencies(benchmark-eval build_chance_release)
+target_include_directories(benchmark-eval PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(benchmark-eval PRIVATE libpkmn_chance)
+
 add_executable(randbat src/randbat.cc)
 add_dependencies(randbat build_client_release)
 target_include_directories(randbat PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -38,11 +48,6 @@ add_executable(mcts src/mcts.cc)
 add_dependencies(mcts build_chance_release)
 target_include_directories(mcts PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(mcts PRIVATE libpkmn_chance)
-
-add_executable(benchmark src/benchmark.cc)
-add_dependencies(benchmark build_chance_release)
-target_include_directories(benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(benchmark PRIVATE libpkmn_chance)
 
 add_executable(eval src/eval.cc)
 add_dependencies(eval build_chance_release)
