@@ -332,6 +332,17 @@ public:
     float y = std::accumulate(pieces2.begin(), pieces2.end(), 0.0f);
     return sigmoid(2 * ((x / n) - (y / m)));
   }
+
+  void print() const {
+      for (int i = 0; i < 6; ++i) {
+        std::cout << "( " << (int)hp1[i] << " " << (int)status1[i] << " ) ";
+      }
+      std::cout << std::endl;
+      for (int i = 0; i < 6; ++i) {
+        std::cout << "( " << (int)hp2[i] << " " << (int)status2[i] << " ) ";
+      }
+      std::cout << std::endl << std::endl;;
+  }
 };
 
 struct Model {

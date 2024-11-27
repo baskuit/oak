@@ -214,8 +214,8 @@ struct MCTS {
 
       battle_options_set();
       result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
-      if constexpr (requires { input.eval.update(input.battle); }) {
-        input.eval.update(input.battle);
+      if constexpr (requires { model.eval.update(input.battle); }) {
+        model.eval.update(input.battle);
       }
       const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
           *pkmn_gen1_battle_options_chance_actions(&options));
