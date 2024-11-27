@@ -105,8 +105,8 @@ int abstract_test(int argc, char **argv) {
   uint64_t seed = 2934828342938;
 
   if (argc != 5) {
-    std::cerr << "Usage: team 1, team 2, ms, threads, trials, seed"
-              << std::endl;
+    std::cerr << "Input: ms, threads, max games, seed" << std::endl;
+    std::cerr << "Compares Monte Carlo to Eval::Cached Eval with sample team games" << std::endl;
     return 1;
   }
 
