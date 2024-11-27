@@ -214,11 +214,8 @@ struct MCTS {
 
       battle_options_set();
       result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
-      if constexpr (requires { input.abstract; }) {
-        input.abstract.update(battle);
-      }
-      if constexpr (requires { input.eval.update(battle); }) {
-        input.eval.update(battle);
+      if constexpr (requires { input.eval.update(input.battle); }) {
+        input.eval.update(input.battle);
       }
       const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
           *pkmn_gen1_battle_options_chance_actions(&options));
@@ -242,18 +239,11 @@ struct MCTS {
       [[likely]] {
         print("Initializing node");
         ++total_nodes;
-        if constexpr (requires { model.eval; }) {
-          const auto m = input.abstract.sides[0].active.n_alive;
-          const auto n = input.abstract.sides[1].active.n_alive;
-          if ((m + n) < 8) {
-            return init_stats_and_rollout(node->stats(), device, battle,
-                                          result);
-          } else {
-            init_stats(node->stats(), battle, result);
-            return model.eval.value(input.abstract);
-          }
-
+        if constexpr (requires { model.eval.value(); }) {
+          init_stats(node->stats(), battle, result);
+          return model.eval.value();
         } else {
+          // static_assert(false);
           return init_stats_and_rollout(node->stats(), device, battle, result);
         }
       }

@@ -11,8 +11,6 @@
 
 #include <chrono>
 
-namespace Types {}; // namespace Types
-
 int benchmark(int argc, char **argv) {
   constexpr bool mcts_root_visits{false};
 
