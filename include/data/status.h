@@ -38,7 +38,7 @@ constexpr bool self(const auto status) {
 }
 
 constexpr Status sleep(const auto n) {
-  assert(n & 7 == n);
+  assert((n & 7) == n);
   return static_cast<Status>(n);
 }
 } // namespace Data

@@ -257,53 +257,68 @@ public:
     }
   }
 
-  // float value(const pkmn_gen1_battle &battle) {
-  //   const auto &b = View::ref(battle);
+  float value(const pkmn_gen1_battle &battle) {
+    const auto &b = View::ref(battle);
 
-  //   int m = 0;
-  //   int n = 0;
+    const auto alive_and_unfrozen = [](const View::Pokemon &p) -> bool {
+      return !(p.status() == Data::Status::Freeze && p.hp() == 0);
+    };
 
-  //   float m1 = 0;
-  //   float m2 = 0;
 
-  //   const auto alive_and_unfrozen = [](const View::Pokemon &p) -> bool {
-  //     return !(p.status() == Data::Status::Freeze && p.hp() == 0);
-  //   };
+    int m = 0;
+    int n = 0;
+    for (int i = 0; i < 6; ++i) {
+      m += (b.side(0).pokemon(i).hp() != 0);
+      n += (b.side(1).pokemon(i).hp() != 0);
+    }
 
-  //   for (int i = 0; i < 6; ++i) {
-  //     m += alive_and_unfrozen(b.side(0).pokemon(i));
-  //     n += alive_and_unfrozen(b.side(1).pokemon(i));
-  //   }
+    float m1 = 0;
+    float m2 = 0;
 
-  //   for (int i = 0; i < 6; ++i) {
-  //     const auto &p1 = b.side(0).pokemon(i);
-  //     if (!alive_and_unfrozen(p1)) {
-  //       continue;
-  //     }
-  //     for (int j = 0; j < 6; ++j) {
-  //       const auto &p2 = b.side(1).pokemon(j);
-  //       if (!alive_and_unfrozen(p2)) {
-  //         continue;
-  //       }
+    for (int i = 0; i < 6; ++i) {
+      const auto &p1 = b.side(0).pokemon(i);
+      if (!p1.hp()) {
+        continue;
+      }
+      for (int j = 0; j < 6; ++j) {
+        const auto &p2 = b.side(1).pokemon(j);
+        if (!p2.hp()) {
+          continue;
+        }
 
-  //       const int h1 = std::ceil(3.0f * p1.hp() / p1.stats().hp()) - 1;
-  //       const int h2 = std::ceil(3.0f * p2.hp() / p2.stats().hp()) - 1;
-  //       const auto s1 =
-  //           static_cast<uint8_t>(Abstract::simplify_status(p1.status()));
-  //       const auto s2 =
-  //           static_cast<uint8_t>(Abstract::simplify_status(p2.status()));
+        if (p1.status() == Data::Status::Freeze) {
+          if (p2.status() != Data::Status::Freeze) {
+            m2 += 1;
+            continue;
+          }
+        }
+        if (p2.status() == Data::Status::Freeze) {
+          m1 += 1;
+          continue;
+        }
 
-  //       const auto v = ovo_matrix[i][j][h1][s1][h2][s2];
-  //       m1 += v;
-  //       m2 += 1 - v;
-  //     }
-  //   }
+        const int h1 = std::ceil(3.0f * p1.hp() / p1.stats().hp()) - 1;
+        const int h2 = std::ceil(3.0f * p2.hp() / p2.stats().hp()) - 1;
+        const auto s1 =
+            static_cast<uint8_t>(Abstract::simplify_status(p1.status()));
+        const auto s2 =
+            static_cast<uint8_t>(Abstract::simplify_status(p2.status()));
 
-  //   m1 /= n;
-  //   m2 /= m;
-  //   float x = sigmoid(2 * (m1 - m2));
-  //   return x;
-  // }
+        assert((h1 >= 0) && (h1 <= 2));
+        assert((h2 >= 0) && (h2 <= 2));
+        assert((s1 >= 0) && (s1 <= 4));
+        assert((s2 >= 0) && (s2 <= 4));
+        const auto v = ovo_matrix[i][j][h1][s1][h2][s2];
+        m1 += v;
+        m2 += 1 - v;
+      }
+    }
+
+    m1 /= n;
+    m2 /= m;
+    float x = sigmoid(2 * (m1 - m2));
+    return x;
+  }
 
   float value(const Abstract::Battle &battle) {
 
