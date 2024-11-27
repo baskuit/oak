@@ -233,26 +233,6 @@ static_assert(
 
 class CachedEval {
 public: // clr, slp, psn, brn, par
-  static constexpr auto status_index(uint8_t status) noexcept {
-    if (status & 7) {
-      return 1;
-    }
-    switch (static_cast<uint8_t>(status)) {
-    case 0b00000000:
-      return 0;
-    case 0b00001000:
-      return 2;
-    case 0b00010000:
-      return 3;
-    case 0b00100000:
-      return 0;
-    case 0b01000000:
-      return 4;
-    case 0b10001000:
-      return 2;
-    }
-  }
-
   std::array<std::array<OVO, 6>, 6> mem_matrix;
 
   int m;

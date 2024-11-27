@@ -106,12 +106,34 @@ int generate(int argc, char **argv) {
 
   std::atomic<int> index{};
   std::mutex write{};
+  prng device{12231256};
 
   Eval::OVODict global{};
   global.iterations = 1 << exp;
 
   global.load("./cache");
-  global.print();
+  // global.print();
+
+  auto battle =
+      Init::battle(SampleTeams::teams[0], SampleTeams::teams[1], 12930181909);
+  auto options = Init::options();
+  auto result = Init::update(battle, 0, 0, options);
+  auto abstract = Abstract::Battle{battle};
+  auto turn = 0;
+  while (!pkmn_result_type(result)) {
+    const auto [choices1, choices2] = Init::choices(battle, result);
+    result =
+        Init::update(battle, choices1[device.random_int(choices1.size())],
+                     choices2[device.random_int(choices2.size())], options);
+    abstract.update(battle);
+    auto clone = Abstract::Battle{battle};
+    assert(abstract.sides[0].active == clone.sides[0].active);
+    assert(abstract.sides[0].bench == clone.sides[0].bench);
+    assert(abstract.sides[1].active == clone.sides[1].active);
+    assert(abstract.sides[1].bench == clone.sides[1].bench);
+    std::cout << "turn: " << ++turn << std::endl;
+  }
+
   return 0;
 
   auto *thread_pool = new std::thread[threads];
