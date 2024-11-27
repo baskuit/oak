@@ -37,8 +37,20 @@ struct Input {
   pkmn_result result;
 };
 
-float get_value(const auto &set1, const auto &set2, size_t iterations,
-                auto seed) {
+struct PV {
+  uint8_t value;
+  std::array<uint8_t, 4> p1;
+  std::array<uint8_t, 4> p2;
+
+  constexpr float v() const noexcept { return static_cast<float>(value) * 255; }
+
+  bool operator==(const PV &) const = default;
+};
+
+static_assert(sizeof(PV) == 9);
+
+PV compute_pv(const auto &set1, const auto &set2, size_t iterations,
+              auto seed) {
   std::array<std::remove_reference_t<decltype(set1)>, 1> p1{set1};
   std::array<std::remove_reference_t<decltype(set2)>, 1> p2{set2};
   prng device{seed};
@@ -58,23 +70,36 @@ float get_value(const auto &set1, const auto &set2, size_t iterations,
     input.durations.bytes[4] = 1;
   }
   const auto output = search.run(iterations, node, input, model);
-  return output.average_value;
+  PV result{};
+  result.value = static_cast<uint8_t>(255 * output.average_value);
+  for (int i = 0; i < 4; ++i) {
+    result.p1[i] = static_cast<uint8_t>(255 * output.p1[i]);
+    result.p2[i] = static_cast<uint8_t>(255 * output.p2[i]);
+  }
+  return result;
 }
 
-using OVO = std::array<
-    std::array<std::array<std::array<float, n_status>, n_hp>, n_status>, n_hp>;
-
-struct OVO2 {
-  std::array<
-      std::array<std::array<std::array<float, n_status>, n_hp>, n_status>, n_hp>
+struct OVO {
+  std::array<std::array<std::array<std::array<PV, n_status>, n_hp>, n_status>,
+             n_hp>
       data;
 
-  const float &operator()(auto h1, auto s1, auto h2, auto s2) const {
-    return data[0][0][0][0];
+  template <typename HP, typename Status>
+  const PV &operator()(HP h1, Status s1, HP h2, Status s2) const {
+    using hp = uint8_t;
+    using status = uint8_t;
+    return data[static_cast<hp>(h1)][static_cast<status>(s1)]
+               [static_cast<hp>(h2)][static_cast<status>(s2)];
   }
-  float &operator()(auto h1, auto s1, auto h2, auto s2) {
-    return data[0][0][0][0];
+  template <typename HP, typename Status>
+  PV &operator()(HP h1, Status s1, HP h2, Status s2) {
+    using hp = uint8_t;
+    using status = uint8_t;
+    return data[static_cast<hp>(h1)][static_cast<status>(s1)]
+               [static_cast<hp>(h2)][static_cast<status>(s2)];
   }
+
+  bool operator==(const OVO &) const = default;
 };
 
 OVO compute_table(auto set1, auto set2, const auto iterations,
@@ -91,12 +116,16 @@ OVO compute_table(auto set1, auto set2, const auto iterations,
           set2.hp = (h2 + 1) / 3.0;
           set1.status = STATUS[s1];
           set2.status = STATUS[s2];
-          result[h1][s1][h2][s2] = get_value(set1, set2, iterations, seed);
+          result(h1, s1, h2, s2) = compute_pv(set1, set2, iterations, seed);
         }
       }
     }
   }
   return result;
+}
+
+constexpr PV pv_mirror(const PV &pv) noexcept {
+  return {static_cast<uint8_t>(0b11111111 ^ pv.value), pv.p2, pv.p1};
 }
 
 constexpr OVO ovo_mirror(const OVO &ovo) noexcept {
@@ -105,7 +134,7 @@ constexpr OVO ovo_mirror(const OVO &ovo) noexcept {
     for (int s1 = 0; s1 < n_status; ++s1) {
       for (int h2 = 0; h2 < n_hp; ++h2) {
         for (int s2 = 0; s2 < n_status; ++s2) {
-          mirrored[h1][s1][h2][s2] = 1 - ovo[h2][s2][h1][s1];
+          mirrored(h1, s1, h2, s2) = pv_mirror(ovo(h2, s2, h1, s1));
         }
       }
     }
@@ -176,8 +205,8 @@ public:
 
     for (const auto &[key, value] : OVOData) {
       file.write(std::bit_cast<const char *>(&key), sizeof(key));
-      file.write(std::bit_cast<const char *>(value.data()), sizeof(value));
-      static_assert(sizeof(value) == 9 * 25 * 4);
+      file.write(std::bit_cast<const char *>(&value), sizeof(value));
+      static_assert(sizeof(value) == 9 * 25 * 9);
       static_assert(sizeof(key) == 16);
     }
     file.close();
@@ -203,7 +232,7 @@ public:
         std::cout << "cant read key: " << g << std::endl;
         return false;
       }
-      file.read(std::bit_cast<char *>(value.data()), sizeof(value));
+      file.read(std::bit_cast<char *>(&value), sizeof(value));
       if (const auto g = file.gcount(); g != sizeof(value)) {
         std::cout << "cant read value: " << g << std::endl;
         return false;
@@ -220,7 +249,10 @@ public:
       const auto set1 = fromID(pair.first.first);
       const auto set2 = fromID(pair.first.second);
       std::cout << set_string(set1) << " : " << set_string(set2) << std::endl;
-      std::cout << pair.second[2][0][2][0] << std::endl;
+      std::cout << pair.second(Abstract::HP::HP3, Abstract::Status::None,
+                               Abstract::HP::HP3, Abstract::Status::None)
+                       .v()
+                << std::endl;
     }
   }
 
@@ -231,7 +263,7 @@ private:
   prng device{9348509345830};
   std::mutex mutex{};
 
-  static_assert(sizeof(decltype(*OVOData.begin())) == 920);
+  static_assert(sizeof(decltype(*OVOData.begin())) == 2048);
 };
 
 static_assert(
@@ -252,18 +284,16 @@ public:
     for (auto i = 0; i < m; ++i) {
       for (auto j = 0; j < n; ++j) {
         ovo_matrix[i][j] = global.get(p1[i], p2[j]);
-        value_matrix[i][j] = ovo_matrix[i][j][2][0][2][0];
+        value_matrix[i][j] =
+            ovo_matrix[i][j](Abstract::HP::HP3, Abstract::Status::None,
+                             Abstract::HP::HP3, Abstract::Status::None)
+                .v();
       }
     }
   }
 
   float value(const pkmn_gen1_battle &battle) {
     const auto &b = View::ref(battle);
-
-    const auto alive_and_unfrozen = [](const View::Pokemon &p) -> bool {
-      return !(p.status() == Data::Status::Freeze && p.hp() == 0);
-    };
-
 
     int m = 0;
     int n = 0;
@@ -308,9 +338,10 @@ public:
         assert((h2 >= 0) && (h2 <= 2));
         assert((s1 >= 0) && (s1 <= 4));
         assert((s2 >= 0) && (s2 <= 4));
-        const auto v = ovo_matrix[i][j][h1][s1][h2][s2];
-        m1 += v;
-        m2 += 1 - v;
+        const auto &ovo = ovo_matrix[i][j];
+        const auto pv = ovo(h1, s1, h2, s2);
+        m1 += pv.v();
+        m2 += 1 - pv.v();
       }
     }
 
@@ -353,13 +384,10 @@ public:
         }
 
         const auto &ovo = ovo_matrix[i][j];
-        const auto value =
-            ovo[static_cast<uint8_t>(p1.hp) - 1][static_cast<uint8_t>(
-                p1.status)][static_cast<uint8_t>(p2.hp) - 1]
-               [static_cast<uint8_t>(p2.status)];
+        const auto pv = ovo(p1.hp, p1.status, p2.hp, p2.status);
         // value_matrix[i][j] = value;
-        pieces1[i] += value;
-        pieces2[j] += 1 - value;
+        pieces1[i] += static_cast<float>(pv.value) / 255;
+        pieces2[j] += static_cast<float>(255 - pv.value) / 255;
       }
     }
 
@@ -415,10 +443,7 @@ public:
           if (p2.alive_and_unfrozen()) {
             pieces2[i] -= 1 - value_matrix[slot][i];
             value_matrix[slot][i] =
-                ovo_matrix[slot][i][static_cast<uint8_t>(p1.hp) - 1]
-                          [static_cast<uint8_t>(p1.status)]
-                          [static_cast<uint8_t>(p2.hp) - 1]
-                          [static_cast<uint8_t>(p2.status)];
+                ovo_matrix[slot][i](p1.hp, p1.status, p2.hp, p2.status).v();
             pieces1[slot] += value_matrix[slot][i];
             pieces2[i] += 1 - value_matrix[slot][i];
           }
@@ -435,10 +460,7 @@ public:
           if (p1.alive_and_unfrozen()) {
             pieces1[i] -= value_matrix[slot][i];
             value_matrix[i][slot] =
-                ovo_matrix[i][slot][static_cast<uint8_t>(p1.hp) - 1]
-                          [static_cast<uint8_t>(p1.status)]
-                          [static_cast<uint8_t>(p2.hp) - 1]
-                          [static_cast<uint8_t>(p2.status)];
+                ovo_matrix[i][slot](p1.hp, p1.status, p2.hp, p2.status).v();
             pieces2[slot] += 1 - value_matrix[i][slot];
             pieces1[i] += value_matrix[slot][i];
           }

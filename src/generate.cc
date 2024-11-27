@@ -67,7 +67,7 @@ void thread_fn(std::atomic<int> *const atomic,
             std::cout << index << " " << i << " " << j << std::endl;
             std::cout << set_string(s1) << " vs " << set_string(s2)
                       << std::endl;
-            std::cout << "value: " << dict->get(s1, s2)[2][0][2][0]
+            std::cout << "value: " << dict->get(s1, s2)(3, 0, 3, 0).v()
                       << std::endl;
           }
           return true;
@@ -136,7 +136,6 @@ int generate(int argc, char **argv) {
       return 1;
     }
   }
-
 
   return 0;
 }
