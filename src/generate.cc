@@ -114,8 +114,13 @@ int generate(int argc, char **argv) {
   global.load("./cache");
   // global.print();
 
+  for (int i = 0; i < 10000; ++i) {
+
+  auto a = device.random_int(100);
+  auto b = device.random_int(100);
+
   auto battle =
-      Init::battle(SampleTeams::teams[0], SampleTeams::teams[1], 12930181909);
+      Init::battle(SampleTeams::teams[a], SampleTeams::teams[b], device.uniform_64());
   auto options = Init::options();
   auto result = Init::update(battle, 0, 0, options);
   auto abstract = Abstract::Battle{battle};
@@ -131,8 +136,8 @@ int generate(int argc, char **argv) {
     assert(abstract.sides[0].bench == clone.sides[0].bench);
     assert(abstract.sides[1].active == clone.sides[1].active);
     assert(abstract.sides[1].bench == clone.sides[1].bench);
-    std::cout << "turn: " << ++turn << std::endl;
-  }
+    // std::cout << "turn: " << ++turn << std::endl;
+  }}
 
   return 0;
 

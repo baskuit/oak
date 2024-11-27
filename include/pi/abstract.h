@@ -42,7 +42,7 @@ constexpr Status simplify_status(const auto status) {
   case 0b10001000:
     return Status::Poison;
   default:
-    assert(false);
+    // assert(false);
     return Status::None;
   }
 }
@@ -147,8 +147,6 @@ struct Battle {
         ++sides[1].active.n_alive;
       }
     }
-    std::cout << sides[0].active.n_alive << " : " << sides[1].active.n_alive
-              << std::endl;
   }
 };
 
