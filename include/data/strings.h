@@ -141,6 +141,17 @@ constexpr std::string side_choice_string(const uint8_t *side,
   }
 }
 
+std::string set_string(auto set) {
+  std::stringstream stream{};
+  stream << Names::species_string(set.species) << " { ";
+  for (const auto move : set.moves) {
+    stream << Names::move_string(move) << ", ";
+  }
+  stream << "}";
+  stream.flush();
+  return stream.str();
+}
+
 constexpr std::string buffer_to_string(const uint8_t *const buf, int n) {
   std::string result;
   for (int i = 0; i < n; ++i) {

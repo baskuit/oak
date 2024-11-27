@@ -12,36 +12,41 @@
 namespace Abstract {
 
 enum class HP : std::underlying_type_t<std::byte> {
-  KO,
-  ONE,
-  TWO,
-  THREE,
-  FOUR,
-  FIVE,
-  SIX,
-  SEVEN,
+  HP0,
+  HP1,
+  HP2,
+  HP3,
 };
 
 enum class Status : std::underlying_type_t<std::byte> {
-  CLR = 0b00000000,
-  PSN = 0b00001000,
-  BRN = 0b00010000,
-  FRZ = 0b00100000,
-  PAR = 0b01000000,
-  TOX = 0b10001000,
-  SP0 = 0b00000001,
-  SP1 = 0b00000010,
-  SP2 = 0b00000011,
-  SP3 = 0b00000100,
-  SP4 = 0b00000101,
-  SP5 = 0b00000110,
-  SP6 = 0b00000111,
-  RS0 = 0b10000001,
-  RS1 = 0b10000010,
-  RS2 = 0b10000011,
+  None,
+  Sleep,
+  Poison,
+  Burn,
+  Paralysis,
 };
 
-// 2 byte
+constexpr Status simplify_status(const auto status) {
+  if (static_cast<uint8_t>(status) & 7) {
+    return Status::Sleep;
+  }
+  switch (static_cast<uint8_t>(status)) {
+    case 0b00000000:
+    return Status::None;
+    case 0b00001000:
+    return Status::Poison;
+    case 0b00010000:
+    return Status::Burn;
+    case 0b01000000:
+    return Status::Paralysis;
+    case 0b10001000:
+    return Status::Poison;
+    default:
+    assert(false);
+    return Status::None;
+  }
+}
+
 #pragma pack(push, 1)
 struct Bench {
   HP hp;
@@ -50,31 +55,15 @@ struct Bench {
   static constexpr HP get_hp(const uint8_t *const bytes) {
     const auto cur = std::bit_cast<const uint16_t *const>(bytes)[9];
     const auto max = std::bit_cast<const uint16_t *const>(bytes)[0];
-    return static_cast<HP>(std::min(7, 8 * (cur + max / 8) / max));
-  }
-
-  static constexpr Status get_status(const uint8_t byte, const uint8_t dur) {
-    if (byte & 0b00000111) {
-      if (!(byte & 0b10000000)) {
-        return static_cast<Status>(static_cast<uint8_t>(Status::SP0) + dur);
-      }
-    }
-    return static_cast<Status>(byte);
+    return static_cast<HP>(std::ceil(3 * cur / max));
   }
 
   bool operator==(const Bench &) const = default;
 
-  constexpr Bench() : hp{HP::SEVEN}, status{Status::CLR} {}
-  constexpr Bench(const uint8_t *const bytes) : hp{get_hp(bytes)}, status{} {}
-  // constexpr Bench(const uint8_t *const bytes, const uint8_t dur)
-  //     : hp{get_hp(bytes)}, status{get_status(bytes[20], dur)} {}
+  constexpr Bench() : hp{HP::HP3}, status{Status::None} {}
+  constexpr Bench(const uint8_t *const bytes) : hp{get_hp(bytes)}, status{simplify_status(bytes[Offsets::status])} {}
 };
 #pragma pack(pop)
-
-constexpr int8_t stat_log_ratio(uint16_t current, uint16_t base) {
-  const float f = std::log(4 * current / base);
-  return f;
-}
 
 #pragma pack(push, 1)
 struct Active {
@@ -134,20 +123,6 @@ struct Battle {
     sides[1].active.slot = active_2;
   }
 };
-
-// namespace Test {
-// static_assert(sizeof(Bench) == 2);
-// using PokemonBuffer = std::array<uint8_t, 24>;
-// constexpr PokemonBuffer mon{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-//                             0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0};
-// constexpr PokemonBuffer mon_low{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-//                                 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0};
-// constexpr PokemonBuffer mon_kod{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-//                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-// static_assert(Bench{mon.data()}.hp == HP::SEVEN);
-// static_assert(Bench{mon_low.data()}.hp == HP::ONE);
-// static_assert(Bench{mon_kod.data()}.hp == HP::KO);
-// } // namespace Test
 
 static_assert(sizeof(Active) == 20);
 static_assert(sizeof(Bench) == 2);

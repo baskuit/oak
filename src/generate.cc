@@ -47,17 +47,6 @@ auto get_sorted_set_array() {
             [](const auto &a, const auto &b) { return a.second > b.second; });
   return sets_sorted_by_use;
 }
-
-std::string set_string(auto set) {
-  std::stringstream stream{};
-  stream << Names::species_string(set.species) << " { ";
-  for (const auto move : set.moves) {
-    stream << Names::move_string(move) << ", ";
-  }
-  stream << "}";
-  stream.flush();
-  return stream.str();
-}
 } // namespace Sets
 
 void thread_fn(std::atomic<int> *const atomic,
@@ -75,7 +64,7 @@ void thread_fn(std::atomic<int> *const atomic,
           {
             std::unique_lock lock{*mutex};
             std::cout << index << " " << i << " " << j << std::endl;
-            std::cout << Sets::set_string(s1) << " vs " << Sets::set_string(s2)
+            std::cout << set_string(s1) << " vs " << set_string(s2)
                       << std::endl;
             std::cout << "value: " << dict->get(s1, s2)[2][0][2][0]
                       << std::endl;
@@ -115,13 +104,17 @@ int generate(int argc, char **argv) {
 
   // std::cout << "Number of sets:" << sets.size() << std::endl;
 
-  auto *thread_pool = new std::thread[threads];
-
   std::atomic<int> index{};
   std::mutex write{};
 
   Eval::OVODict global{};
   global.iterations = 1 << exp;
+
+  global.load("./cache");
+  global.print();
+  return 0;
+
+  auto *thread_pool = new std::thread[threads];
 
   for (auto i = 0; i < threads; ++i) {
     thread_pool[i] = std::thread{&thread_fn, &index, &sets, &global, &write};
@@ -135,7 +128,7 @@ int generate(int argc, char **argv) {
   Eval::OVODict test{};
   test.load("./test");
 
-  for (const auto& pair : global.OVOData) {
+  for (const auto &pair : global.OVOData) {
     assert(test.OVOData[pair.first] == pair.second);
     if (test.OVOData[pair.first] != pair.second) {
       std::cout << '!' << std::endl;
@@ -143,6 +136,7 @@ int generate(int argc, char **argv) {
     }
   }
 
+  delete[] thread_pool;
 
   return 0;
 }

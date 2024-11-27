@@ -105,9 +105,9 @@ constexpr OVO ovo_mirror(const OVO &ovo) noexcept {
 class OVODict {
 public:
   using SetID = uint64_t;
+  static constexpr auto n_moves_with_none = 166;
 
-  constexpr SetID toID(const auto &set) const noexcept {
-    constexpr auto n_moves_with_none = 166;
+  static constexpr SetID toID(const auto &set) noexcept {
     assert(set.species != Data::Species::None);
     std::array<Data::Moves, 4> ordered_moves{};
     std::copy(set.moves.begin(), set.moves.begin() + 4, ordered_moves.begin());
@@ -119,6 +119,19 @@ public:
       id += static_cast<SetID>(ordered_moves[i]);
     }
     return id;
+  }
+
+  static constexpr SampleTeams::Set fromID(SetID id) noexcept {
+    SampleTeams::Set set{};
+    for (int i = 0; i < 4; ++i) {
+      const uint8_t moveid = id % n_moves_with_none;
+      id -= moveid;
+      id /= n_moves_with_none;
+      set.moves[3 - i] = static_cast<Data::Moves>(moveid);
+    }
+    set.species = static_cast<Data::Species>(id + 1);
+    assert(id < 151);
+    return set;
   }
 
   void add_matchups(const auto &p1, const auto &p2) {
@@ -193,6 +206,17 @@ public:
     return true;
   }
 
+  void print() const {
+    for (const auto pair : OVOData) {
+      const auto set1 = fromID(pair.first.first);
+      const auto set2 = fromID(pair.first.second);
+      std::cout << set_string(set1) << " : " << set_string(set2) << std::endl;
+      std::cout << pair.second[2][0][2][0] << std::endl;
+      // std::cout << "remade: " << get_value(set1, set2, 1 << 10, 482034982309)
+      // << std::endl;
+    }
+  }
+
   size_t iterations = 1 << 18;
   std::map<std::pair<SetID, SetID>, OVO> OVOData{};
 
@@ -202,6 +226,10 @@ private:
 
   static_assert(sizeof(decltype(*OVOData.begin())) == 920);
 };
+
+static_assert(
+    OVODict::toID(SampleTeams::teams[0][0]) ==
+    OVODict::toID(OVODict::fromID(OVODict::toID(SampleTeams::teams[0][0]))));
 
 class CachedEval {
 public: // clr, slp, psn, brn, par
@@ -239,7 +267,11 @@ public: // clr, slp, psn, brn, par
     const auto i = battle.sides[0].active.slot;
     for (int j = 0; j < 6; ++j) {
       pieces1[j] -= value_matrix[i][j];
-      value_matrix[i][j] = mem_matrix[i][j][0][0][0][0];
+      const auto h1 = 0;
+      const auto s1 = 0;
+      const auto h2 = 0;
+      const auto s2 = 0;
+      value_matrix[i][j] = mem_matrix[i][j][h1][s1][h2][s2];
       pieces1[j] += value_matrix[i][j];
     }
 
