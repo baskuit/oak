@@ -243,12 +243,16 @@ struct MCTS {
         print("Initializing node");
         ++total_nodes;
         if constexpr (requires { model.eval; }) {
-          init_stats(node->stats(), battle, result);
-          if constexpr (requires { model.eval.value(input.battle); }) {
-            return model.eval.value(input.battle);
+          const auto m = input.abstract.sides[0].active.n_alive;
+          const auto n = input.abstract.sides[1].active.n_alive;
+          if ((m + n) < 8) {
+            return init_stats_and_rollout(node->stats(), device, battle,
+                                          result);
           } else {
+            init_stats(node->stats(), battle, result);
             return model.eval.value(input.abstract);
           }
+
         } else {
           return init_stats_and_rollout(node->stats(), device, battle, result);
         }
