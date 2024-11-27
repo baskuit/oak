@@ -69,6 +69,14 @@ struct Pokemon {
 };
 #pragma pack(pop)
 
+// static_assert(std::ceil(3.0f * 0 / 300) == 0);
+// static_assert(std::ceil(3.0f * 1 / 300) == 1);
+// static_assert(std::ceil(3.0f * 100 / 300) == 1);
+// static_assert(std::ceil(3.0f * 101 / 300) == 2);
+// static_assert(std::ceil(3.0f * 200 / 300) == 2);
+// static_assert(std::ceil(3.0f * 201 / 300) == 3);
+// static_assert(std::ceil(3.0f * 300 / 300) == 3);
+
 #pragma pack(push, 1)
 struct Active {
   std::array<int8_t, 5> stats;
@@ -81,7 +89,8 @@ struct Active {
   bool operator==(const Active &) const = default;
 
   Active() = default;
-  constexpr Active(const uint8_t *bytes) : slot{bytes[176 - 144] - 1} {}
+  constexpr Active(const View::Side &side)
+      : slot{static_cast<uint8_t>(side.order()[0] - 1)} {}
 };
 #pragma pack(pop)
 
@@ -94,7 +103,7 @@ struct Side {
 
   Side() = default;
   constexpr Side(const View::Side &side)
-      : active{side.bytes + Offsets::active},
+      : active{side},
         bench{Pokemon{side.pokemon(0)}, Pokemon{side.pokemon(1)},
               Pokemon{side.pokemon(2)}, Pokemon{side.pokemon(3)},
               Pokemon{side.pokemon(4)}, Pokemon{side.pokemon(5)}} {
@@ -121,34 +130,19 @@ struct Battle {
       : sides{View::ref(battle).side(0), View::ref(battle).side(1)} {}
 
   void update(const pkmn_gen1_battle &battle) noexcept {
-    const auto &bat = View::ref(battle);
-
-    sides[0].active.slot = battle.bytes[Offsets::order] - 1;
-    auto &prior_active_1 = sides[0].bench[sides[0].active.slot];
-    prior_active_1 = Pokemon{bat.side(0).pokemon(sides[0].active.slot)};
-    sides[0].active.n_alive = 0;
-
-    for (int p = 0; p < 6; ++p) {
-      const auto &pokemon = bat.side(0).pokemon(p);
-      if (pokemon.hp() > 0) {
-        ++sides[0].active.n_alive;
+    const auto &b = View::ref(battle);
+    for (auto s = 0; s < 2; ++s) {
+      const auto &side = b.side(s);
+      const auto slot = side.order()[0] - 1;
+      sides[s].active.slot = slot;
+      sides[s].bench[slot] = Pokemon{side.pokemon(slot)};
+      sides[s].active.n_alive = 0;
+      for (int p = 0; p < 6; ++p) {
+        const auto &pokemon = side.pokemon(p);
+        if ((pokemon.hp() > 0) && (pokemon.stats().hp() > 0)) {
+          ++sides[s].active.n_alive;
+        }
       }
-      // std::cout << "side 0; mon: " << p << " hp: " << pokemon.hp() <<
-      // std::endl;
-    }
-
-    sides[1].active.slot = battle.bytes[Offsets::side + Offsets::order] - 1;
-    auto &prior_active_2 = sides[1].bench[sides[1].active.slot];
-    prior_active_2 =
-        Pokemon{View::ref(battle).side(1).pokemon(sides[1].active.slot)};
-    sides[1].active.n_alive = 0;
-    for (int p = 0; p < 6; ++p) {
-      const auto &pokemon = bat.side(1).pokemon(p);
-      if (pokemon.hp() > 0) {
-        ++sides[1].active.n_alive;
-      }
-      // std::cout << "side 1; mon: " << p << " hp: " << pokemon.hp() <<
-      // std::endl;
     }
   }
 };

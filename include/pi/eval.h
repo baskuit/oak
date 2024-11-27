@@ -64,6 +64,15 @@ float get_value(const auto &set1, const auto &set2, size_t iterations,
 using OVO = std::array<
     std::array<std::array<std::array<float, n_status>, n_hp>, n_status>, n_hp>;
 
+struct OVO2 {
+  std::array<
+      std::array<std::array<std::array<float, n_status>, n_hp>, n_status>, n_hp>
+      data;
+
+  const float& operator()(auto h1, auto s1, auto h2, auto s2) const { return data[0][0][0][0]; }
+  float& operator()(auto h1, auto s1, auto h2, auto s2) { return data[0][0][0][0]; }
+};
+
 OVO compute_table(auto set1, auto set2, const auto iterations,
                   const auto seed) {
   OVO result;
@@ -79,8 +88,6 @@ OVO compute_table(auto set1, auto set2, const auto iterations,
           set1.status = STATUS[s1];
           set2.status = STATUS[s2];
           result[h1][s1][h2][s2] = get_value(set1, set2, iterations, seed);
-          // std::cout << h1 << ' ' << s1 << ' ' << h2 << ' ' << s2 << " : "
-          //           << result[h1][s1][h2][s2] << std::endl;
         }
       }
     }
@@ -146,8 +153,6 @@ public:
     SetID id1 = toID(p1_set);
     SetID id2 = toID(p2_set);
 
-    std::unique_lock lock{mutex};
-
     if (OVOData.contains({id1, id2})) {
       return OVOData[{id1, id2}];
     } else if (OVOData.contains({id2, id1})) {
@@ -191,7 +196,7 @@ public:
 
       file.read(std::bit_cast<char *>(&key), sizeof(key));
       if (const auto g = file.gcount(); g != sizeof(key)) {
-        std::cout << "cant read key: " << gamma << std::endl;
+        std::cout << "cant read key: " << g << std::endl;
         return false;
       }
       file.read(std::bit_cast<char *>(value.data()), sizeof(value));
@@ -212,8 +217,6 @@ public:
       const auto set2 = fromID(pair.first.second);
       std::cout << set_string(set1) << " : " << set_string(set2) << std::endl;
       std::cout << pair.second[2][0][2][0] << std::endl;
-      // std::cout << "remade: " << get_value(set1, set2, 1 << 10, 482034982309)
-      // << std::endl;
     }
   }
 
@@ -232,25 +235,32 @@ static_assert(
     OVODict::toID(OVODict::fromID(OVODict::toID(SampleTeams::teams[0][0]))));
 
 class CachedEval {
-public: // clr, slp, psn, brn, par
-  std::array<std::array<OVO, 6>, 6> mem_matrix;
-
-  int m;
-  int n;
-
+public:
+  std::array<std::array<OVO, 6>, 6> ovo_matrix;
   std::array<std::array<float, 6>, 6> value_matrix;
   std::array<float, 6> pieces1{};
   std::array<float, 6> pieces2{};
+
+  CachedEval(const auto &p1, const auto &p2, OVODict &global) {
+    global.add_matchups(p1, p2);
+    const auto m = p1.size();
+    const auto n = p2.size();
+    for (auto i = 0; i < m; ++i) {
+      for (auto j = 0; j < n; ++j) {
+        ovo_matrix[i][j] = global.get(p1[i], p2[j]);
+      }
+    }
+  }
 
   float value(const Abstract::Battle &battle) {
 
     pieces1 = {};
     pieces2 = {};
-    for (int i = 0; i < 6; ++i) {
-      for (int j = 0; j < 6; ++j) {
-        value_matrix[i][j] = -1;
-      }
-    }
+    // for (int i = 0; i < 6; ++i) {
+    //   for (int j = 0; j < 6; ++j) {
+    //     value_matrix[i][j] = -1;
+    //   }
+    // }
 
     for (int i = 0; i < 6; ++i) {
       const auto &p1 = battle.sides[0].bench[i];
@@ -274,12 +284,12 @@ public: // clr, slp, psn, brn, par
           continue;
         }
 
-        const auto &ovo = mem_matrix[i][j];
+        const auto &ovo = ovo_matrix[i][j];
         const auto value =
             ovo[static_cast<uint8_t>(p1.hp) - 1][static_cast<uint8_t>(
                 p1.status)][static_cast<uint8_t>(p2.hp) - 1]
                [static_cast<uint8_t>(p2.status)];
-        value_matrix[i][j] = value;
+        // value_matrix[i][j] = value;
         pieces1[i] += value;
         pieces2[j] += 1 - value;
       }
@@ -303,44 +313,24 @@ public: // clr, slp, psn, brn, par
     return v;
   }
 
-  void update(const Abstract::Battle &battle) {
+  // void update(const Abstract::Battle &battle) {
 
-    const auto i = battle.sides[0].active.slot;
-    for (int j = 0; j < 6; ++j) {
-      pieces1[j] -= value_matrix[i][j];
-      const auto h1 = 0;
-      const auto s1 = 0;
-      const auto h2 = 0;
-      const auto s2 = 0;
-      value_matrix[i][j] = mem_matrix[i][j][h1][s1][h2][s2];
-      pieces1[j] += value_matrix[i][j];
-    }
+  //   const auto i = battle.sides[0].active.slot;
+  //   for (int j = 0; j < 6; ++j) {
+  //     pieces1[j] -= value_matrix[i][j];
+  //     const auto h1 = 0;
+  //     const auto s1 = 0;
+  //     const auto h2 = 0;
+  //     const auto s2 = 0;
+  //     value_matrix[i][j] = ovo_matrix[i][j][h1][s1][h2][s2];
+  //     pieces1[j] += value_matrix[i][j];
+  //   }
 
-    const auto j = battle.sides[1].active.slot;
-    for (int i = 0; i < 6; ++i) {
-      value_matrix[i][j] = mem_matrix[i][j][0][0][0][0];
-    }
-  }
-
-  float value() const {
-    const auto x = std::accumulate(pieces1.begin(), pieces1.end(), 0.0f);
-    const auto y = std::accumulate(pieces1.begin(), pieces1.end(), 0.0f);
-    return sigmoid(x - y);
-  }
-
-  CachedEval(const auto &p1, const auto &p2, OVODict &global) {
-    global.add_matchups(p1, p2);
-    const auto m = p1.size();
-    const auto n = p2.size();
-    for (auto i = 0; i < m; ++i) {
-      for (auto j = 0; j < n; ++j) {
-        mem_matrix[i][j] = global.get(p1[i], p2[j]);
-        value_matrix[i][j] = 0;
-        pieces1[i] += value_matrix[i][j];
-        pieces2[j] += value_matrix[i][j];
-      }
-    }
-  }
+  //   const auto j = battle.sides[1].active.slot;
+  //   for (int i = 0; i < 6; ++i) {
+  //     value_matrix[i][j] = ovo_matrix[i][j][0][0][0][0];
+  //   }
+  // }
 };
 
 struct Model {

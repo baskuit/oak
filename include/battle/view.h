@@ -171,4 +171,12 @@ constexpr const Battle &ref(const pkmn_gen1_battle &battle) noexcept {
   return *std::bit_cast<const Battle *>(&battle);
 }
 
+struct Duration {
+  uint8_t bytes[4];
+};
+
+struct Durations {
+  uint8_t bytes[8];
+};
+
 }; // namespace View

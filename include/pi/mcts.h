@@ -173,9 +173,9 @@ struct MCTS {
         constexpr auto rolls = 3;
         constexpr int step = 38 / (rolls - 1);
         this->calc_options.overrides.bytes[0] =
-            217 + step * (battle.bytes[Offsets::seed + 7] % rolls);
+            217 + step * (battle.bytes[Offsets::seed + 6] % rolls);
         this->calc_options.overrides.bytes[8] =
-            217 + step * (battle.bytes[Offsets::seed + 8] % rolls);
+            217 + step * (battle.bytes[Offsets::seed + 7] % rolls);
         pkmn_gen1_battle_options_set(&this->options, nullptr, nullptr,
                                      &this->calc_options);
       } else if (max_roll) {
