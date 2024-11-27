@@ -61,6 +61,7 @@ void thread_fn(std::atomic<int> *const atomic,
           auto s1 = (*sets)[i];
           auto s2 = (*sets)[j];
           dict->get(s1, s2);
+          dict->save("./cache");
           {
             std::unique_lock lock{*mutex};
             std::cout << index << " " << i << " " << j << std::endl;
