@@ -66,6 +66,10 @@ struct Pokemon {
   constexpr Pokemon() : hp{HP::HP3}, status{Status::None} {}
   constexpr Pokemon(const View::Pokemon &pokemon)
       : hp{get_hp(pokemon)}, status{simplify_status(pokemon.status())} {}
+
+  constexpr bool alive_and_unfrozen() const noexcept {
+    return !(hp == HP::HP0 || status == Status::Freeze);
+  }
 };
 #pragma pack(pop)
 

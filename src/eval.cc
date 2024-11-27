@@ -68,7 +68,7 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
           auto output2 =
               search.run<true, false, true, false>(dur, node, input2, eval);
           j = eval.device.sample_pdf(output2.p2);
-          std::cout << "iter: " << output2.iterations << std::endl;
+          // std::cout << "iter: " << output2.iterations << std::endl;
         }
 
         result = Init::update(battle, choices1[i], choices2[j], options);

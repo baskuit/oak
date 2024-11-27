@@ -24,7 +24,7 @@ int benchmark(int argc, char **argv) {
   const uint64_t seed = 1111111;
   Eval::OVODict global{};
   global.load("./cache");
-  Eval::Model model{seed,  Eval::CachedEval{p1, p2, global}};
+  Eval::Model model{seed, Eval::CachedEval{p1, p2, global}};
   Eval::Input input{};
   input.battle = Init::battle(p1, p2, seed);
 

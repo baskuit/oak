@@ -257,6 +257,54 @@ public:
     }
   }
 
+  // float value(const pkmn_gen1_battle &battle) {
+  //   const auto &b = View::ref(battle);
+
+  //   int m = 0;
+  //   int n = 0;
+
+  //   float m1 = 0;
+  //   float m2 = 0;
+
+  //   const auto alive_and_unfrozen = [](const View::Pokemon &p) -> bool {
+  //     return !(p.status() == Data::Status::Freeze && p.hp() == 0);
+  //   };
+
+  //   for (int i = 0; i < 6; ++i) {
+  //     m += alive_and_unfrozen(b.side(0).pokemon(i));
+  //     n += alive_and_unfrozen(b.side(1).pokemon(i));
+  //   }
+
+  //   for (int i = 0; i < 6; ++i) {
+  //     const auto &p1 = b.side(0).pokemon(i);
+  //     if (!alive_and_unfrozen(p1)) {
+  //       continue;
+  //     }
+  //     for (int j = 0; j < 6; ++j) {
+  //       const auto &p2 = b.side(1).pokemon(j);
+  //       if (!alive_and_unfrozen(p2)) {
+  //         continue;
+  //       }
+
+  //       const int h1 = std::ceil(3.0f * p1.hp() / p1.stats().hp()) - 1;
+  //       const int h2 = std::ceil(3.0f * p2.hp() / p2.stats().hp()) - 1;
+  //       const auto s1 =
+  //           static_cast<uint8_t>(Abstract::simplify_status(p1.status()));
+  //       const auto s2 =
+  //           static_cast<uint8_t>(Abstract::simplify_status(p2.status()));
+
+  //       const auto v = ovo_matrix[i][j][h1][s1][h2][s2];
+  //       m1 += v;
+  //       m2 += 1 - v;
+  //     }
+  //   }
+
+  //   m1 /= n;
+  //   m2 /= m;
+  //   float x = sigmoid(2 * (m1 - m2));
+  //   return x;
+  // }
+
   float value(const Abstract::Battle &battle) {
 
     pieces1 = {};
@@ -289,7 +337,12 @@ public:
           continue;
         }
 
-        const auto value = value_matrix[i][j];
+        const auto &ovo = ovo_matrix[i][j];
+        const auto value =
+            ovo[static_cast<uint8_t>(p1.hp) - 1][static_cast<uint8_t>(
+                p1.status)][static_cast<uint8_t>(p2.hp) - 1]
+               [static_cast<uint8_t>(p2.status)];
+        // value_matrix[i][j] = value;
         pieces1[i] += value;
         pieces2[j] += 1 - value;
       }
@@ -313,29 +366,68 @@ public:
     return v;
   }
 
+  // float value(const Abstract::Battle &battle) {
+  //   float m1 = 0;
+  //   float m2 = 0;
+
+  //   for (auto i = 0; i < 6; ++i) {
+  //     const auto &p1 = battle.sides[0].bench[i];
+  //     if (p1.alive_and_unfrozen()) {
+  //       m1 += pieces1[i];
+  //     }
+  //     const auto &p2 = battle.sides[1].bench[i];
+  //     if (p2.alive_and_unfrozen()) {
+  //       m2 += pieces2[i];
+  //     }
+  //   }
+
+  //   const auto a = battle.sides[0].active.n_alive;
+  //   const auto b = battle.sides[1].active.n_alive;
+  //   const auto v = sigmoid(2 * (m1 / b - m2 / a));
+  //   // std::cout << a << " " << b << std::endl;
+  //   // std::cout << m1 << " : " << m2 << " = " << v << std::endl;
+  //   return v;
+  // }
+
   void update(const Abstract::Battle &battle) {
     {
       const auto slot = battle.sides[0].active.slot;
       const auto &p1 = battle.sides[0].bench[slot];
-      for (auto i = 0; i < 6; ++i) {
-        const auto &p2 = battle.sides[1].bench[i];
-        value_matrix[slot][i] =
-            ovo_matrix[slot][i][static_cast<uint8_t>(p1.hp) - 1]
-                      [static_cast<uint8_t>(p1.status)]
-                      [static_cast<uint8_t>(p2.hp) - 1]
-                      [static_cast<uint8_t>(p2.status)];
+      if (p1.alive_and_unfrozen()) {
+        pieces1[slot] = 0;
+        for (auto i = 0; i < 6; ++i) {
+          const auto &p2 = battle.sides[1].bench[i];
+          if (p2.alive_and_unfrozen()) {
+            pieces2[i] -= 1 - value_matrix[slot][i];
+            value_matrix[slot][i] =
+                ovo_matrix[slot][i][static_cast<uint8_t>(p1.hp) - 1]
+                          [static_cast<uint8_t>(p1.status)]
+                          [static_cast<uint8_t>(p2.hp) - 1]
+                          [static_cast<uint8_t>(p2.status)];
+            pieces1[slot] += value_matrix[slot][i];
+            pieces2[i] += 1 - value_matrix[slot][i];
+          }
+        }
       }
     }
     {
       const auto slot = battle.sides[1].active.slot;
       const auto &p2 = battle.sides[1].bench[slot];
-      for (auto i = 0; i < 6; ++i) {
-        const auto &p1 = battle.sides[0].bench[i];
-        value_matrix[i][slot] =
-            ovo_matrix[i][slot][static_cast<uint8_t>(p1.hp) - 1]
-                      [static_cast<uint8_t>(p1.status)]
-                      [static_cast<uint8_t>(p2.hp) - 1]
-                      [static_cast<uint8_t>(p2.status)];
+      if (p2.alive_and_unfrozen()) {
+        pieces2[slot] = 0;
+        for (auto i = 0; i < 6; ++i) {
+          const auto &p1 = battle.sides[0].bench[i];
+          if (p1.alive_and_unfrozen()) {
+            pieces1[i] -= value_matrix[slot][i];
+            value_matrix[i][slot] =
+                ovo_matrix[i][slot][static_cast<uint8_t>(p1.hp) - 1]
+                          [static_cast<uint8_t>(p1.status)]
+                          [static_cast<uint8_t>(p2.hp) - 1]
+                          [static_cast<uint8_t>(p2.status)];
+            pieces2[slot] += 1 - value_matrix[i][slot];
+            pieces1[i] += value_matrix[slot][i];
+          }
+        }
       }
     }
   }
