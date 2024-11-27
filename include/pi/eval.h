@@ -342,7 +342,8 @@ public:
 
         if (p1.status == Abstract::Status::Freeze) {
           if (p2.status != Abstract::Status::Freeze) {
-            pieces2[j] += 1;
+            pieces1[i] += .1;
+            pieces2[j] += .5;
             continue;
           } else {
             pieces1[i] += .5;
@@ -350,7 +351,8 @@ public:
           }
         }
         if (p2.status == Abstract::Status::Freeze) {
-          pieces1[i] += 1;
+          pieces1[i] += .5;
+          pieces2[j] += .1;
           continue;
         }
 
