@@ -69,8 +69,12 @@ struct OVO2 {
       std::array<std::array<std::array<float, n_status>, n_hp>, n_status>, n_hp>
       data;
 
-  const float& operator()(auto h1, auto s1, auto h2, auto s2) const { return data[0][0][0][0]; }
-  float& operator()(auto h1, auto s1, auto h2, auto s2) { return data[0][0][0][0]; }
+  const float &operator()(auto h1, auto s1, auto h2, auto s2) const {
+    return data[0][0][0][0];
+  }
+  float &operator()(auto h1, auto s1, auto h2, auto s2) {
+    return data[0][0][0][0];
+  }
 };
 
 OVO compute_table(auto set1, auto set2, const auto iterations,

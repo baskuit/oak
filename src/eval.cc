@@ -25,57 +25,60 @@ struct PokeModel {
 };
 
 template <typename Team, typename Dur>
-void versus(const Team p1, const Team p2, size_t trials, Dur dur, uint64_t seed,
+void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
             size_t *n, size_t *score) {
 
-  using Obs = std::array<uint8_t, 16>;
+  while (index->fetch_add(1) < max) {
 
-  const auto half = [dur](auto x, auto y, auto seed) -> float {
-    auto battle = Init::battle(x, y);
-    pkmn_gen1_chance_durations durations{};
-    pkmn_gen1_battle_options options{};
-    auto result = Init::update(battle, 0, 0, options);
+    const auto half = [dur](auto x, auto y, auto seed) -> float {
+      auto battle = Init::battle(x, y);
+      pkmn_gen1_chance_durations durations{};
+      pkmn_gen1_battle_options options{};
+      auto result = Init::update(battle, 0, 0, options);
 
-    Eval::OVODict global{};
-    global.load("./cache");
+      Eval::OVODict global{};
+      global.load("./cache");
 
-    MCTS search{};
-    MonteCarlo::Model mcm{seed};
-    Eval::Model eval{mcm.device.uniform_64(), Eval::CachedEval{x, y, global}};
-    PokeModel poke_eval{mcm.device.uniform_64()};
+      MCTS search{};
+      MonteCarlo::Model mcm{seed};
+      Eval::Model eval{mcm.device.uniform_64(), Eval::CachedEval{x, y, global}};
+      PokeModel poke_eval{mcm.device.uniform_64()};
 
-    while (!pkmn_result_type(result)) {
+      while (!pkmn_result_type(result)) {
 
-      const auto [choices1, choices2] = Init::choices(battle, result);
+        const auto [choices1, choices2] = Init::choices(battle, result);
 
-      auto i = 0;
-      if (choices1.size() > 1) {
-        using Node = Tree::Node<Exp3::JointBanditData<.15f, false>, Obs>;
-        Node node{};
-        MonteCarlo::Input input1{battle, durations, result};
-        auto output1 = search.run(dur, node, input1, mcm);
-        i = mcm.device.sample_pdf(output1.p1);
+        auto i = 0;
+        if (choices1.size() > 1) {
+          using Node = Tree::Node<Exp3::JointBanditData<.03f, false>,
+                                  std::array<uint8_t, 16>>;
+          Node node{};
+          MonteCarlo::Input input1{battle, durations, result};
+          auto output1 = search.run(dur, node, input1, mcm);
+          i = mcm.device.sample_pdf(output1.p1);
+        }
+
+        auto j = 0;
+        if (choices2.size() > 1) {
+          using Node = Tree::Node<Exp3::JointBanditData<.03f, false>,
+                                  std::array<uint8_t, 16>>;
+          Node node{};
+          Eval::Input input2{battle, durations, battle, result};
+          auto output2 = search.run(dur, node, input2, eval);
+          j = eval.device.sample_pdf(output2.p2);
+        }
+
+        result = Init::update(battle, choices1[i], choices2[j], options);
+        durations = *pkmn_gen1_battle_options_chance_durations(&options);
       }
+      return Init::score(result);
+    };
 
-      auto j = 0;
-      if (choices2.size() > 1) {
-        using Node = Tree::Node<Exp3::JointBanditData<.03f, false>, Obs>;
-        Node node{};
-        Eval::Input input2{battle, durations, battle, result};
-        auto output2 = search.run(dur, node, input2, eval);
-        j = eval.device.sample_pdf(output2.p2);
-      }
+    prng device{seed};
 
-      result = Init::update(battle, choices1[i], choices2[j], options);
-      durations = *pkmn_gen1_battle_options_chance_durations(&options);
-    }
-    return Init::score(result);
-  };
+    const auto p1 = SampleTeams::teams[device.random_int(100)];
+    const auto p2 = SampleTeams::teams[device.random_int(100)];
 
-  prng device{seed};
-
-  float mc_total = 0;
-  for (auto i = 0; i < trials; ++i) {
     *score += 2 * half(p1, p2, device.uniform_64());
     *n += 1;
     *score += 2 * half(p2, p1, device.uniform_64());
@@ -96,32 +99,27 @@ int abstract_test(int argc, char **argv) {
 
   using Team = std::array<SampleTeams::Set, 6>;
 
-  int i;
-  int j;
   size_t ms = 100;
   size_t threads = 3;
-  size_t trials = 50;
+  size_t max = 1000;
   uint64_t seed = 2934828342938;
 
-  if (argc != 7) {
-    std::cerr << "Usage: team 1, team 2, ms, threads, trials, seed" << std::endl;
+  if (argc != 5) {
+    std::cerr << "Usage: team 1, team 2, ms, threads, trials, seed"
+              << std::endl;
     return 1;
   }
 
-  i = std::atoi(argv[1]);
-  j = std::atoi(argv[2]);
-  ms = std::atoi(argv[3]);
-  threads = std::atoi(argv[4]);
-  trials = std::atoi(argv[5]);
-  seed = std::atoi(argv[6]);
+  ms = std::atoi(argv[1]);
+  threads = std::atoi(argv[2]);
+  max = std::atoi(argv[3]);
+  seed = std::atoi(argv[4]);
 
-  std::cout << "Input: " << ms << ' ' << threads << ' ' << trials << ' ' << seed
+  std::cout << "Input: " << ms << ' ' << threads << ' ' << max << ' ' << seed
             << std::endl;
 
+  std::atomic<int> index{};
   prng device{seed};
-
-  const auto p1 = SampleTeams::teams[0];
-  const auto p2 = SampleTeams::teams[1];
 
   size_t n = 0;
   size_t score = 0;
@@ -130,9 +128,8 @@ int abstract_test(int argc, char **argv) {
 
   for (auto t = 0; t < threads; ++t) {
     thread_pool[t] = std::thread{&versus<Team, std::chrono::milliseconds>,
-                                 p1,
-                                 p2,
-                                 trials,
+                                 &index,
+                                 max,
                                  std::chrono::milliseconds{ms},
                                  device.uniform_64(),
                                  &n,
