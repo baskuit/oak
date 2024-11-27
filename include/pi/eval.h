@@ -252,6 +252,7 @@ public:
     for (auto i = 0; i < m; ++i) {
       for (auto j = 0; j < n; ++j) {
         ovo_matrix[i][j] = global.get(p1[i], p2[j]);
+        value_matrix[i][j] = ovo_matrix[i][j][2][0][2][0];
       }
     }
   }
@@ -288,12 +289,7 @@ public:
           continue;
         }
 
-        const auto &ovo = ovo_matrix[i][j];
-        const auto value =
-            ovo[static_cast<uint8_t>(p1.hp) - 1][static_cast<uint8_t>(
-                p1.status)][static_cast<uint8_t>(p2.hp) - 1]
-               [static_cast<uint8_t>(p2.status)];
-        // value_matrix[i][j] = value;
+        const auto value = value_matrix[i][j];
         pieces1[i] += value;
         pieces2[j] += 1 - value;
       }
@@ -317,24 +313,32 @@ public:
     return v;
   }
 
-  // void update(const Abstract::Battle &battle) {
-
-  //   const auto i = battle.sides[0].active.slot;
-  //   for (int j = 0; j < 6; ++j) {
-  //     pieces1[j] -= value_matrix[i][j];
-  //     const auto h1 = 0;
-  //     const auto s1 = 0;
-  //     const auto h2 = 0;
-  //     const auto s2 = 0;
-  //     value_matrix[i][j] = ovo_matrix[i][j][h1][s1][h2][s2];
-  //     pieces1[j] += value_matrix[i][j];
-  //   }
-
-  //   const auto j = battle.sides[1].active.slot;
-  //   for (int i = 0; i < 6; ++i) {
-  //     value_matrix[i][j] = ovo_matrix[i][j][0][0][0][0];
-  //   }
-  // }
+  void update(const Abstract::Battle &battle) {
+    {
+      const auto slot = battle.sides[0].active.slot;
+      const auto &p1 = battle.sides[0].bench[slot];
+      for (auto i = 0; i < 6; ++i) {
+        const auto &p2 = battle.sides[1].bench[i];
+        value_matrix[slot][i] =
+            ovo_matrix[slot][i][static_cast<uint8_t>(p1.hp) - 1]
+                      [static_cast<uint8_t>(p1.status)]
+                      [static_cast<uint8_t>(p2.hp) - 1]
+                      [static_cast<uint8_t>(p2.status)];
+      }
+    }
+    {
+      const auto slot = battle.sides[1].active.slot;
+      const auto &p2 = battle.sides[1].bench[slot];
+      for (auto i = 0; i < 6; ++i) {
+        const auto &p1 = battle.sides[0].bench[i];
+        value_matrix[i][slot] =
+            ovo_matrix[i][slot][static_cast<uint8_t>(p1.hp) - 1]
+                      [static_cast<uint8_t>(p1.status)]
+                      [static_cast<uint8_t>(p2.hp) - 1]
+                      [static_cast<uint8_t>(p2.status)];
+      }
+    }
+  }
 };
 
 struct Model {
