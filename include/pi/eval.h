@@ -88,15 +88,15 @@ struct OVO {
   const PV &operator()(HP h1, Status s1, HP h2, Status s2) const {
     using hp = uint8_t;
     using status = uint8_t;
-    return data[static_cast<hp>(h1)][static_cast<status>(s1)]
-               [static_cast<hp>(h2)][static_cast<status>(s2)];
+    return data[static_cast<hp>(h1) - 1][static_cast<status>(s1)]
+               [static_cast<hp>(h2) - 1][static_cast<status>(s2)];
   }
   template <typename HP, typename Status>
   PV &operator()(HP h1, Status s1, HP h2, Status s2) {
     using hp = uint8_t;
     using status = uint8_t;
-    return data[static_cast<hp>(h1)][static_cast<status>(s1)]
-               [static_cast<hp>(h2)][static_cast<status>(s2)];
+    return data[static_cast<hp>(h1) - 1][static_cast<status>(s1)]
+               [static_cast<hp>(h2) - 1][static_cast<status>(s2)];
   }
 
   bool operator==(const OVO &) const = default;
