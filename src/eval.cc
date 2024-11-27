@@ -54,7 +54,7 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
                                   std::array<uint8_t, 16>>;
           Node node{};
           MonteCarlo::Input input1{battle, durations, result};
-          auto output1 = search.run(dur, node, input1, mcm);
+          auto output1 = search.run<true, false, true, false>(dur, node, input1, mcm);
           i = mcm.device.sample_pdf(output1.p1);
         }
 
@@ -64,8 +64,9 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
                                   std::array<uint8_t, 16>>;
           Node node{};
           Eval::Input input2{battle, durations, battle, result};
-          auto output2 = search.run(dur, node, input2, eval);
+          auto output2 = search.run<true, false, true, false>(dur, node, input2, eval);
           j = eval.device.sample_pdf(output2.p2);
+          std::cout << "iter: " << output2.iterations << std::endl;
         }
 
         result = Init::update(battle, choices1[i], choices2[j], options);
@@ -106,7 +107,9 @@ int abstract_test(int argc, char **argv) {
 
   if (argc != 5) {
     std::cerr << "Input: ms, threads, max games, seed" << std::endl;
-    std::cerr << "Compares Monte Carlo to Eval::Cached Eval with sample team games" << std::endl;
+    std::cerr
+        << "Compares Monte Carlo to Eval::Cached Eval with sample team games"
+        << std::endl;
     return 1;
   }
 
