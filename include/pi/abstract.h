@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include <battle/view.h>
 #include <data/offsets.h>
 
 #include <bit>
@@ -24,6 +25,7 @@ enum class Status : std::underlying_type_t<std::byte> {
   Poison,
   Burn,
   Paralysis,
+  Freeze,
 };
 
 constexpr Status simplify_status(const auto status) {
@@ -37,32 +39,33 @@ constexpr Status simplify_status(const auto status) {
     return Status::Poison;
   case 0b00010000:
     return Status::Burn;
+  case 0b00100000:
+    return Status::Freeze;
   case 0b01000000:
     return Status::Paralysis;
   case 0b10001000:
     return Status::Poison;
   default:
-    // assert(false);
+    assert(false);
     return Status::None;
   }
 }
 
 #pragma pack(push, 1)
-struct Bench {
+struct Pokemon {
   HP hp;
   Status status;
 
-  static constexpr HP get_hp(const uint8_t *const bytes) {
-    const auto cur = std::bit_cast<const uint16_t *const>(bytes)[9];
-    const auto max = std::bit_cast<const uint16_t *const>(bytes)[0];
-    return static_cast<HP>(std::ceil(3 * cur / max));
+  static constexpr HP get_hp(const View::Pokemon &pokemon) {
+    const float x = 3.0f * pokemon.hp() / pokemon.stats().hp();
+    return static_cast<HP>(std::ceil(x));
   }
 
-  bool operator==(const Bench &) const = default;
+  bool operator==(const Pokemon &) const = default;
 
-  constexpr Bench() : hp{HP::HP3}, status{Status::None} {}
-  constexpr Bench(const uint8_t *const bytes)
-      : hp{get_hp(bytes)}, status{simplify_status(bytes[Offsets::status])} {}
+  constexpr Pokemon() : hp{HP::HP3}, status{Status::None} {}
+  constexpr Pokemon(const View::Pokemon &pokemon)
+      : hp{get_hp(pokemon)}, status{simplify_status(pokemon.status())} {}
 };
 #pragma pack(pop)
 
@@ -85,23 +88,19 @@ struct Active {
 #pragma pack(push, 1)
 struct Side {
   Active active;
-  std::array<Bench, 6> bench;
+  std::array<Pokemon, 6> bench;
 
   bool operator==(const Side &) const = default;
 
   Side() = default;
-  constexpr Side(const uint8_t *const bytes)
-      : active{bytes + Offsets::active},
-        bench{Bench{bytes + 0 * Offsets::pokemon},
-              Bench{bytes + 1 * Offsets::pokemon},
-              Bench{bytes + 2 * Offsets::pokemon},
-              Bench{bytes + 3 * Offsets::pokemon},
-              Bench{bytes + 4 * Offsets::pokemon},
-              Bench{bytes + 5 * Offsets::pokemon}} {
+  constexpr Side(const View::Side &side)
+      : active{side.bytes + Offsets::active},
+        bench{Pokemon{side.pokemon(0)}, Pokemon{side.pokemon(1)},
+              Pokemon{side.pokemon(2)}, Pokemon{side.pokemon(3)},
+              Pokemon{side.pokemon(4)}, Pokemon{side.pokemon(5)}} {
     for (int p = 0; p < 6; ++p) {
-      const auto pokemon =
-          std::bit_cast<const uint16_t *>(bytes + p * Offsets::pokemon);
-      if (pokemon[0] && pokemon[9]) {
+      const auto &pokemon = side.pokemon(p);
+      if ((pokemon.hp() > 0) && (pokemon.stats().hp() > 0)) {
         ++active.n_alive;
       }
     }
@@ -119,39 +118,43 @@ struct Battle {
   bool operator==(const Battle &) const = default;
 
   constexpr Battle(const pkmn_gen1_battle &battle) noexcept
-      : sides{battle.bytes, battle.bytes + Offsets::side} {}
+      : sides{View::ref(battle).side(0), View::ref(battle).side(1)} {}
 
   void update(const pkmn_gen1_battle &battle) noexcept {
+    const auto &bat = View::ref(battle);
+
     sides[0].active.slot = battle.bytes[Offsets::order] - 1;
     auto &prior_active_1 = sides[0].bench[sides[0].active.slot];
-    prior_active_1 =
-        Bench{battle.bytes + Offsets::pokemon * (sides[0].active.slot)};
+    prior_active_1 = Pokemon{bat.side(0).pokemon(sides[0].active.slot)};
     sides[0].active.n_alive = 0;
+
     for (int p = 0; p < 6; ++p) {
-      const auto pokemon =
-          std::bit_cast<const uint16_t *>(battle.bytes + p * Offsets::pokemon);
-      if (pokemon[0] && pokemon[9]) {
+      const auto &pokemon = bat.side(0).pokemon(p);
+      if (pokemon.hp() > 0) {
         ++sides[0].active.n_alive;
       }
+      // std::cout << "side 0; mon: " << p << " hp: " << pokemon.hp() <<
+      // std::endl;
     }
 
     sides[1].active.slot = battle.bytes[Offsets::side + Offsets::order] - 1;
     auto &prior_active_2 = sides[1].bench[sides[1].active.slot];
-    prior_active_2 = Bench{battle.bytes + Offsets::side +
-                           Offsets::pokemon * (sides[1].active.slot)};
+    prior_active_2 =
+        Pokemon{View::ref(battle).side(1).pokemon(sides[1].active.slot)};
     sides[1].active.n_alive = 0;
     for (int p = 0; p < 6; ++p) {
-      const auto pokemon = std::bit_cast<const uint16_t *>(
-          battle.bytes + Offsets::side + p * Offsets::pokemon);
-      if (pokemon[0] && pokemon[9]) {
+      const auto &pokemon = bat.side(1).pokemon(p);
+      if (pokemon.hp() > 0) {
         ++sides[1].active.n_alive;
       }
+      // std::cout << "side 1; mon: " << p << " hp: " << pokemon.hp() <<
+      // std::endl;
     }
   }
 };
 
 static_assert(sizeof(Active) == 20);
-static_assert(sizeof(Bench) == 2);
+static_assert(sizeof(Pokemon) == 2);
 static_assert(sizeof(Side) == 32);
 static_assert(sizeof(Battle) == 64);
 
