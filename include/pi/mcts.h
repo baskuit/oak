@@ -214,8 +214,14 @@ struct MCTS {
 
       battle_options_set();
       result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
-      if constexpr (requires { model.eval.update(input.battle); }) {
-        model.eval.update(input.battle);
+      if constexpr (requires { input.abstract; }) {
+        // input.abstract.update(battle, model.eval.ovo_matrix);
+        // auto &abstract = input.abstract;
+        // decltype(input.abstract) copy{battle, model.eval.ovo_matrix};
+        // assert(copy.hp1 == abstract.hp1);
+        // assert(copy.hp2 == abstract.hp2);
+        // assert(copy.status1 == abstract.status1);
+        // assert(copy.status2 == abstract.status2);
       }
       const auto &obs = std::bit_cast<const std::array<uint8_t, 16>>(
           *pkmn_gen1_battle_options_chance_actions(&options));
@@ -239,11 +245,17 @@ struct MCTS {
       [[likely]] {
         print("Initializing node");
         ++total_nodes;
-        if constexpr (requires { model.eval.value(); }) {
+        if constexpr (requires { model.eval; }) {
           init_stats(node->stats(), battle, result);
-          return model.eval.value();
+          if constexpr (requires { model.eval.value(input.abstract); }) {
+            input.abstract = decltype(input.abstract){input.battle, model.eval.ovo_matrix};
+            return model.eval.value(input.abstract);
+          } else if constexpr (requires { model.eval.value(input.battle); }) {
+            return model.eval.value(input.battle);
+          }
+          // return model.eval.value(input.abstract);
+          // return model.eval.value(input.battle);
         } else {
-          // static_assert(false);
           return init_stats_and_rollout(node->stats(), device, battle, result);
         }
       }
