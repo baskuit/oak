@@ -5,7 +5,6 @@
 #include <data/sample-teams.h>
 #include <data/strings.h>
 #include <iostream>
-#include <pi/abstract.h>
 #include <pi/eval.h>
 #include <util/print.h>
 #include <util/random.h>

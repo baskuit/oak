@@ -4,7 +4,7 @@
 #include <data/species.h>
 
 #include <battle/init.h>
-#include <pi/abstract.h>
+#include <battle/view.h>
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>
@@ -29,6 +29,47 @@ namespace Eval {
 
 constexpr size_t n_hp = 3;
 constexpr size_t n_status = 5;
+
+
+enum class HP : std::underlying_type_t<std::byte> {
+  HP0,
+  HP1,
+  HP2,
+  HP3,
+};
+
+enum class Status : std::underlying_type_t<std::byte> {
+  None,
+  Sleep,
+  Poison,
+  Burn,
+  Paralysis,
+  Freeze,
+};
+
+constexpr Status simplify_status(const auto status) {
+  if (static_cast<uint8_t>(status) & 7) {
+    return Status::Sleep;
+  }
+  switch (static_cast<uint8_t>(status)) {
+  case 0b00000000:
+    return Status::None;
+  case 0b00001000:
+    return Status::Poison;
+  case 0b00010000:
+    return Status::Burn;
+  case 0b00100000:
+    return Status::Freeze;
+  case 0b01000000:
+    return Status::Paralysis;
+  case 0b10001000:
+    return Status::Poison;
+  default:
+    assert(false);
+    return Status::None;
+  }
+}
+
 
 struct Abstract {
   std::array<uint8_t, 6> hp1{};
@@ -55,8 +96,8 @@ struct Abstract {
       hp2[i] = std::ceil(3.0f * a2.hp() / a2.stats().hp());
       m += (hp1[i] != 0);
       n += (hp2[i] != 0);
-      status1[i] = static_cast<uint8_t>(Abstract::simplify_status(a1.status()));
-      status2[i] = static_cast<uint8_t>(Abstract::simplify_status(a2.status()));
+      status1[i] = static_cast<uint8_t>(simplify_status(a1.status()));
+      status2[i] = static_cast<uint8_t>(simplify_status(a2.status()));
     }
 
     for (auto i = 0; i < 6; ++i) {
@@ -106,9 +147,9 @@ struct Abstract {
     hp1[slot1] = std::ceil(3.0f * a1.hp() / a1.stats().hp());
     hp2[slot2] = std::ceil(3.0f * a2.hp() / a2.stats().hp());
     status1[slot1] =
-        static_cast<uint8_t>(Abstract::simplify_status(a1.status()));
+        static_cast<uint8_t>(simplify_status(a1.status()));
     status2[slot2] =
-        static_cast<uint8_t>(Abstract::simplify_status(a2.status()));
+        static_cast<uint8_t>(simplify_status(a2.status()));
 
     m = 0;
     n = 0;
