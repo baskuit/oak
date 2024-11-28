@@ -65,11 +65,12 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
           using Node = Tree::Node<Exp3::JointBanditData<.03f, false>,
                                   std::array<uint8_t, 16>>;
           Node node{};
-          Eval::Input input2{battle, durations, Eval::Abstract{battle,
-          eval.eval.ovo_matrix}, result};
+          Eval::Input input2{battle, durations,
+                             Eval::Abstract{battle, eval.eval.ovo_matrix},
+                             result};
           // MonteCarlo::Input input2{battle, durations, result};
-          auto output2 = search.run<true, false, true, false>(dur, node, input2,
-                                                              eval);
+          auto output2 =
+              search.run<true, false, true, false>(dur, node, input2, eval);
           j = eval.device.sample_pdf(output2.p2);
           // input2.abstract.print();
           const auto v = eval.eval.value(input2.abstract);

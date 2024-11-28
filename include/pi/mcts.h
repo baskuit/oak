@@ -247,7 +247,8 @@ struct MCTS {
         if constexpr (requires { model.eval; }) {
           init_stats(node->stats(), battle, result);
           if constexpr (requires { model.eval.value(input.abstract); }) {
-            input.abstract = decltype(input.abstract){input.battle, model.eval.ovo_matrix};
+            input.abstract =
+                decltype(input.abstract){input.battle, model.eval.ovo_matrix};
             return model.eval.value(input.abstract);
           } else if constexpr (requires { model.eval.value(input.battle); }) {
             return model.eval.value(input.battle);
