@@ -5,7 +5,6 @@
 #include <data/sample-teams.h>
 #include <data/strings.h>
 #include <iostream>
-#include <pi/abstract.h>
 #include <pi/eval.h>
 #include <util/print.h>
 #include <util/random.h>
@@ -44,6 +43,8 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
       Eval::Model eval{mcm.device.uniform_64(), Eval::CachedEval{x, y, global}};
       PokeModel poke_eval{mcm.device.uniform_64()};
 
+      std::vector<float> eval_values{};
+
       while (!pkmn_result_type(result)) {
 
         const auto [choices1, choices2] = Init::choices(battle, result);
@@ -55,7 +56,7 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
           Node node{};
           MonteCarlo::Input input1{battle, durations, result};
           auto output1 =
-              search.run<true, false, true, false>(dur, node, input1, mcm);
+              search.run<true, false, false, true>(dur, node, input1, mcm);
           i = mcm.device.sample_pdf(output1.p1);
         }
 
@@ -64,17 +65,30 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
           using Node = Tree::Node<Exp3::JointBanditData<.03f, false>,
                                   std::array<uint8_t, 16>>;
           Node node{};
-          Eval::Input input2{battle, durations, battle, result};
-          auto output2 =
-              search.run<true, false, true, false>(dur, node, input2, eval);
+          Eval::Input input2{battle, durations, Eval::Abstract{battle,
+          eval.eval.ovo_matrix}, result};
+          // MonteCarlo::Input input2{battle, durations, result};
+          auto output2 = search.run<true, false, true, false>(dur, node, input2,
+                                                              eval);
           j = eval.device.sample_pdf(output2.p2);
+          // input2.abstract.print();
+          const auto v = eval.eval.value(input2.abstract);
+          // std::cout << v << std::endl;
           // std::cout << "iter: " << output2.iterations << std::endl;
+          eval_values.push_back(v);
         }
 
         result = Init::update(battle, choices1[i], choices2[j], options);
         durations = *pkmn_gen1_battle_options_chance_durations(&options);
       }
-      return Init::score(result);
+
+      for (auto it = eval_values.end() - 5; it < eval_values.end(); ++it) {
+        std::cout << *it << ' ';
+      }
+      const auto score = Init::score(result);
+      std::cout << "~ " << score << std::endl;
+
+      return score;
     };
 
     prng device{seed};

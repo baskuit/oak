@@ -4,7 +4,7 @@
 #include <data/species.h>
 
 #include <battle/init.h>
-#include <pi/abstract.h>
+#include <battle/view.h>
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>
@@ -30,10 +30,181 @@ namespace Eval {
 constexpr size_t n_hp = 3;
 constexpr size_t n_status = 5;
 
+
+enum class HP : std::underlying_type_t<std::byte> {
+  HP0,
+  HP1,
+  HP2,
+  HP3,
+};
+
+enum class Status : std::underlying_type_t<std::byte> {
+  None,
+  Sleep,
+  Poison,
+  Burn,
+  Paralysis,
+  Freeze,
+};
+
+constexpr Status simplify_status(const auto status) {
+  if (static_cast<uint8_t>(status) & 7) {
+    return Status::Sleep;
+  }
+  switch (static_cast<uint8_t>(status)) {
+  case 0b00000000:
+    return Status::None;
+  case 0b00001000:
+    return Status::Poison;
+  case 0b00010000:
+    return Status::Burn;
+  case 0b00100000:
+    return Status::Freeze;
+  case 0b01000000:
+    return Status::Paralysis;
+  case 0b10001000:
+    return Status::Poison;
+  default:
+    assert(false);
+    return Status::None;
+  }
+}
+
+
+struct Abstract {
+  std::array<uint8_t, 6> hp1{};
+  std::array<uint8_t, 6> hp2{};
+  std::array<uint8_t, 6> status1{};
+  std::array<uint8_t, 6> status2{};
+  std::array<float, 6> pieces1{};
+  std::array<float, 6> pieces2{};
+  int m;
+  int n;
+
+  Abstract() = default;
+
+  Abstract(const pkmn_gen1_battle &battle, const auto &ovo_matrix) {
+    const auto &b = View::ref(battle);
+    const auto &side1 = b.side(0);
+    const auto &side2 = b.side(1);
+    m = 0;
+    n = 0;
+    for (auto i = 0; i < 6; ++i) {
+      const auto &a1 = side1.pokemon(i);
+      const auto &a2 = side2.pokemon(i);
+      hp1[i] = std::ceil(3.0f * a1.hp() / a1.stats().hp());
+      hp2[i] = std::ceil(3.0f * a2.hp() / a2.stats().hp());
+      m += (hp1[i] != 0);
+      n += (hp2[i] != 0);
+      status1[i] = static_cast<uint8_t>(simplify_status(a1.status()));
+      status2[i] = static_cast<uint8_t>(simplify_status(a2.status()));
+    }
+
+    for (auto i = 0; i < 6; ++i) {
+      if (hp1[i] == 0) {
+        continue;
+      }
+      for (auto j = 0; j < 6; ++j) {
+        if (hp2[j] == 0) {
+          continue;
+        }
+        if (status1[i] == 5) {
+          if (status2[j] == 5) {
+            pieces1[i] += .1;
+            pieces2[j] += .1;
+          } else {
+            pieces1[i] += 0;
+            pieces2[j] += .1;
+          }
+        } else {
+          if (status2[j] == 5) {
+            pieces1[i] += .1;
+            pieces2[j] += 0;
+          } else {
+            const float v = ovo_matrix[i][j][hp1[i] - 1][status1[i]][hp2[j] - 1]
+                                      [status2[j]];
+            pieces1[i] += v;
+            pieces2[j] += 1 - v;
+          }
+        }
+      }
+    }
+  }
+
+  void update(const pkmn_gen1_battle &battle, const auto &ovo_matrix) {
+
+    const auto &b = View::ref(battle);
+
+    const auto &side1 = b.side(0);
+    const auto &side2 = b.side(1);
+
+    const auto slot1 = side1.order()[0] - 1;
+    const auto slot2 = side2.order()[0] - 1;
+
+    const auto &a1 = side1.pokemon(slot1);
+    const auto &a2 = side2.pokemon(slot2);
+
+    hp1[slot1] = std::ceil(3.0f * a1.hp() / a1.stats().hp());
+    hp2[slot2] = std::ceil(3.0f * a2.hp() / a2.stats().hp());
+    status1[slot1] =
+        static_cast<uint8_t>(simplify_status(a1.status()));
+    status2[slot2] =
+        static_cast<uint8_t>(simplify_status(a2.status()));
+
+    m = 0;
+    n = 0;
+    for (int i = 0; i < 6; ++i) {
+      m += (hp1[i] != 0);
+      n += (hp2[i] != 0);
+    }
+
+    pieces1[slot1] = 0;
+    if (hp1[slot1]) {
+      if (status1[slot1] != 5) {
+        for (auto j = 0; j < 6; ++j) {
+          if (status2[slot2] == 5) {
+            pieces1[slot1] += 1.0f;
+          } else {
+            float v = ovo_matrix[slot1][j][hp1[slot1] - 1][status1[slot1]]
+                                [hp2[slot2] - 1][status2[slot2]];
+            pieces1[slot1] += v;
+          }
+        }
+      }
+    }
+
+    pieces2[slot2] = 0;
+    if (hp2[slot2]) {
+      if (status2[slot2] != 5) {
+        for (auto i = 0; i < 6; ++i) {
+          if (status1[slot1] == 5) {
+            pieces2[slot2] += 1.0f;
+          } else {
+            float v = ovo_matrix[i][slot2][hp1[slot1] - 1][status1[slot1]]
+                                [hp2[slot2] - 1][status2[slot2]];
+            pieces2[slot2] += 1 - v;
+          }
+        }
+      }
+    }
+  }
+
+  void print() const {
+    for (int i = 0; i < 6; ++i) {
+      std::cout << "( " << (int)hp1[i] << " " << (int)status1[i] << " ) ";
+    }
+    std::cout << std::endl;
+    for (int i = 0; i < 6; ++i) {
+      std::cout << "( " << (int)hp2[i] << " " << (int)status2[i] << " ) ";
+    }
+    std::cout << std::endl << std::endl;
+  }
+};
+
 struct Input {
   pkmn_gen1_battle battle;
   pkmn_gen1_chance_durations durations;
-  Abstract::Battle abstract;
+  Abstract abstract;
   pkmn_result result;
 };
 
@@ -241,216 +412,24 @@ static_assert(
 class CachedEval {
 public:
   std::array<std::array<OVO, 6>, 6> ovo_matrix;
-  std::array<std::array<float, 6>, 6> value_matrix;
-  std::array<float, 6> pieces1{};
-  std::array<float, 6> pieces2{};
 
   CachedEval(const auto &p1, const auto &p2, OVODict &global) {
     global.add_matchups(p1, p2);
-    const auto m = p1.size();
-    const auto n = p2.size();
-    for (auto i = 0; i < m; ++i) {
-      for (auto j = 0; j < n; ++j) {
+    for (auto i = 0; i < 6; ++i) {
+      for (auto j = 0; j < 6; ++j) {
         ovo_matrix[i][j] = global.get(p1[i], p2[j]);
-        value_matrix[i][j] = ovo_matrix[i][j][2][0][2][0];
       }
     }
   }
 
-  float value(const pkmn_gen1_battle &battle) {
-    const auto &b = View::ref(battle);
-
-    const auto alive_and_unfrozen = [](const View::Pokemon &p) -> bool {
-      return !(p.status() == Data::Status::Freeze && p.hp() == 0);
-    };
-
-    int m = 0;
-    int n = 0;
-    for (int i = 0; i < 6; ++i) {
-      m += (b.side(0).pokemon(i).hp() != 0);
-      n += (b.side(1).pokemon(i).hp() != 0);
-    }
-
-    float m1 = 0;
-    float m2 = 0;
-
-    for (int i = 0; i < 6; ++i) {
-      const auto &p1 = b.side(0).pokemon(i);
-      if (!p1.hp()) {
-        continue;
-      }
-      for (int j = 0; j < 6; ++j) {
-        const auto &p2 = b.side(1).pokemon(j);
-        if (!p2.hp()) {
-          continue;
-        }
-
-        if (p1.status() == Data::Status::Freeze) {
-          if (p2.status() != Data::Status::Freeze) {
-            m2 += 1;
-            continue;
-          }
-        }
-        if (p2.status() == Data::Status::Freeze) {
-          m1 += 1;
-          continue;
-        }
-
-        const int h1 = std::ceil(3.0f * p1.hp() / p1.stats().hp()) - 1;
-        const int h2 = std::ceil(3.0f * p2.hp() / p2.stats().hp()) - 1;
-        const auto s1 =
-            static_cast<uint8_t>(Abstract::simplify_status(p1.status()));
-        const auto s2 =
-            static_cast<uint8_t>(Abstract::simplify_status(p2.status()));
-
-        assert((h1 >= 0) && (h1 <= 2));
-        assert((h2 >= 0) && (h2 <= 2));
-        assert((s1 >= 0) && (s1 <= 4));
-        assert((s2 >= 0) && (s2 <= 4));
-        const auto v = ovo_matrix[i][j][h1][s1][h2][s2];
-        m1 += v;
-        m2 += 1 - v;
-      }
-    }
-
-    m1 /= n;
-    m2 /= m;
-    float x = sigmoid(2 * (m1 - m2));
-    return x;
-  }
-
-  float value(const Abstract::Battle &battle) {
-
-    pieces1 = {};
-    pieces2 = {};
-    // for (int i = 0; i < 6; ++i) {
-    //   for (int j = 0; j < 6; ++j) {
-    //     value_matrix[i][j] = -1;
-    //   }
-    // }
-
-    for (int i = 0; i < 6; ++i) {
-      const auto &p1 = battle.sides[0].bench[i];
-      if (p1.hp == Abstract::HP::HP0) {
-        continue;
-      }
-      for (int j = 0; j < 6; ++j) {
-        const auto &p2 = battle.sides[1].bench[j];
-        if (p2.hp == Abstract::HP::HP0) {
-          continue;
-        }
-
-        if (p1.status == Abstract::Status::Freeze) {
-          if (p2.status != Abstract::Status::Freeze) {
-            pieces1[i] += .9;
-            pieces2[j] += .1;
-            continue;
-          } else {
-            pieces1[i] += .5;
-            pieces2[j] += .5;
-          }
-        }
-        if (p2.status == Abstract::Status::Freeze) {
-          pieces1[i] += .1;
-          pieces2[j] += .9;
-          continue;
-        }
-
-        const auto &ovo = ovo_matrix[i][j];
-        const auto value =
-            ovo[static_cast<uint8_t>(p1.hp) - 1][static_cast<uint8_t>(
-                p1.status)][static_cast<uint8_t>(p2.hp) - 1]
-               [static_cast<uint8_t>(p2.status)];
-        // value_matrix[i][j] = value;
-        pieces1[i] += value;
-        pieces2[j] += 1 - value;
-      }
-    }
-
-    // for (int i = 0; i < 6; ++i) {
-    //   for (int j = 0; j < 6; ++j) {
-    //     std::cout << value_matrix[i][j] << ' ';
-    //   }
-    //   std::cout << std::endl;
-    // }
-
-    const auto a = battle.sides[0].active.n_alive;
-    const auto b = battle.sides[1].active.n_alive;
-
-    const auto m1 = std::accumulate(pieces1.begin(), pieces1.end(), 0.0f);
-    const auto m2 = std::accumulate(pieces2.begin(), pieces2.end(), 0.0f);
-    const auto v = sigmoid(2 * (m1 / b - m2 / a));
-    // std::cout << a << " " << b << std::endl;
-    // std::cout << m1 << " : " << m2 << " = " << v << std::endl;
-    return v;
-  }
-
-  void update(const Abstract::Battle &battle) {
-    {
-      const auto slot = battle.sides[0].active.slot;
-      const auto &p1 = battle.sides[0].bench[slot];
-      if (p1.alive_and_unfrozen()) {
-        pieces1[slot] = 0;
-        for (auto i = 0; i < 6; ++i) {
-          const auto &p2 = battle.sides[1].bench[i];
-          if (p2.alive_and_unfrozen()) {
-            pieces2[i] -= 1 - value_matrix[slot][i];
-            value_matrix[slot][i] =
-                ovo_matrix[slot][i][static_cast<uint8_t>(p1.hp) - 1]
-                          [static_cast<uint8_t>(p1.status)]
-                          [static_cast<uint8_t>(p2.hp) - 1]
-                          [static_cast<uint8_t>(p2.status)];
-            pieces1[slot] += value_matrix[slot][i];
-            pieces2[i] += 1 - value_matrix[slot][i];
-          }
-        }
-      }
-    }
-    {
-      const auto slot = battle.sides[1].active.slot;
-      const auto &p2 = battle.sides[1].bench[slot];
-      if (p2.alive_and_unfrozen()) {
-        pieces2[slot] = 0;
-        for (auto i = 0; i < 6; ++i) {
-          const auto &p1 = battle.sides[0].bench[i];
-          if (p1.alive_and_unfrozen()) {
-            pieces1[i] -= value_matrix[slot][i];
-            value_matrix[i][slot] =
-                ovo_matrix[i][slot][static_cast<uint8_t>(p1.hp) - 1]
-                          [static_cast<uint8_t>(p1.status)]
-                          [static_cast<uint8_t>(p2.hp) - 1]
-                          [static_cast<uint8_t>(p2.status)];
-            pieces2[slot] += 1 - value_matrix[i][slot];
-            pieces1[i] += value_matrix[slot][i];
-          }
-        }
-      }
-    }
+  float value(const Abstract &abstract) const {
+    float x =
+        std::accumulate(abstract.pieces1.begin(), abstract.pieces1.end(), 0.0f);
+    float y =
+        std::accumulate(abstract.pieces2.begin(), abstract.pieces2.end(), 0.0f);
+    return sigmoid(.7 * ((x / abstract.n) - (y / abstract.m)));
   }
 };
-
-// float value(const Abstract::Battle &battle) {
-//   float m1 = 0;
-//   float m2 = 0;
-
-//   for (auto i = 0; i < 6; ++i) {
-//     const auto &p1 = battle.sides[0].bench[i];
-//     if (p1.alive_and_unfrozen()) {
-//       m1 += pieces1[i];
-//     }
-//     const auto &p2 = battle.sides[1].bench[i];
-//     if (p2.alive_and_unfrozen()) {
-//       m2 += pieces2[i];
-//     }
-//   }
-
-//   const auto a = battle.sides[0].active.n_alive;
-//   const auto b = battle.sides[1].active.n_alive;
-//   const auto v = sigmoid(2 * (m1 / b - m2 / a));
-//   // std::cout << a << " " << b << std::endl;
-//   // std::cout << m1 << " : " << m2 << " = " << v << std::endl;
-//   return v;
-// }
 
 struct Model {
   prng device;
@@ -550,7 +529,8 @@ float get_boost_multiplier(const uint8_t stage) {
   return 0;
 }
 
-float evaluate_status(const uint8_t *pokemon, const uint8_t byte) {
+float evaluate_status(const uint8_t *pokemon) {
+  const uint8_t byte = pokemon[Offsets::status];
   if (byte & 7) {
     return POKEMON_ASLEEP;
   }
@@ -575,7 +555,7 @@ float evaluate_pokemon(const uint8_t *data) {
   float score = POKEMON_ALIVE;
   const auto u16 = std::bit_cast<const uint16_t *>(data);
   score += POKEMON_HP * (float)u16[9] / u16[0];
-  score += evaluate_status(data, data[Offsets::status]);
+  score += evaluate_status(data);
   return score;
 }
 

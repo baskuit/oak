@@ -11,8 +11,6 @@
 
 #include <chrono>
 
-namespace Types {}; // namespace Types
-
 int benchmark(int argc, char **argv) {
   constexpr bool mcts_root_visits{false};
 
@@ -23,7 +21,7 @@ int benchmark(int argc, char **argv) {
   const auto p2 = SampleTeams::teams[1];
   const uint64_t seed = 1111111;
   Eval::OVODict global{};
-  global.load("./cache");
+  global.load("/home/user/oak/cache");
   Eval::Model model{seed, Eval::CachedEval{p1, p2, global}};
   Eval::Input input{};
   input.battle = Init::battle(p1, p2, seed);
@@ -36,6 +34,7 @@ int benchmark(int argc, char **argv) {
   exp = std::max(0, std::min(20, exp));
   size_t iterations = 1 << exp;
   input.result = Init::update(input.battle, 0, 0, search.options);
+  input.abstract = Eval::Abstract{input.battle, model.eval.ovo_matrix};
   Node node{};
 
   const auto output = search.run(iterations, node, input, model);
