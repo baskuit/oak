@@ -59,7 +59,7 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
           Node node{};
           MonteCarlo::Input input1{battle, durations, result};
           auto output1 =
-              search.run<true, false, false, true>(dur, node, input1, mcm);
+              search.run<MCTS::Options<true, 3, 3, 1>>(dur, node, input1, mcm);
           i = mcm.device.sample_pdf(output1.p1);
         }
 
@@ -73,7 +73,7 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
                              result};
           // MonteCarlo::Input input2{battle, durations, result};
           auto output2 =
-              search.run<true, false, true, false>(dur, node, input2, eval);
+              search.run<MCTS::Options<true, 3, 3, 1>>(dur, node, input2, eval);
           j = eval.device.sample_pdf(output2.p2);
           // input2.abstract.print();
           const auto v = eval.eval.value(input2.abstract);
