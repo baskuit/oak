@@ -1,14 +1,17 @@
-#include <battle/debug-log.h>
-#include <battle/init.h>
 #include <data/durations.h>
 #include <data/options.h>
 #include <data/sample-teams.h>
-#include <data/strings.h>
-#include <iostream>
+
+#include <battle/init.h>
+#include <battle/strings.h>
+#include <battle/view.h>
+
 #include <pi/eval.h>
+
 #include <util/print.h>
 #include <util/random.h>
 
+#include <iostream>
 #include <thread>
 
 static_assert(Options::calc && Options::chance && !Options::log);
@@ -74,10 +77,14 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
           j = eval.device.sample_pdf(output2.p2);
           // input2.abstract.print();
           const auto v = eval.eval.value(input2.abstract);
-          // std::cout << v << std::endl;
+          std::cout << v << std::endl;
           // std::cout << "iter: " << output2.iterations << std::endl;
           eval_values.push_back(v);
+        } else {
+          std::cout << "-" << std::endl;
         }
+
+        std::cout << Strings::battle_to_string(battle) << std::endl;
 
         result = Init::update(battle, choices1[i], choices2[j], options);
         durations = *pkmn_gen1_battle_options_chance_durations(&options);

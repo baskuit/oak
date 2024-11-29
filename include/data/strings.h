@@ -58,7 +58,7 @@ constexpr std::array<std::string, 166> MOVE_STRING{
     "Substitute",   "Struggle"};
 
 constexpr std::string move_string(const auto move) {
-  return MOVE_STRING[static_cast<uint8_t>(move)];
+  return MOVE_STRING[static_cast<const uint8_t>(move)];
 }
 
 constexpr std::array<std::string, 152> SPECIES_STRING{

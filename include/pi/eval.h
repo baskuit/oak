@@ -231,7 +231,6 @@ static_assert(
     OVODict::toID(SampleTeams::teams[0][0]) ==
     OVODict::toID(OVODict::fromID(OVODict::toID(SampleTeams::teams[0][0]))));
 
-
 enum class HP : std::underlying_type_t<std::byte> {
   HP0,
   HP1,
