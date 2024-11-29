@@ -312,13 +312,13 @@ struct Abstract {
             pieces1[i] += .1;
             pieces2[j] += .1;
           } else {
-            pieces1[i] += 0;
+            pieces1[i] += .9;
             pieces2[j] += .1;
           }
         } else {
           if (status2[j] == 5) {
             pieces1[i] += .1;
-            pieces2[j] += 0;
+            pieces2[j] += .9;
           } else {
             const float v = ovo_matrix[i][j][hp1[i] - 1][status1[i]][hp2[j] - 1]
                                       [status2[j]];
