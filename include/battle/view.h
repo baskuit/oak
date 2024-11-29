@@ -9,6 +9,7 @@
 
 #include <array>
 #include <bit>
+#include <cmath>
 
 namespace View {
 
@@ -94,6 +95,10 @@ struct Pokemon {
 
   constexpr const uint16_t &hp() const noexcept {
     return *std::bit_cast<const uint16_t *>(bytes + 18);
+  }
+
+  auto percent() const noexcept {
+    return std::ceil(100.0f * hp() / stats().hp());
   }
 
   constexpr Data::Status &status() noexcept {
