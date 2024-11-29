@@ -3,16 +3,18 @@
 #include <pkmn.h>
 
 #include <array>
+#include <assert.h>
 #include <cstdint>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include <assert.h>
 #include <data/moves.h>
 #include <data/species.h>
 #include <data/strings.h>
+
+#include <battle/view.h>
 
 namespace Strings {
 
@@ -60,6 +62,46 @@ std::string pokemon_to_string(const uint8_t *const data) {
   }
 
   sstream.flush();
+  return sstream.str();
+}
+
+std::string battle_to_string(const pkmn_gen1_battle &battle) {
+  std::stringstream sstream{};
+
+  const auto &b = View::ref(battle);
+
+  for (auto s = 0; s < 2; ++s) {
+    const auto &side = b.side(s);
+
+    for (auto slot = 0; slot < 6; ++slot) {
+      auto i = side.order()[slot] - 1;
+
+      auto &p = side.pokemon(i);
+
+      if (slot == 0) {
+        // pass for now
+      }
+
+      sstream << Names::species_string(p.species()) << ": ";
+      const auto hp = p.hp();
+      const bool ko = (hp == 0);
+      if (!ko) {
+        sstream << p.percent() << "% ";
+      } else {
+        sstream << "KO " << std::endl;
+        continue;
+      }
+      const auto st = p.status();
+      if (st != Data::Status::None) {
+        sstream << status(st) << ' ';
+      }
+      for (auto m = 0; m < 4; ++m) {
+        sstream << Names::move_string(p.moves()[m].id) << ' ';
+      }
+      sstream << std::endl;
+    }
+    sstream << std::endl;
+  }
   return sstream.str();
 }
 
