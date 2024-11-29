@@ -30,184 +30,6 @@ namespace Eval {
 constexpr size_t n_hp = 3;
 constexpr size_t n_status = 5;
 
-
-enum class HP : std::underlying_type_t<std::byte> {
-  HP0,
-  HP1,
-  HP2,
-  HP3,
-};
-
-enum class Status : std::underlying_type_t<std::byte> {
-  None,
-  Sleep,
-  Poison,
-  Burn,
-  Paralysis,
-  Freeze,
-};
-
-constexpr Status simplify_status(const auto status) {
-  if (static_cast<uint8_t>(status) & 7) {
-    return Status::Sleep;
-  }
-  switch (static_cast<uint8_t>(status)) {
-  case 0b00000000:
-    return Status::None;
-  case 0b00001000:
-    return Status::Poison;
-  case 0b00010000:
-    return Status::Burn;
-  case 0b00100000:
-    return Status::Freeze;
-  case 0b01000000:
-    return Status::Paralysis;
-  case 0b10001000:
-    return Status::Poison;
-  default:
-    assert(false);
-    return Status::None;
-  }
-}
-
-
-struct Abstract {
-  std::array<uint8_t, 6> hp1{};
-  std::array<uint8_t, 6> hp2{};
-  std::array<uint8_t, 6> status1{};
-  std::array<uint8_t, 6> status2{};
-  std::array<float, 6> pieces1{};
-  std::array<float, 6> pieces2{};
-  int m;
-  int n;
-
-  Abstract() = default;
-
-  Abstract(const pkmn_gen1_battle &battle, const auto &ovo_matrix) {
-    const auto &b = View::ref(battle);
-    const auto &side1 = b.side(0);
-    const auto &side2 = b.side(1);
-    m = 0;
-    n = 0;
-    for (auto i = 0; i < 6; ++i) {
-      const auto &a1 = side1.pokemon(i);
-      const auto &a2 = side2.pokemon(i);
-      hp1[i] = std::ceil(3.0f * a1.hp() / a1.stats().hp());
-      hp2[i] = std::ceil(3.0f * a2.hp() / a2.stats().hp());
-      m += (hp1[i] != 0);
-      n += (hp2[i] != 0);
-      status1[i] = static_cast<uint8_t>(simplify_status(a1.status()));
-      status2[i] = static_cast<uint8_t>(simplify_status(a2.status()));
-    }
-
-    for (auto i = 0; i < 6; ++i) {
-      if (hp1[i] == 0) {
-        continue;
-      }
-      for (auto j = 0; j < 6; ++j) {
-        if (hp2[j] == 0) {
-          continue;
-        }
-        if (status1[i] == 5) {
-          if (status2[j] == 5) {
-            pieces1[i] += .1;
-            pieces2[j] += .1;
-          } else {
-            pieces1[i] += 0;
-            pieces2[j] += .1;
-          }
-        } else {
-          if (status2[j] == 5) {
-            pieces1[i] += .1;
-            pieces2[j] += 0;
-          } else {
-            const float v = ovo_matrix[i][j][hp1[i] - 1][status1[i]][hp2[j] - 1]
-                                      [status2[j]];
-            pieces1[i] += v;
-            pieces2[j] += 1 - v;
-          }
-        }
-      }
-    }
-  }
-
-  void update(const pkmn_gen1_battle &battle, const auto &ovo_matrix) {
-
-    const auto &b = View::ref(battle);
-
-    const auto &side1 = b.side(0);
-    const auto &side2 = b.side(1);
-
-    const auto slot1 = side1.order()[0] - 1;
-    const auto slot2 = side2.order()[0] - 1;
-
-    const auto &a1 = side1.pokemon(slot1);
-    const auto &a2 = side2.pokemon(slot2);
-
-    hp1[slot1] = std::ceil(3.0f * a1.hp() / a1.stats().hp());
-    hp2[slot2] = std::ceil(3.0f * a2.hp() / a2.stats().hp());
-    status1[slot1] =
-        static_cast<uint8_t>(simplify_status(a1.status()));
-    status2[slot2] =
-        static_cast<uint8_t>(simplify_status(a2.status()));
-
-    m = 0;
-    n = 0;
-    for (int i = 0; i < 6; ++i) {
-      m += (hp1[i] != 0);
-      n += (hp2[i] != 0);
-    }
-
-    pieces1[slot1] = 0;
-    if (hp1[slot1]) {
-      if (status1[slot1] != 5) {
-        for (auto j = 0; j < 6; ++j) {
-          if (status2[slot2] == 5) {
-            pieces1[slot1] += 1.0f;
-          } else {
-            float v = ovo_matrix[slot1][j][hp1[slot1] - 1][status1[slot1]]
-                                [hp2[slot2] - 1][status2[slot2]];
-            pieces1[slot1] += v;
-          }
-        }
-      }
-    }
-
-    pieces2[slot2] = 0;
-    if (hp2[slot2]) {
-      if (status2[slot2] != 5) {
-        for (auto i = 0; i < 6; ++i) {
-          if (status1[slot1] == 5) {
-            pieces2[slot2] += 1.0f;
-          } else {
-            float v = ovo_matrix[i][slot2][hp1[slot1] - 1][status1[slot1]]
-                                [hp2[slot2] - 1][status2[slot2]];
-            pieces2[slot2] += 1 - v;
-          }
-        }
-      }
-    }
-  }
-
-  void print() const {
-    for (int i = 0; i < 6; ++i) {
-      std::cout << "( " << (int)hp1[i] << " " << (int)status1[i] << " ) ";
-    }
-    std::cout << std::endl;
-    for (int i = 0; i < 6; ++i) {
-      std::cout << "( " << (int)hp2[i] << " " << (int)status2[i] << " ) ";
-    }
-    std::cout << std::endl << std::endl;
-  }
-};
-
-struct Input {
-  pkmn_gen1_battle battle;
-  pkmn_gen1_chance_durations durations;
-  Abstract abstract;
-  pkmn_result result;
-};
-
 float get_value(const auto &set1, const auto &set2, size_t iterations,
                 auto seed) {
   std::array<std::remove_reference_t<decltype(set1)>, 1> p1{set1};
@@ -408,6 +230,181 @@ private:
 static_assert(
     OVODict::toID(SampleTeams::teams[0][0]) ==
     OVODict::toID(OVODict::fromID(OVODict::toID(SampleTeams::teams[0][0]))));
+
+
+enum class HP : std::underlying_type_t<std::byte> {
+  HP0,
+  HP1,
+  HP2,
+  HP3,
+};
+
+enum class Status : std::underlying_type_t<std::byte> {
+  None,
+  Sleep,
+  Poison,
+  Burn,
+  Paralysis,
+  Freeze,
+};
+
+constexpr Status simplify_status(const auto status) {
+  if (static_cast<uint8_t>(status) & 7) {
+    return Status::Sleep;
+  }
+  switch (static_cast<uint8_t>(status)) {
+  case 0b00000000:
+    return Status::None;
+  case 0b00001000:
+    return Status::Poison;
+  case 0b00010000:
+    return Status::Burn;
+  case 0b00100000:
+    return Status::Freeze;
+  case 0b01000000:
+    return Status::Paralysis;
+  case 0b10001000:
+    return Status::Poison;
+  default:
+    assert(false);
+    return Status::None;
+  }
+}
+
+struct Abstract {
+  std::array<uint8_t, 6> hp1{};
+  std::array<uint8_t, 6> hp2{};
+  std::array<uint8_t, 6> status1{};
+  std::array<uint8_t, 6> status2{};
+  std::array<float, 6> pieces1{};
+  std::array<float, 6> pieces2{};
+  int m;
+  int n;
+
+  Abstract() = default;
+
+  Abstract(const pkmn_gen1_battle &battle, const auto &ovo_matrix) {
+    const auto &b = View::ref(battle);
+    const auto &side1 = b.side(0);
+    const auto &side2 = b.side(1);
+    m = 0;
+    n = 0;
+    for (auto i = 0; i < 6; ++i) {
+      const auto &a1 = side1.pokemon(i);
+      const auto &a2 = side2.pokemon(i);
+      hp1[i] = std::ceil(3.0f * a1.hp() / a1.stats().hp());
+      hp2[i] = std::ceil(3.0f * a2.hp() / a2.stats().hp());
+      m += (hp1[i] != 0);
+      n += (hp2[i] != 0);
+      status1[i] = static_cast<uint8_t>(simplify_status(a1.status()));
+      status2[i] = static_cast<uint8_t>(simplify_status(a2.status()));
+    }
+
+    for (auto i = 0; i < 6; ++i) {
+      if (hp1[i] == 0) {
+        continue;
+      }
+      for (auto j = 0; j < 6; ++j) {
+        if (hp2[j] == 0) {
+          continue;
+        }
+        if (status1[i] == 5) {
+          if (status2[j] == 5) {
+            pieces1[i] += .1;
+            pieces2[j] += .1;
+          } else {
+            pieces1[i] += 0;
+            pieces2[j] += .1;
+          }
+        } else {
+          if (status2[j] == 5) {
+            pieces1[i] += .1;
+            pieces2[j] += 0;
+          } else {
+            const float v = ovo_matrix[i][j][hp1[i] - 1][status1[i]][hp2[j] - 1]
+                                      [status2[j]];
+            pieces1[i] += v;
+            pieces2[j] += 1 - v;
+          }
+        }
+      }
+    }
+  }
+
+  void update(const pkmn_gen1_battle &battle, const auto &ovo_matrix) {
+
+    const auto &b = View::ref(battle);
+
+    const auto &side1 = b.side(0);
+    const auto &side2 = b.side(1);
+
+    const auto slot1 = side1.order()[0] - 1;
+    const auto slot2 = side2.order()[0] - 1;
+
+    const auto &a1 = side1.pokemon(slot1);
+    const auto &a2 = side2.pokemon(slot2);
+
+    hp1[slot1] = std::ceil(3.0f * a1.hp() / a1.stats().hp());
+    hp2[slot2] = std::ceil(3.0f * a2.hp() / a2.stats().hp());
+    status1[slot1] = static_cast<uint8_t>(simplify_status(a1.status()));
+    status2[slot2] = static_cast<uint8_t>(simplify_status(a2.status()));
+
+    m = 0;
+    n = 0;
+    for (int i = 0; i < 6; ++i) {
+      m += (hp1[i] != 0);
+      n += (hp2[i] != 0);
+    }
+
+    pieces1[slot1] = 0;
+    if (hp1[slot1]) {
+      if (status1[slot1] != 5) {
+        for (auto j = 0; j < 6; ++j) {
+          if (status2[slot2] == 5) {
+            pieces1[slot1] += 1.0f;
+          } else {
+            float v = ovo_matrix[slot1][j][hp1[slot1] - 1][status1[slot1]]
+                                [hp2[slot2] - 1][status2[slot2]];
+            pieces1[slot1] += v;
+          }
+        }
+      }
+    }
+
+    pieces2[slot2] = 0;
+    if (hp2[slot2]) {
+      if (status2[slot2] != 5) {
+        for (auto i = 0; i < 6; ++i) {
+          if (status1[slot1] == 5) {
+            pieces2[slot2] += 1.0f;
+          } else {
+            float v = ovo_matrix[i][slot2][hp1[slot1] - 1][status1[slot1]]
+                                [hp2[slot2] - 1][status2[slot2]];
+            pieces2[slot2] += 1 - v;
+          }
+        }
+      }
+    }
+  }
+
+  void print() const {
+    for (int i = 0; i < 6; ++i) {
+      std::cout << "( " << (int)hp1[i] << " " << (int)status1[i] << " ) ";
+    }
+    std::cout << std::endl;
+    for (int i = 0; i < 6; ++i) {
+      std::cout << "( " << (int)hp2[i] << " " << (int)status2[i] << " ) ";
+    }
+    std::cout << std::endl << std::endl;
+  }
+};
+
+struct Input {
+  pkmn_gen1_battle battle;
+  pkmn_gen1_chance_durations durations;
+  Abstract abstract;
+  pkmn_result result;
+};
 
 class CachedEval {
 public:
