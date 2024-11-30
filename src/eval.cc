@@ -77,14 +77,14 @@ void versus(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
           j = eval.device.sample_pdf(output2.p2);
           // input2.abstract.print();
           const auto v = eval.eval.value(input2.abstract);
-          std::cout << v << std::endl;
+          // std::cout << v << std::endl;
           // std::cout << "iter: " << output2.iterations << std::endl;
           eval_values.push_back(v);
         } else {
-          std::cout << "-" << std::endl;
+          // std::cout << "-" << std::endl;
         }
 
-        std::cout << Strings::battle_to_string(battle) << std::endl;
+        // std::cout << Strings::battle_to_string(battle) << std::endl;
 
         result = Init::update(battle, choices1[i], choices2[j], options);
         durations = *pkmn_gen1_battle_options_chance_durations(&options);

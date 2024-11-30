@@ -132,7 +132,8 @@ constexpr pkmn_gen1_battle_options options() { return {}; }
 pkmn_result update(pkmn_gen1_battle &battle, const auto c1, const auto c2,
                    pkmn_gen1_battle_options &options) {
   const auto get_choice = [](const auto c, const uint8_t *side) -> pkmn_choice {
-    if constexpr (std::is_same_v<decltype(c), Species>) {
+    using Choice = decltype(c);
+    if constexpr (std::is_same_v<Choice, Species>) {
       for (uint8_t i = 1; i < 6; ++i) {
         const auto slot = side[Offsets::order + i] - 1;
         if (static_cast<uint8_t>(c) == side[24 * slot + Offsets::species]) {
@@ -140,14 +141,14 @@ pkmn_result update(pkmn_gen1_battle &battle, const auto c1, const auto c2,
         }
       }
       throw std::runtime_error{"Init::update - invalid switch"};
-    } else if constexpr (std::is_same_v<decltype(c), Moves>) {
+    } else if constexpr (std::is_same_v<Choice, Moves>) {
       for (uint8_t i = 0; i < 4; ++i) {
         if (static_cast<uint8_t>(c) == side[Offsets::active_moves + 2 * i]) {
           return ((i + 1) << 2) | 1;
         }
       }
       throw std::runtime_error{"Init::update - invalid move"};
-    } else if constexpr (std::is_integral_v<decltype(c)>) {
+    } else if constexpr (std::is_integral_v<Choice>) {
       return c;
     } else {
       static_assert(false);

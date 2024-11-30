@@ -93,7 +93,7 @@ struct MCTS {
   }
 
   template <typename Options = Options<>>
-  auto run(const auto dur, auto &node, auto &input, auto &model) {
+  auto run(const auto dur, auto &node, const auto &input, auto &model) {
 
     const auto iter = [this, &input, &model, &node]() -> float {
       auto copy = input;
@@ -118,6 +118,11 @@ struct MCTS {
           std::chrono::duration_cast<std::chrono::milliseconds>(dur);
       std::chrono::milliseconds elapsed{};
       while (elapsed < duration) {
+        if constexpr (requires { model.kill; }) {
+          if (model.kill) {
+            break;
+          }
+        }
         output.total_value += iter();
         ++output.iterations;
         elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -128,6 +133,11 @@ struct MCTS {
     } else {
       const auto start = std::chrono::high_resolution_clock::now();
       for (auto i = 0; i < dur; ++i) {
+        if constexpr (requires { model.kill; }) {
+          if (input.kill) {
+            break;
+          }
+        }
         output.total_value += iter();
       }
       output.iterations = dur;

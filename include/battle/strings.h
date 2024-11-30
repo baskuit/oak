@@ -2,6 +2,7 @@
 
 #include <pkmn.h>
 
+#include <algorithm>
 #include <array>
 #include <assert.h>
 #include <cstdint>
@@ -17,6 +18,33 @@
 #include <battle/view.h>
 
 namespace Strings {
+
+// Checks that lower cases match up to the shorter string
+bool match(const auto &A, const auto &B) {
+  return std::equal(
+      A.begin(), A.begin() + std::min(A.size(), B.size()), B.begin(), B.end(),
+      [](char a, char b) { return std::tolower(a) == std::tolower(b); });
+}
+
+auto find_unique(const auto &container, const auto &value) {
+  const auto matches = [&value](const auto &x) { return match(x, value); };
+  auto it = std::find_if(container.begin(), container.end(), matches);
+  if (it != container.end()) {
+    if (auto other = std::find_if(it + 1, container.end(), matches);
+        other != container.end()) {
+      return container.end(); // return end if not unique
+    }
+  }
+  return it;
+}
+
+int unique_index(const auto &container, const auto &value) {
+  const auto it = find_unique(container, value);
+  if (it == container.end()) {
+    return -1;
+  }
+  return std::distance(container.begin(), it);
+}
 
 std::string status(const auto status) {
   const auto byte = static_cast<uint8_t>(status);
@@ -103,6 +131,26 @@ std::string battle_to_string(const pkmn_gen1_battle &battle) {
     sstream << std::endl;
   }
   return sstream.str();
+}
+
+Data::Species string_to_species(const std::string &str) {
+  const int index = unique_index(Names::SPECIES_STRING, str);
+  if (index < 0) {
+    throw std::runtime_error{"Could not match string to Species"};
+    return Data::Species::None;
+  } else {
+    return static_cast<Data::Species>(index);
+  }
+}
+
+Data::Moves string_to_move(const std::string &str) {
+  const int index = unique_index(Names::MOVE_STRING, str);
+  if (index < 0) {
+    throw std::runtime_error{"Could not match string to Move"};
+    return Data::Moves::None;
+  } else {
+    return static_cast<Data::Moves>(index);
+  }
 }
 
 } // namespace Strings
