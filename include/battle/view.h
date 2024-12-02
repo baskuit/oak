@@ -141,32 +141,27 @@ struct ActivePokemon {
   const uint8_t boost_eva() const noexcept { return bytes[14] & 0b11110000; }
   void set_boost_atk(auto value) noexcept {
     bytes[12] &= 0b11110000;
-    bytes[12] |=
-        static_cast<uint8_t>(value) & 0b00001111;
+    bytes[12] |= static_cast<uint8_t>(value) & 0b00001111;
   }
 
   void set_boost_def(auto value) noexcept {
-    bytes[12] &= 0b00001111; 
-    bytes[12] |=
-        static_cast<uint8_t>(value) & 0b11110000; 
+    bytes[12] &= 0b00001111;
+    bytes[12] |= static_cast<uint8_t>(value) & 0b11110000;
   }
 
   void set_boost_spe(auto value) noexcept {
-    bytes[13] &= 0b11110000; 
-    bytes[13] |=
-        static_cast<uint8_t>(value) & 0b00001111;
+    bytes[13] &= 0b11110000;
+    bytes[13] |= static_cast<uint8_t>(value) & 0b00001111;
   }
 
   void set_boost_spc(auto value) noexcept {
-    bytes[13] &= 0b00001111; 
-    bytes[13] |=
-        static_cast<uint8_t>(value) & 0b11110000; 
+    bytes[13] &= 0b00001111;
+    bytes[13] |= static_cast<uint8_t>(value) & 0b11110000;
   }
 
   void set_boost_acc(auto value) noexcept {
-    bytes[14] &= 0b11110000; 
-    bytes[14] |=
-        static_cast<uint8_t>(value) & 0b00001111; 
+    bytes[14] &= 0b11110000;
+    bytes[14] |= static_cast<uint8_t>(value) & 0b00001111;
   }
 
   void set_boost_eva(auto value) noexcept {
@@ -227,38 +222,39 @@ constexpr const Battle &ref(const pkmn_gen1_battle &battle) noexcept {
 }
 
 struct Duration {
-  // std::array<uint8_t, 4> bytes;
   uint8_t bytes[4];
 
   auto sleep(auto slot) const {
-    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
-    return 7 & (*b >> (3 * slot));
+    auto b = std::bit_cast<uint32_t>(bytes);
+    return 7 & (b >> (3 * slot));
   }
 
   void set_sleep(auto slot, auto value) {
-    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
+    auto b = std::bit_cast<uint32_t>(bytes);
     const auto offset = 3 * slot;
-    const auto clear = *b & (7 << offset);
-    const auto set = (value << offset);
-    *b ^= clear;
-    *b ^= set;
+    const auto clear = ~(7 << offset);
+    b = (b & clear) | (value << offset);
+    std::memcpy(bytes, &b, sizeof(b));
   }
 
   auto confusion() const {
-    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
-    return 7 & (*b >> 18);
+    auto b = std::bit_cast<uint32_t>(bytes);
+    return 7 & (b >> 18);
   }
+
   auto disable() const {
-    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
-    return 15 & (*b >> 21);
+    auto b = std::bit_cast<uint32_t>(bytes);
+    return 15 & (b >> 21);
   }
+
   auto attacking() const {
-    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
-    return 7 & (*b >> 25);
+    auto b = std::bit_cast<uint32_t>(bytes);
+    return 7 & (b >> 25);
   }
+
   auto binding() const {
-    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
-    return 7 & (*b >> 28);
+    auto b = std::bit_cast<uint32_t>(bytes);
+    return 7 & (b >> 28);
   }
 };
 

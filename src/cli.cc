@@ -1,269 +1,98 @@
-#include <data/sample-teams.h>
-
-#include <battle/init.h>
-#include <battle/strings.h>
-
-#include <pi/eval.h>
-#include <pi/mcts.h>
-#include <pi/tree.h>
-
-#include <pkmn.h>
-
+#include <cstdlib>
+#include <getopt.h>
 #include <iostream>
-#include <map>
-#include <memory>
-#include <optional>
-#include <sstream>
-#include <thread>
-#include <unordered_map>
-#include <vector>
 
-struct PokemonActive {
-  Species;
-};
+#include <readline/history.h>
+#include <readline/readline.h>
 
+#include <cli.h>
 
-using Node =
-    Tree::Node<Exp3::JointBanditData<.01f, false>, std::array<uint8_t, 16>>;
-
-// return bool tells you if the command succeeded. in particular, false means
-// Program was not mutated
-struct Program {
-private:
-  Eval::OVODict one_versus_one_tables;
-
-  using Sets = std::map<std::string, SampleTeams::Set>;
-  using Teams = std::map<std::string, std::array<SampleTeams::Set, 6>>;
-
-  // any decision point in the battle, along with search data
-  struct State {
-    MonteCarlo::Input search_input;
-    struct SearchData {
-      std::unique_ptr<Node> node{std::make_unique<Node>()};
-      using Output = MCTS::Output;
-      Output output;
-      std::vector<Output> component_outputs;
-    };
-    std::array<SearchData, 2> search_data;
-
-    pkmn_choice c1;
-    pkmn_choice c2;
-
-    State() = default;
-    State(State &&) = default;
-  };
-
-  struct Game {
-    std::vector<State> states;
-    Eval::Model eval;
-
-    Game(const auto p1, const auto p2, const Eval::OVODict &ovo_dict,
-         auto seed = 79283457290384)
-        : states{}, eval{seed, Eval::CachedEval{p1, p2, ovo_dict}} {}
-
-    Game() = default;
-    Game(Game &&) = default;
-  };
-
-  using Games = std::map<std::string, Game>;
-
-  Sets sets;
-  Teams teams;
-  Games games;
-
-  prng device;
-  size_t set_counter;
-  size_t team_counter;
-  size_t game_counter;
-
-  struct Worker {
-    std::thread thread;
-  };
-  std::map<size_t, Worker> workers;
-  Worker *get_worker() {
-    for (auto &[key, worker] : workers) {
-      if (!worker.thread.joinable()) {
-        return &worker;
-      }
-    }
-    return nullptr;
-  }
-
-  // Determines what commands are offered and what is printed
-  struct InterfaceFocus {
-    std::optional<std::string> game_key;
-    std::optional<size_t> state_index;
-    std::optional<size_t> tree_index;
-    std::optional<size_t> output_index;
-  };
-  InterfaceFocus loc;
-
-public:
-  Program() = default;
-
-  bool load_tables(std::filesystem::path path) {
-    return one_versus_one_tables.load(path);
-  }
-  bool load_teams(std::filesystem::path path) { return false; }
-  bool save_tables(std::filesystem::path path) {
-    return one_versus_one_tables.save(path);
-  }
-  bool save_teams(std::filesystem::path path) const { return false; }
-
-  bool add_set(std::string string) { return false; }
-  bool add_team(std::string string) { return false; }
-  bool delete_set(std::string string) { return false; }
-  bool delete_team(std::string string) { return false; }
-
-  bool create_game(std::string team1, std::string team2) { return false; }
-  bool delete_game(std::string index) { return false; }
-
-  bool search(auto iterations) {
-    if (depth() < 3) {
-      return false;
-    }
-    try {
-      auto &search_data = data();
-      MCTS search{};
-      const auto output = search.run(iterations, search_data.node,
-                                     state().search_input, game().eval);
-    } catch (std::exception &e) {
-      std::cerr << e.what() << std::endl;
-      return false;
-    }
-    return true;
-  }
-  bool c1() {
-    if (depth() < 2) {
-      return false;
-    }
-    return true;
-  }
-  bool c2() {
-    if (depth() < 2) {
-      return false;
-    }
-    return true;
-  }
-  bool update(auto c1, auto c2) {
-    if (depth() < 2) {
-      return false;
-    }
-    return true;
-  }
-
-  bool clone() {
-    if (depth() < 2) {
-      return false;
-    }
-
-    return true;
-  }
-  bool trunc() {
-    if (depth() < 2) {
-      return false;
-    }
-    auto &g = game();
-    g.states.resize(loc.state_index.value() + 1);
-    return true;
-  }
-  // User Interface
-
-  bool out() { return false; }
-  bool in() { return false; }
-
-  void print_loc() const {
-    std::stringstream sstream{};
-    switch (depth()) {
-    case 4:
-      sstream << "Output: " << loc.tree_index.value() << ' ';
-    case 3:
-      sstream << "Node: " << loc.tree_index.value() << ' ';
-    case 2:
-      sstream << "State: " << loc.tree_index.value() << ' ';
-    case 1:
-      sstream << "Game: " << loc.tree_index.value() << ' ';
-      break;
-    default:
-      sstream << "No game in focus. " << games.size() << " games in memory.";
-    }
-    std::cout << sstream.str() << std::endl;
-  }
-
-  void print_help() const {}
-
-private:
-  void clone_game() {
-    Game g{};
-    const auto &h = game();
-    const auto n = h.states.size();
-    g.states.resize(n);
-    for (auto i = 0; i < n; ++i) {
-      auto &s = g.states[i];
-      const auto &t = h.states[i];
-
-      s.search_input = t.search_input;
-      s.c1 = t.c1;
-      s.c2 = t.c2;
-    }
-    auto c = ++game_counter;
-    while (games.contains(std::to_string(c))) {
-      c = ++game_counter;
-    }
-  }
-
-  size_t depth() const {
-    if (loc.output_index.has_value()) {
-      return 4;
-    }
-    if (loc.tree_index.has_value()) {
-      return 3;
-    }
-    if (loc.state_index.has_value()) {
-      return 2;
-    }
-    if (loc.game_key.has_value()) {
-      return 1;
-    }
-    return 0;
-  }
-
-  Game &game() { return games.at(loc.game_key.value()); }
-
-  State &state() { return game().states.at(loc.state_index.value()); }
-
-  State::SearchData &data() {
-    return State().search_data.at(loc.output_index.value());
-  }
-};
-
-int main_loop(int argc, char **argv) {
-
-  Program data{};
-
-  while (true) {
-
-    std::string message;
-
-    std::getline(std::cin, message);
-    std::vector<std::string> split{};
-    std::stringstream ss{message};
-    for (std::string item; std::getline(ss, item, ';'); split.push_back(item)) {
-    }
-
-    for (const auto &w : split) {
-      std::cout << "w: " << w << std::endl;
-      Data::Moves x;
-      try {
-        x = Strings::string_to_move(w);
-      } catch (const std::exception &e) {
-        std::cout << e.what() << std::endl;
-        continue;
-      }
-
-      std::cout << (int)x << std::endl;
-    }
-  }
+void print_usage(const char *prog_name) {
+  std::cout << "Usage: " << prog_name << " [options]\n"
+            << "Options:\n"
+            << "  -h, --help       Show this help message\n"
+            << "  -v, --version    Print version information\n";
 }
 
-int main(int argc, char **argv) { return main_loop(argc, argv); }
+int loop(int argc, char *argv[]) {
+  const char *prompt = "";
+
+  while (true) {
+    char *input = readline(prompt);
+    //  ctrl + d
+    if (!input)
+      break;
+
+    if (*input)
+      add_history(input);
+
+    std::cout << input << std::endl;
+
+    free(input);
+  }
+
+  return 0;
+}
+
+int main(int argc, char *argv[]) {
+  const char *const short_opts = "hv";
+  const option long_opts[] = {{"help", no_argument, nullptr, 'h'},
+                              {"version", no_argument, nullptr, 'v'},
+                              {nullptr, 0, nullptr, 0}};
+
+  while (true) {
+    const int opt = getopt_long(argc, argv, short_opts, long_opts, nullptr);
+    if (opt == -1)
+      break;
+    switch (opt) {
+    case 'h':
+      print_usage(argv[0]);
+      return 0;
+    case 'v':
+      std::cout << "Version 1.0.0\n";
+      return 0;
+    case '?': // Unrecognized option
+    default:
+      print_usage(argv[0]);
+      return 1;
+    }
+  }
+
+  loop(argc, argv);
+
+  return 0;
+}
+
+// int main
+
+// int main_loop(int argc, char **argv) {
+
+//   Program data{};
+
+//   while (true) {
+
+//     std::string message;
+
+//     std::getline(std::cin, message);
+//     std::vector<std::string> split{};
+//     std::stringstream ss{message};
+//     for (std::string item; std::getline(ss, item, ';');
+//     split.push_back(item)) {
+//     }
+
+//     for (const auto &w : split) {
+//       std::cout << "w: " << w << std::endl;
+//       Data::Moves x;
+//       try {
+//         x = Strings::string_to_move(w);
+//       } catch (const std::exception &e) {
+//         std::cout << e.what() << std::endl;
+//         continue;
+//       }
+
+//       std::cout << (int)x << std::endl;
+//     }
+//   }
+// }
+
+// int main(int argc, char **argv) { return main_loop(argc, argv); }

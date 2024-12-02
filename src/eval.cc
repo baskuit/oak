@@ -7,6 +7,7 @@
 #include <battle/view.h>
 
 #include <pi/eval.h>
+#include <pi/poke-engine.h>
 
 #include <util/print.h>
 #include <util/random.h>

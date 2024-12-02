@@ -99,18 +99,64 @@ constexpr void init_pokemon(const auto &pokemon,
   }
 }
 
-constexpr void init_side(const auto &side, uint8_t *const bytes) noexcept {
-  assert(side.size() > 0 && side.size() <= 6);
+constexpr std::array<std::array<uint8_t, 2>, 13> boosts{
+    std::array<uint8_t, 2>{25, 100}, // -6
+    {28, 100},                       // -5
+    {33, 100},                       // -4
+    {40, 100},                       // -3
+    {50, 100},                       // -2
+    {66, 100},                       // -1
+    {1, 1},                          //  0
+    {15, 10},                        // +1
+    {2, 1},                          // +2
+    {25, 10},                        // +3
+    {3, 1},                          // +4
+    {35, 10},                        // +5
+    {4, 1}                           // +6
+};
+
+constexpr uint16_t boost(uint16_t stat, auto b) {
+  const auto &pair = boosts[b + 6];
+  return std::min(999, stat * pair[0] / pair[1]);
+}
+
+constexpr void init_active(const auto &active, uint8_t *const bytes) noexcept {
+  if constexpr (requires { active.volatiles; }) {
+  }
+
+  if constexpr (requires { active.boosts.atk; }) {
+    bytes[0] = boost(100, 2);
+  }
+}
+
+constexpr void init_party(const auto &party, uint8_t *const bytes) noexcept {
+  const uint8_t n = party.size();
+  assert(n > 0 && n <= 6);
   std::memset(bytes, 0, 24 * 6);
-  auto i = 0;
-  for (const auto &set : side) {
+  std::memset(bytes + Offsets::order, 0, 6);
+  for (uint8_t i = 0; i < n; ++i) {
+    const auto &set = party[i];
     assert(set.moves.size() <= 4);
     init_pokemon(set, bytes + i * Offsets::pokemon);
-    ++i;
+
+    if constexpr (requires { set.hp; }) {
+      if (set.hp != 0) {
+        bytes[Offsets::order + i] = i + 1;
+      }
+    } else {
+      bytes[Offsets::order + i] = i + 1;
+    }
   }
-  std::memset(bytes + Offsets::order, 0, 6);
-  for (uint8_t i = 0; i < side.size(); ++i) {
-    bytes[Offsets::order + i] = i + 1;
+}
+
+constexpr void init_side(const auto &side, uint8_t *const bytes) noexcept {
+  if constexpr (requires { side.pokemon; }) {
+    init_party(side.pokemon, bytes);
+    if constexpr (requires { side.active; }) {
+      init_active(side.active, bytes + Offsets::active);
+    }
+  } else {
+    init_party(side, bytes);
   }
 }
 } // end anonymous namespace
