@@ -18,6 +18,11 @@
 #include <unordered_map>
 #include <vector>
 
+struct PokemonActive {
+  Species;
+};
+
+
 using Node =
     Tree::Node<Exp3::JointBanditData<.01f, false>, std::array<uint8_t, 16>>;
 
@@ -29,11 +34,12 @@ private:
 
   using Sets = std::map<std::string, SampleTeams::Set>;
   using Teams = std::map<std::string, std::array<SampleTeams::Set, 6>>;
+
   // any decision point in the battle, along with search data
   struct State {
     MonteCarlo::Input search_input;
     struct SearchData {
-      std::unique_ptr<Node> node;
+      std::unique_ptr<Node> node{std::make_unique<Node>()};
       using Output = MCTS::Output;
       Output output;
       std::vector<Output> component_outputs;
@@ -42,7 +48,11 @@ private:
 
     pkmn_choice c1;
     pkmn_choice c2;
+
+    State() = default;
+    State(State &&) = default;
   };
+
   struct Game {
     std::vector<State> states;
     Eval::Model eval;
@@ -50,7 +60,11 @@ private:
     Game(const auto p1, const auto p2, const Eval::OVODict &ovo_dict,
          auto seed = 79283457290384)
         : states{}, eval{seed, Eval::CachedEval{p1, p2, ovo_dict}} {}
+
+    Game() = default;
+    Game(Game &&) = default;
   };
+
   using Games = std::map<std::string, Game>;
 
   Sets sets;
@@ -90,17 +104,19 @@ public:
   bool load_tables(std::filesystem::path path) {
     return one_versus_one_tables.load(path);
   }
-  bool load_teams(std::filesystem::path path) {}
-  bool save_tables(std::filesystem::path path) const {}
-  bool save_teams(std::filesystem::path path) const {}
+  bool load_teams(std::filesystem::path path) { return false; }
+  bool save_tables(std::filesystem::path path) {
+    return one_versus_one_tables.save(path);
+  }
+  bool save_teams(std::filesystem::path path) const { return false; }
 
-  bool add_set(std::string string) {}
-  bool add_team(std::string string) {}
-  bool delete_set(std::string string) {}
-  bool delete_team(std::string string) {}
+  bool add_set(std::string string) { return false; }
+  bool add_team(std::string string) { return false; }
+  bool delete_set(std::string string) { return false; }
+  bool delete_team(std::string string) { return false; }
 
-  bool create_game(std::string team1, std::string team2) {}
-  bool delete_game(std::string index) {}
+  bool create_game(std::string team1, std::string team2) { return false; }
+  bool delete_game(std::string index) { return false; }
 
   bool search(auto iterations) {
     if (depth() < 3) {
@@ -129,33 +145,73 @@ public:
     }
     return true;
   }
-  bool update() {
-    if (depth() < 2) {
-      return false;
-    }
-    return true;
-  }
   bool update(auto c1, auto c2) {
     if (depth() < 2) {
       return false;
     }
     return true;
   }
-  bool undo() {}
-  bool clone() {}
-  bool trunc() {}
-  bool name() {}
 
+  bool clone() {
+    if (depth() < 2) {
+      return false;
+    }
+
+    return true;
+  }
+  bool trunc() {
+    if (depth() < 2) {
+      return false;
+    }
+    auto &g = game();
+    g.states.resize(loc.state_index.value() + 1);
+    return true;
+  }
   // User Interface
 
-  bool out() {}
-  bool in() {}
+  bool out() { return false; }
+  bool in() { return false; }
 
-  void print_loc() const {}
+  void print_loc() const {
+    std::stringstream sstream{};
+    switch (depth()) {
+    case 4:
+      sstream << "Output: " << loc.tree_index.value() << ' ';
+    case 3:
+      sstream << "Node: " << loc.tree_index.value() << ' ';
+    case 2:
+      sstream << "State: " << loc.tree_index.value() << ' ';
+    case 1:
+      sstream << "Game: " << loc.tree_index.value() << ' ';
+      break;
+    default:
+      sstream << "No game in focus. " << games.size() << " games in memory.";
+    }
+    std::cout << sstream.str() << std::endl;
+  }
 
   void print_help() const {}
 
 private:
+  void clone_game() {
+    Game g{};
+    const auto &h = game();
+    const auto n = h.states.size();
+    g.states.resize(n);
+    for (auto i = 0; i < n; ++i) {
+      auto &s = g.states[i];
+      const auto &t = h.states[i];
+
+      s.search_input = t.search_input;
+      s.c1 = t.c1;
+      s.c2 = t.c2;
+    }
+    auto c = ++game_counter;
+    while (games.contains(std::to_string(c))) {
+      c = ++game_counter;
+    }
+  }
+
   size_t depth() const {
     if (loc.output_index.has_value()) {
       return 4;
@@ -183,22 +239,30 @@ private:
 
 int main_loop(int argc, char **argv) {
 
-  // ProgramData data{};
+  Program data{};
 
   while (true) {
 
     std::string message;
 
-    std::cin >> message;
-    Data::Moves x;
-    try {
-      x = Strings::string_to_move(message);
-    } catch (const std::exception &e) {
-      std::cout << e.what() << std::endl;
-      continue;
+    std::getline(std::cin, message);
+    std::vector<std::string> split{};
+    std::stringstream ss{message};
+    for (std::string item; std::getline(ss, item, ';'); split.push_back(item)) {
     }
 
-    std::cout << (int)x << std::endl;
+    for (const auto &w : split) {
+      std::cout << "w: " << w << std::endl;
+      Data::Moves x;
+      try {
+        x = Strings::string_to_move(w);
+      } catch (const std::exception &e) {
+        std::cout << e.what() << std::endl;
+        continue;
+      }
+
+      std::cout << (int)x << std::endl;
+    }
   }
 }
 
