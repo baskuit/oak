@@ -7,31 +7,47 @@
 
 #include <cli.h>
 
+
+std::string trim(const std::string& str) {
+    auto start = str.find_first_not_of(" ");
+    if (start == std::string::npos) return ""; // All spaces
+    auto end = str.find_last_not_of(" ");
+    return str.substr(start, end - start + 1);
+}
+
+int loop(int argc, char* argv[]) {
+    Program program{&std::cout, &std::cerr};
+
+    while (const auto input =
+               std::unique_ptr<const char>(readline(program.prompt()))) {
+
+        std::vector<std::string> commands{};
+        std::stringstream ss{input.get()};
+        for (std::string line; std::getline(ss, line, ';');) {
+            line = trim(line); // Trim the command
+            if (line.empty()) continue; // Skip empty commands
+            commands.push_back(line);
+
+            std::vector<std::string> words{};
+            std::istringstream stream(line);
+            for (std::string word; stream >> word;) { // Use stream >> word
+                words.push_back(word);
+                std::cout << word << "-";
+            }
+            std::cout << std::endl;
+        }
+        if (input.get()) {
+            add_history(input.get());
+        }
+    }
+
+    return 0;
+}
 void print_usage(const char *prog_name) {
   std::cout << "Usage: " << prog_name << " [options]\n"
             << "Options:\n"
             << "  -h, --help       Show this help message\n"
             << "  -v, --version    Print version information\n";
-}
-
-int loop(int argc, char *argv[]) {
-  const char *prompt = "";
-
-  while (true) {
-    char *input = readline(prompt);
-    //  ctrl + d
-    if (!input)
-      break;
-
-    if (*input)
-      add_history(input);
-
-    std::cout << input << std::endl;
-
-    free(input);
-  }
-
-  return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -62,37 +78,3 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-
-// int main
-
-// int main_loop(int argc, char **argv) {
-
-//   Program data{};
-
-//   while (true) {
-
-//     std::string message;
-
-//     std::getline(std::cin, message);
-//     std::vector<std::string> split{};
-//     std::stringstream ss{message};
-//     for (std::string item; std::getline(ss, item, ';');
-//     split.push_back(item)) {
-//     }
-
-//     for (const auto &w : split) {
-//       std::cout << "w: " << w << std::endl;
-//       Data::Moves x;
-//       try {
-//         x = Strings::string_to_move(w);
-//       } catch (const std::exception &e) {
-//         std::cout << e.what() << std::endl;
-//         continue;
-//       }
-
-//       std::cout << (int)x << std::endl;
-//     }
-//   }
-// }
-
-// int main(int argc, char **argv) { return main_loop(argc, argv); }
