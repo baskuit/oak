@@ -13,14 +13,6 @@
 
 namespace View {
 
-struct Volatiles {
-  uint8_t bytes[8];
-};
-
-struct ActivePokemon {
-  uint8_t bytes[32];
-};
-
 struct Stats {
   uint8_t bytes[10];
 
@@ -126,6 +118,64 @@ struct Pokemon {
   constexpr const uint8_t &level() const noexcept { return bytes[23]; }
 };
 
+struct Volatiles {
+  uint8_t bytes[8];
+};
+
+struct ActivePokemon {
+  uint8_t bytes[32];
+
+  constexpr Stats &stats() noexcept {
+    return *std::bit_cast<Stats *>(bytes + 0);
+  }
+
+  constexpr const Stats &stats() const noexcept {
+    return *std::bit_cast<Stats *>(bytes + 0);
+  }
+
+  const uint8_t boost_atk() const noexcept { return bytes[12] & 0b00001111; }
+  const uint8_t boost_def() const noexcept { return bytes[12] & 0b11110000; }
+  const uint8_t boost_spe() const noexcept { return bytes[13] & 0b00001111; }
+  const uint8_t boost_spc() const noexcept { return bytes[13] & 0b11110000; }
+  const uint8_t boost_acc() const noexcept { return bytes[14] & 0b00001111; }
+  const uint8_t boost_eva() const noexcept { return bytes[14] & 0b11110000; }
+  void set_boost_atk(auto value) noexcept {
+    bytes[12] &= 0b11110000;
+    bytes[12] |=
+        static_cast<uint8_t>(value) & 0b00001111;
+  }
+
+  void set_boost_def(auto value) noexcept {
+    bytes[12] &= 0b00001111; 
+    bytes[12] |=
+        static_cast<uint8_t>(value) & 0b11110000; 
+  }
+
+  void set_boost_spe(auto value) noexcept {
+    bytes[13] &= 0b11110000; 
+    bytes[13] |=
+        static_cast<uint8_t>(value) & 0b00001111;
+  }
+
+  void set_boost_spc(auto value) noexcept {
+    bytes[13] &= 0b00001111; 
+    bytes[13] |=
+        static_cast<uint8_t>(value) & 0b11110000; 
+  }
+
+  void set_boost_acc(auto value) noexcept {
+    bytes[14] &= 0b11110000; 
+    bytes[14] |=
+        static_cast<uint8_t>(value) & 0b00001111; 
+  }
+
+  void set_boost_eva(auto value) noexcept {
+    bytes[15] &= 0b00001111; // Clear the upper 4 bits
+    bytes[15] |=
+        static_cast<uint8_t>(value) & 0b11110000; // Set the upper 4 bits
+  }
+};
+
 struct Side {
 
   uint8_t bytes[Offsets::side];
@@ -177,11 +227,59 @@ constexpr const Battle &ref(const pkmn_gen1_battle &battle) noexcept {
 }
 
 struct Duration {
+  // std::array<uint8_t, 4> bytes;
   uint8_t bytes[4];
+
+  auto sleep(auto slot) const {
+    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
+    return 7 & (*b >> (3 * slot));
+  }
+
+  void set_sleep(auto slot, auto value) {
+    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
+    const auto offset = 3 * slot;
+    const auto clear = *b & (7 << offset);
+    const auto set = (value << offset);
+    *b ^= clear;
+    *b ^= set;
+  }
+
+  auto confusion() const {
+    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
+    return 7 & (*b >> 18);
+  }
+  auto disable() const {
+    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
+    return 15 & (*b >> 21);
+  }
+  auto attacking() const {
+    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
+    return 7 & (*b >> 25);
+  }
+  auto binding() const {
+    const auto b = std::bit_cast<const uint32_t *>(bytes.data());
+    return 7 & (*b >> 28);
+  }
 };
 
 struct Durations {
   uint8_t bytes[8];
+
+  Duration &duration(auto i) {
+    return *std::bit_cast<Duration *>(bytes + 4 * i);
+  }
+
+  const Duration &duration(auto i) const {
+    return *std::bit_cast<const Duration *>(bytes + 4 * i);
+  }
 };
+
+Durations &ref(pkmn_gen1_chance_durations &durations) {
+  return *std::bit_cast<Durations *>(&durations);
+}
+
+const Durations &ref(const pkmn_gen1_chance_durations &durations) {
+  return *std::bit_cast<const Durations *>(&durations);
+}
 
 }; // namespace View
