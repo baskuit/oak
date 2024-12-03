@@ -22,6 +22,11 @@
 
 using SampleTeams::Set;
 
+template <typename Out, typename... Args>
+void log(Out *out, const Args &...messages) {
+  ((*out << messages << " "), ...) << std::endl;
+}
+
 struct ActivePokemon {
   // Data::Species species;
   struct Boosts {
@@ -41,12 +46,6 @@ struct Side {
 
 struct Sides {
 
-  Sides (std::ostream *out, std::ostream *err)  : out{out}, err{err} {}
-
-
-  std::ostream *out;
-  std::ostream *err;
-
   struct Location {
     enum class Slot {
       Active,
@@ -61,11 +60,15 @@ struct Sides {
     std::optional<Slot> slot;
   };
 
+  std::ostream *out;
+  std::ostream *err;
+
   std::map<std::string, Side> sides;
   Location loc;
 
-  void show () const noexcept {
+  Sides(std::ostream *out, std::ostream *err) : out{out}, err{err} {}
 
+  void show() const noexcept {
     if (loc.key.has_value()) {
       const auto &side = sides.at(loc.key.value());
       if (loc.slot.has_value()) {
@@ -81,10 +84,13 @@ struct Sides {
       const auto n = sides.size();
       *out << n << " sides." << std::endl;
     }
-
   }
 
   bool add(std::string key) {
+    if (loc.key.has_value()) {
+      log(err, "add: Need to run'out' first");
+      return false;
+    }
     if (sides.contains(key)) {
       *err << key << " already present." << std::endl;
       return false;
@@ -95,258 +101,314 @@ struct Sides {
     }
   }
 
-  
+  bool rm(std::string key) {
+    if (loc.key.has_value()) {
+      log(err, "rm: Need to run'out' first");
+      return false;
+    }
+    if (sides.contains(key)) {
+      sides.erase(key);
+      *out << key << " removed from sides." << std::endl;
+      return true;
+    } else {
+      *err << key << " not in sides." << std::endl;
+      return false;
+    }
+  }
+
+  bool set_mon(std::span<const std::string> words) {
+
+    if (!loc.slot.has_value()) {
+      log(err, "set: Not viewing a side or slot.");
+      return false;
+    }
+
+    if (loc.slot.value() == Location::Slot::Active) {
+      log(err, "set: In active slot; use TODO instead.");
+      return false;
+    }
+
+    auto &slot =
+        sides[loc.key.value()].party[static_cast<size_t>(loc.slot.value())];
+
+    Data::Species species{};
+    std::vector<Data::Moves> moves{};
+
+    Data::Species in_species{};
+    Data::Moves in_move{};
+
+    const auto update = [this, &moves, &species](const auto data) {
+      const auto err = this->err;
+      using T = std::remove_reference_t<decltype(data)>;
+      if constexpr (std::is_convertible_v<T, Data::Moves>) {
+        if (data == Data::Moves::None) {
+          log(err, "set: 'None' read.");
+          return false;
+        }
+        const auto it = std::find(moves.begin(), moves.end(), data);
+        if (it == moves.end()) {
+          if (moves.size() >= 4) {
+            log(err, "set: Too many moves.");
+            return false;
+          } else {
+            moves.push_back(data);
+            return true;
+          }
+        } else {
+          log(err, "set: Read duplicate move.");
+          return false;
+        }
+      } else if constexpr (std::is_convertible_v<T, Data::Species>) {
+        if (data == Data::Species::None) {
+          log(err, "set: 'None' read.");
+          return false;
+        }
+        if (species == Data::Species::None) {
+          species = data;
+          return true;
+        } else {
+          log(err, "set: Species already read.");
+          return false;
+        }
+      } else {
+        log(err, "set: Invalid data type in update lambda???");
+        std::cout << typeid(data).name() << std::endl;
+        return false;
+      }
+    };
+
+    for (const auto &word : words) {
+      try {
+        in_species = Strings::string_to_species(word);
+      } catch (...) {
+        try {
+          in_move = Strings::string_to_move(word);
+        } catch (...) {
+          log(err, "set: Invalid species/move.");
+          return false;
+        }
+        if (!update(in_move)) {
+          log(err, "set: Update move failed.");
+
+          return false;
+        }
+        continue;
+      }
+      if (!update(in_species)) {
+        log(err, "set: Update species failed");
+
+        return false;
+      }
+      continue;
+    }
+    if (species == Data::Species::None) {
+      log(err, "set: Failed to read species.");
+      return false;
+    }
+
+    slot.species = species;
+    std::copy(moves.begin(), moves.end(), slot.moves.begin());
+    return true;
+  }
+
+  bool in(std::string s) {
+    if (loc.key.has_value()) {
+      if (loc.slot.has_value()) {
+        return false;
+      } else {
+        int slot;
+        try {
+          slot = std::stoi(s);
+        } catch (...) {
+          if (s == "active") {
+            loc.slot = Location::Slot::Active;
+            return true;
+          }
+          *err << "in: could not read index" << std::endl;
+          return false;
+        }
+        if ((slot < 0) || (slot > 6)) {
+          *err << "in: index out of range [0 (active), 1 (party), ..., 6] "
+               << std::endl;
+          return false;
+        } else {
+          loc.slot = static_cast<Location::Slot>(slot);
+          return true;
+        }
+      }
+    } else {
+      if (sides.contains(s)) {
+        loc.key = s;
+        return true;
+      } else {
+        log(err, "in: Side ", s, " could not be found.");
+        return false;
+      }
+    }
+  }
+
+  bool _out() {
+    if (loc.slot.has_value()) {
+      loc.slot = {};
+      return true;
+    } else {
+      if (loc.key.has_value()) {
+        loc.key = {};
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  bool handle_command(const auto &words) {
+    const auto &command = words[0];
+
+    if (command == "show") {
+      show();
+      return true;
+    } else if (command == "out") {
+      _out();
+      return true;
+    }
+
+    if (words.size() < 2) {
+      return false;
+    }
+    const auto &first = words[1];
+
+    if (command == "add") {
+      return add(first);
+    } else if (command == "rm") {
+      return rm(first);
+    } else if (command == "in") {
+      return in(words[1]);
+    } else if (command == "set") {
+      return set_mon({words.begin() + 1, words.size() - 1});
+    }
+
+    log(err, "sides: Invalid command.");
+    return false;
+  }
+
+  std::string prompt_data{};
+
+  const char *prompt() noexcept {
+
+    prompt_data = "Sides";
+
+    if (loc.key.has_value()) {
+      prompt_data += "/";
+      prompt_data += loc.key.value();
+      if (loc.slot.has_value()) {
+        prompt_data += "/";
+        prompt_data += std::to_string(static_cast<size_t>(loc.slot.value()));
+      }
+    }
+    prompt_data += " $ ";
+    return prompt_data.data();
+  }
+};
+
+struct Games {
+
+  Games(std::ostream *out, std::ostream *err) : out{out}, err{err} {}
+
+  std::ostream *out;
+  std::ostream *err;
+
+  struct Game {
+    // std::mutex mutex;
+    struct State {
+      // std::mutex mutex;
+    };
+
+    std::vector<State> states{};
+  };
+
+  std::map<std::string, Game> games;
+
+  bool handle_command(const auto &words) { return false; }
+};
+
+struct Threads {
+  struct Thread {
+    std::thread thread;
+    std::optional<std::string> locked_key;
+    std::optional<size_t> locked_index;
+    std::string name;
+
+    Thread(Thread &&) = default;
+    Thread(const Thread &) = delete;
+  };
+  std::map<size_t, Thread> threads;
+
+  bool kill(size_t key) {}
 };
 
 struct Program {
+
   std::ostream *out;
   std::ostream *err;
 
   Sides sides;
+  Games games;
+  Threads threads;
 
   enum class Location {
     Sides,
     Games,
+    // unused
+    Threads,
+    Models, // ovo_dicts
   };
-
   Location loc;
 
-  Program (std::ostream *out, std::ostream *err)  : sides{out, err} {}
+  Program(std::ostream *out, std::ostream *err)
+      : sides{out, err}, games{out, err}, loc{} {}
 
-  const char* prompt () const noexcept {
+  void set_loc(Location l) { loc = l; }
+
+  const char *prompt() noexcept {
     static const char s[]{"Sides$ "};
     static const char g[]{"Games$ "};
+    static const char t[]{"Threads$ "};
+    static const char m[]{"Models$ "};
+
     switch (loc) {
-      case Location::Sides:
-      return s;
-      case Location::Games:
+    case Location::Sides:
+      return sides.prompt();
+    case Location::Games:
       return g;
+    case Location::Threads:
+      return t;
+    case Location::Models:
+      return m;
+    default:
+      return nullptr;
     }
   }
 
-  void goto_sides() noexcept {
-    loc = Location::Sides;
-  }
+  bool handle_command(const auto &words) {
+    const auto &command = words[0];
 
-  void goto_games() noexcept {
-    loc = Location::Games;
+    if (command == "sides") {
+      loc = Location::Sides;
+      return true;
+    } else if (command == "games") {
+      loc = Location::Games;
+      return true;
+    } else if (command == "clear") {
+      std::system("clear");
+      return true;
+    }
+    switch (loc) {
+    case Location::Sides:
+      return sides.handle_command(words);
+    case Location::Games:
+      return games.handle_command(words);
+    default:
+      return false;
+    }
   }
-
 };
-
-// using Node =
-//     Tree::Node<Exp3::JointBanditData<.01f, false>, std::array<uint8_t, 16>>;
-
-// // return bool tells you if the command succeeded. in particular, false means
-// // Program was not mutated
-// struct Program {
-// private:
-//   // std::ostream out{std::cout};
-//   // std::ostream err{std::cerr};
-
-//   Eval::OVODict one_versus_one_tables;
-
-//   using Sets = std::map<std::string, SampleTeams::Set>;
-//   using Teams = std::map<std::string, std::array<SampleTeams::Set, 6>>;
-
-//   // any decision point in the battle, along with search data
-//   struct State {
-//     MonteCarlo::Input search_input;
-//     struct SearchData {
-//       std::unique_ptr<Node> node{std::make_unique<Node>()};
-//       using Output = MCTS::Output;
-//       Output output;
-//       std::vector<Output> component_outputs;
-//     };
-//     std::array<SearchData, 2> search_data;
-
-//     pkmn_choice c1;
-//     pkmn_choice c2;
-
-//     State() = default;
-//     State(State &&) = default;
-//   };
-
-//   struct Game {
-//     std::vector<State> states;
-//     Eval::Model eval;
-
-//     Game(const auto p1, const auto p2, const Eval::OVODict &ovo_dict,
-//          auto seed = 79283457290384)
-//         : states{}, eval{seed, Eval::CachedEval{p1, p2, ovo_dict}} {}
-
-//     Game() = default;
-//     Game(Game &&) = default;
-//   };
-
-//   using Games = std::map<std::string, Game>;
-
-//   Sets sets;
-//   Teams teams;
-//   Games games;
-
-//   prng device;
-//   size_t set_counter;
-//   size_t team_counter;
-//   size_t game_counter;
-
-//   struct Worker {
-//     // std::thread thread;
-//   };
-//   std::map<size_t, Worker> workers;
-//   Worker *get_worker() {
-//     // for (auto &[key, worker] : workers) {
-//     //   if (!worker.thread.joinable()) {
-//     //     return &worker;
-//     //   }
-//     // }
-//     return nullptr;
-//   }
-
-//   // Determines what commands are offered and what is printed
-//   struct InterfaceFocus {
-//     std::optional<std::string> game_key;
-//     std::optional<size_t> state_index;
-//     std::optional<size_t> tree_index;
-//     std::optional<size_t> output_index;
-//   };
-//   InterfaceFocus loc;
-
-// public:
-//   Program() = default;
-
-//   bool load_tables(std::filesystem::path path) {
-//     return one_versus_one_tables.load(path);
-//   }
-//   bool load_teams(std::filesystem::path path) { return false; }
-//   bool save_tables(std::filesystem::path path) {
-//     return one_versus_one_tables.save(path);
-//   }
-//   bool save_teams(std::filesystem::path path) const { return false; }
-
-//   bool add_set(std::string string) { return false; }
-//   bool add_team(std::string string) { return false; }
-//   bool delete_set(std::string string) { return false; }
-//   bool delete_team(std::string string) { return false; }
-
-//   bool create_game(std::string team1, std::string team2) { return false; }
-//   bool delete_game(std::string index) { return false; }
-
-//   bool search(auto iterations) {
-//     if (depth() < 3) {
-//       return false;
-//     }
-//     try {
-//       auto &search_data = data();
-//       MCTS search{};
-//       const auto output = search.run(iterations, search_data.node,
-//                                      state().search_input, game().eval);
-//     } catch (std::exception &e) {
-//       std::cerr << e.what() << std::endl;
-//       return false;
-//     }
-//     return true;
-//   }
-//   bool c1() {
-//     if (depth() < 2) {
-//       return false;
-//     }
-//     return true;
-//   }
-//   bool c2() {
-//     if (depth() < 2) {
-//       return false;
-//     }
-//     return true;
-//   }
-//   bool update(auto c1, auto c2) {
-//     if (depth() < 2) {
-//       return false;
-//     }
-//     return true;
-//   }
-
-//   bool clone() {
-//     if (depth() < 2) {
-//       return false;
-//     }
-
-//     return true;
-//   }
-//   bool trunc() {
-//     if (depth() < 2) {
-//       return false;
-//     }
-//     auto &g = game();
-//     g.states.resize(loc.state_index.value() + 1);
-//     return true;
-//   }
-//   // User Interface
-
-//   bool out() { return false; }
-//   bool in() { return false; }
-
-//   void print_loc() const {
-//     std::stringstream sstream{};
-//     switch (depth()) {
-//     case 4:
-//       sstream << "Output: " << loc.tree_index.value() << ' ';
-//     case 3:
-//       sstream << "Node: " << loc.tree_index.value() << ' ';
-//     case 2:
-//       sstream << "State: " << loc.tree_index.value() << ' ';
-//     case 1:
-//       sstream << "Game: " << loc.tree_index.value() << ' ';
-//       break;
-//     default:
-//       sstream << "No game in focus. " << games.size() << " games in memory.";
-//     }
-//     std::cout << sstream.str() << std::endl;
-//   }
-
-//   void print_help() const {}
-
-// private:
-//   void clone_game() {
-//     Game g{};
-//     const auto &h = game();
-//     const auto n = h.states.size();
-//     g.states.resize(n);
-//     for (auto i = 0; i < n; ++i) {
-//       auto &s = g.states[i];
-//       const auto &t = h.states[i];
-
-//       s.search_input = t.search_input;
-//       s.c1 = t.c1;
-//       s.c2 = t.c2;
-//     }
-//     auto c = ++game_counter;
-//     while (games.contains(std::to_string(c))) {
-//       c = ++game_counter;
-//     }
-//   }
-
-//   size_t depth() const {
-//     if (loc.output_index.has_value()) {
-//       return 4;
-//     }
-//     if (loc.tree_index.has_value()) {
-//       return 3;
-//     }
-//     if (loc.state_index.has_value()) {
-//       return 2;
-//     }
-//     if (loc.game_key.has_value()) {
-//       return 1;
-//     }
-//     return 0;
-//   }
-
-//   Game &game() { return games.at(loc.game_key.value()); }
-
-//   State &state() { return game().states.at(loc.state_index.value()); }
-
-//   State::SearchData &data() {
-//     return State().search_data.at(loc.output_index.value());
-//   }
-// };
