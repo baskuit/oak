@@ -68,58 +68,12 @@ public:
     }
   }
 
-  bool set(const std::span<const std::string> words) noexcept;
   bool hp(const std::string);
   bool status(const std::string);
-
-  bool set(const std::span<const std::string> words) const noexcept {
-    if (depth() != 2) {
-      return false;
-    }
-
-    Data::Species species{};
-    Data::Moves move{};
-    const auto parse = [&species, &move](std::string word) {
-      try {
-
-      } catch (...) {
-      }
-    };
-
-    for (const auto &word : words) {
-      parse(word);
-    }
-
-    if (species == Data::Species::None) {
-      return false;
-    }
-    return true;
-  }
-
-  bool hp(const std::string word) { return false; }
-
-  bool status(const std::string word) { return false; }
+  bool set(const std::span<const std::string> words) noexcept;
 
 private:
-  void print() noexcept {
-    const auto d = depth();
-    switch (d) {
-    case 0:
-      log(data.sides.size(), " sides:");
-      for (const auto &[key, value] : data.sides) {
-        log(key);
-      }
-      return;
-    case 1:
-      log("TODO print side");
-      return;
-    case 2:
-      log("TODO print slot/active");
-      return;
-    default:
-      return;
-    }
-  }
+  void print() const noexcept;
 
   size_t depth() const noexcept {
     if (mgmt.cli_key.has_value()) {

@@ -21,11 +21,11 @@ public:
   virtual bool save(std::filesystem::path) noexcept = 0;
   virtual bool load(std::filesystem::path) noexcept = 0;
 
-  template <typename... Args> void log(const Args &...messages) {
+  template <typename... Args> void log(const Args &...messages) const {
     ((*mOut << messages << " "), ...) << std::endl;
   }
 
-  template <typename... Args> void err(const Args &...messages) {
+  template <typename... Args> void err(const Args &...messages) const {
     ((*mErr << messages << " "), ...) << std::endl;
   }
 };
