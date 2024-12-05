@@ -2,7 +2,10 @@
 
 #include <data/types.h>
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
+#include <functional>
 
 namespace Data {
 
@@ -1781,5 +1784,68 @@ constexpr auto get_move_data(const auto move) {
 constexpr uint8_t get_max_pp(const auto move) {
   return std::min(PP[static_cast<uint8_t>(move) - 1] / 5 * 8, 63);
 }
+
+namespace Detail {
+template <typename T, size_t n>
+  requires(std::is_enum_v<T>)
+class OrderedArrayBasedSet {
+public:
+  std::array<T, n> _data;
+
+public:
+  void sort() noexcept {
+    std::sort(_data.begin(), _data.end(), std::greater<T>());
+  }
+
+  // OrderedArrayBasedSet& operator=(const OrderedArrayBasedSet&) = default;
+  bool operator==(const OrderedArrayBasedSet &) const noexcept = default;
+
+  bool operator<(const OrderedArrayBasedSet &other) const noexcept {
+    return _data < other._data;
+  }
+
+  bool insert(const T &val) noexcept {
+    auto free_index = -1;
+    bool is_in = false;
+    for (auto i = 0; i < n; ++i) {
+      if (_data[i] == val) {
+        return false;
+      }
+      if (_data[i] == T{0}) {
+        free_index = i;
+      }
+    }
+    if (free_index >= 0) {
+      _data[free_index] = val;
+      return true;
+    }
+    return false;
+  }
+
+  bool contains(const OrderedArrayBasedSet &other) const noexcept {
+    int i = 0;
+    for (int other_i = 0; other_i < 4; ++other_i) {
+      const auto other_move = other._data[other_i];
+      if (other_move == T{0}) {
+        break;
+      }
+      while (true) {
+        if (other_move == _data[i]) {
+          ++i;
+          break;
+        } else {
+        }
+        if ((i >= 4) || (other_move > _data[i])) {
+          return false;
+        }
+        ++i;
+      }
+    }
+    return true;
+  }
+};
+}; // namespace Detail
+
+using OrderedMoveSet = Detail::OrderedArrayBasedSet<Moves, 4>;
 
 } // namespace Data
