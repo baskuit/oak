@@ -5,8 +5,8 @@
 
 #include <process.h>
 
-#include <optional>
 #include <map>
+#include <optional>
 #include <span>
 #include <sstream>
 
@@ -53,12 +53,52 @@ public:
   bool add(const std::string key) noexcept;
   bool rm(const std::string key) noexcept;
 
-  bool in(const std::string l) noexcept;
-  bool out() noexcept;
+  bool in(const std::string l) noexcept {}
+  bool out() noexcept {
+    if (mgmt.cli_slot.has_value()) {
+      mgmt.cli_slot = std::nullopt;
+      return true;
+    } else {
+      if (mgmt.cli_key.has_value()) {
+        mgmt.cli_key = std::nullopt;
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
 
   bool set(const std::span<const std::string> words) noexcept;
   bool hp(const std::string);
   bool status(const std::string);
+
+  bool set(const std::span<const std::string> words) const noexcept {
+    if (depth() != 2) {
+      return false;
+    }
+
+    Data::Species species{};
+    Data::Moves move{};
+    const auto parse = [&species, &move](std::string word) {
+      try {
+
+      } catch (...) {
+      }
+    };
+
+    for (const auto &word : words) {
+      parse(word);
+    }
+
+    if (species == Data::Species::None) {
+      return false;
+    }
+    return true;
+  }
+
+  bool hp(const std::string word) { return false; }
+
+  bool status(const std::string word) { return false; }
 
 private:
   void print() noexcept {

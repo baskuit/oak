@@ -5,10 +5,10 @@
 
 #include <process.h>
 
-#include <optional>
 #include <map>
-#include <span>
 #include <mutex>
+#include <optional>
+#include <span>
 #include <sstream>
 
 namespace Process {
@@ -16,24 +16,28 @@ namespace Process {
 namespace Games {
 
 struct BattleInfo {
-// battle
-// result
-// options?
+  // battle
+  // result
+  // options?
 };
 
 struct History {
 
-    std::mutex mutex;
-
+  std::mutex mutex;
+  std::vector<size_t> vec;
 };
 
 struct ManagedData {
-  std::map<std::string, History> sides;
+  std::map<std::string, History> histories;
 };
 
 struct ManagerData {
   std::optional<std::string> cli_key;
-  std::optional<size_t> cli_slot;
+  std::optional<size_t> cli_index;
+  std::optional<size_t> cli_node;
+  std::optional<size_t> cli_search;
+
+  std::mutex mutex{};
 };
 
 class Program : public ProgramBase<true, true> {
@@ -51,6 +55,17 @@ public:
 
   bool save(std::filesystem::path) noexcept override;
   bool load(std::filesystem::path) noexcept override;
+
+  bool create(const std::string key, const auto p1, const auto p2) {
+    std::unique_lock lock{mgmt.mutex};
+    if (data.histories.contains(key)) {
+      err("add: '", key, "' already present.");
+      return false;
+    }
+    data.histories[key] = {};
+    return true;
+  }
 };
-}
-}
+
+} // namespace Games
+} // namespace Process

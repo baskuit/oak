@@ -19,12 +19,8 @@ bool Program::handle_command(
   return false;
 }
 
-bool Program::save(std::filesystem::path path) noexcept {
-  return false;
-}
-bool Program::load(std::filesystem::path path) noexcept {
-  return false;
-}
+bool Program::save(std::filesystem::path path) noexcept { return false; }
+bool Program::load(std::filesystem::path path) noexcept { return false; }
 
-}
-}
+} // namespace Games
+} // namespace Process

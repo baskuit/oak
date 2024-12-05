@@ -1,10 +1,10 @@
+#include <games.h>
 #include <process.h>
 #include <sides.h>
-#include <games.h>
 
 #include <cstdlib>
-#include <iostream>
 #include <getopt.h>
+#include <iostream>
 
 #include <readline/history.h>
 #include <readline/readline.h>
