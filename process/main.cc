@@ -1,3 +1,6 @@
+#include <process.h>
+#include <sides.h>
+
 #include <cstdlib>
 #include <getopt.h>
 
@@ -5,6 +8,49 @@
 #include <readline/readline.h>
 
 #include <cli.h>
+
+namespace Process {
+
+struct ManagementData {
+  enum class Focus {
+    S,
+    G,
+  };
+};
+
+class Program : public ProgramBase<false, false> {
+  using Base = ProgramBase<false, false>;
+
+  Process::Sides::Program sides_process;
+  Process::Sides::Program games_process;
+
+  ManagementData::Focus focus{};
+
+public:
+  Program(std::ostream *out, std::ostream *err)
+      : Base{out, err}, sides_process{out, err}, games_process{out, err} {}
+
+  std::string prompt() const noexcept {
+    switch (focus) {
+    case ManagementData::Focus::S:
+      return sides_process.prompt();
+    case ManagementData::Focus::G:
+      return games_process.prompt();
+    default:
+      return " $ ";
+    }
+  }
+
+  bool handle_command(const std::span<const std::string>) noexcept {
+    return false;
+  }
+
+  bool save(std::filesystem::path) noexcept { return false; }
+
+  bool load(std::filesystem::path) noexcept { return false; }
+};
+
+} // namespace Process
 
 bool handle_commands(const std::vector<std::string> words, Program &program) {
 
@@ -27,10 +73,10 @@ std::string trim(const std::string &str) {
 }
 
 int loop(int argc, char *argv[]) {
-  Program program{&std::cout, &std::cerr};
+  Process::Program program{&std::cout, &std::cerr};
 
   while (const auto input =
-             std::unique_ptr<const char>(readline(program.prompt()))) {
+             std::unique_ptr<const char>(readline(program.prompt().data()))) {
 
     std::vector<std::string> commands{};
     std::stringstream ss{input.get()};
@@ -51,7 +97,8 @@ int loop(int argc, char *argv[]) {
 
       if (!words.empty()) {
         try {
-          commands_succeeded &= handle_commands(words, program);
+          commands_succeeded &=
+              program.handle_command({words.data(), words.size()});
         } catch (const std::exception &e) {
           std::cerr << "Uncaught exception in handle_commands: " << e.what()
                     << std::endl;

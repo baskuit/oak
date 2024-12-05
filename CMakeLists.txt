@@ -34,9 +34,10 @@ add_dependencies(benchmark-eval build_chance_release)
 target_include_directories(benchmark-eval PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(benchmark-eval PRIVATE libpkmn_chance)
 
-add_executable(cli src/cli.cc)
+add_executable(cli process/main.cc)
 add_dependencies(cli build_chance_release)
 target_include_directories(cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/process)
 target_link_libraries(cli PRIVATE libpkmn_chance readline)
 
 add_executable(randbat src/randbat.cc)
