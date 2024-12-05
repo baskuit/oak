@@ -270,11 +270,11 @@ struct Durations {
   }
 };
 
-Durations &ref(pkmn_gen1_chance_durations &durations) {
+static Durations &ref(pkmn_gen1_chance_durations &durations) {
   return *std::bit_cast<Durations *>(&durations);
 }
 
-const Durations &ref(const pkmn_gen1_chance_durations &durations) {
+static const Durations &ref(const pkmn_gen1_chance_durations &durations) {
   return *std::bit_cast<const Durations *>(&durations);
 }
 

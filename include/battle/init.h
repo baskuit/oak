@@ -206,7 +206,7 @@ pkmn_result update(pkmn_gen1_battle &battle, const auto c1, const auto c2,
                                  &options);
 }
 
-auto choices(const pkmn_gen1_battle &battle, const pkmn_result result)
+static auto choices(const pkmn_gen1_battle &battle, const pkmn_result result)
     -> std::pair<std::vector<pkmn_choice>, std::vector<pkmn_choice>> {
   std::vector<pkmn_choice> p1_choices;
   std::vector<pkmn_choice> p2_choices;
@@ -223,7 +223,7 @@ auto choices(const pkmn_gen1_battle &battle, const pkmn_result result)
   return {p1_choices, p2_choices};
 }
 
-auto score(const pkmn_result result) {
+static auto score(const pkmn_result result) {
   switch (pkmn_result_type(result)) {
   case PKMN_RESULT_NONE: {
     return .5;

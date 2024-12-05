@@ -23,7 +23,7 @@
 #include <type_traits>
 #include <vector>
 
-const auto sigmoid(float x) { return 1 / (1 + std::exp(-x)); }
+static const auto sigmoid(float x) { return 1 / (1 + std::exp(-x)); }
 
 namespace Eval {
 

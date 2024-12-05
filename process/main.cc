@@ -7,8 +7,6 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 
-#include <cli.h>
-
 namespace Process {
 
 struct ManagementData {
@@ -41,8 +39,28 @@ public:
     }
   }
 
-  bool handle_command(const std::span<const std::string>) noexcept {
-    return false;
+  bool handle_command(const std::span<const std::string> words) noexcept {
+    if (words.empty()) {
+      return false;
+    }
+
+    const auto &command = words.front();
+    if (command == "sides") {
+      focus = ManagementData::Focus::S;
+      return true;
+    } else if (command == "games") {
+      focus = ManagementData::Focus::G;
+      return true;
+    }
+    switch (focus) {
+    case ManagementData::Focus::S:
+      return sides_process.handle_command(words);
+    case ManagementData::Focus::G:
+      return games_process.handle_command(words);
+    default:
+      err("Invalid focus.");
+      return false;
+    }
   }
 
   bool save(std::filesystem::path) noexcept { return false; }
@@ -51,18 +69,6 @@ public:
 };
 
 } // namespace Process
-
-bool handle_commands(const std::vector<std::string> words, Program &program) {
-
-  const auto &command = words[0];
-  const auto n = words.size();
-
-  if (n == 0) {
-    return false;
-  }
-
-  return program.handle_command(words);
-}
 
 std::string trim(const std::string &str) {
   auto start = str.find_first_not_of(" ");
@@ -73,6 +79,7 @@ std::string trim(const std::string &str) {
 }
 
 int loop(int argc, char *argv[]) {
+
   Process::Program program{&std::cout, &std::cerr};
 
   while (const auto input =
@@ -95,20 +102,21 @@ int loop(int argc, char *argv[]) {
         words.push_back(word);
       }
 
+      bool command_succeeded;
+
       if (!words.empty()) {
         try {
-          commands_succeeded &=
+          command_succeeded =
               program.handle_command({words.data(), words.size()});
+          commands_succeeded &= command_succeeded;
         } catch (const std::exception &e) {
           std::cerr << "Uncaught exception in handle_commands: " << e.what()
                     << std::endl;
           commands_succeeded = false;
         }
+      } else {
+        // no error message, just re prompt
       }
-    }
-
-    if (!commands_succeeded) {
-      std::cerr << "Error: 1 or more commands failed" << std::endl;
     }
 
     if (input.get()) {

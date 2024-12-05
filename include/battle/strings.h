@@ -19,7 +19,6 @@
 
 namespace Strings {
 
-// Checks that lower cases match up to the shorter string
 bool match(const auto &A, const auto &B) {
   return std::equal(
       A.begin(), A.begin() + std::min(A.size(), B.size()), B.begin(), B.end(),
@@ -32,7 +31,13 @@ auto find_unique(const auto &container, const auto &value) {
   if (it != container.end()) {
     if (auto other = std::find_if(it + 1, container.end(), matches);
         other != container.end()) {
-      return container.end(); // return end if not unique
+      if (it->size() == value.size()) {
+        return it;
+      } else if (other->size() == value.size()) {
+        return other;
+      } else {
+        return container.end(); // return end if not unique
+      }
     }
   }
   return it;
@@ -75,7 +80,7 @@ std::string status(const auto status) {
   };
 }
 
-std::string pokemon_to_string(const uint8_t *const data) {
+static std::string pokemon_to_string(const uint8_t *const data) {
   std::stringstream sstream{};
   sstream << Names::species_string(data[21]);
   if (data[23] != 100) {
@@ -88,52 +93,49 @@ std::string pokemon_to_string(const uint8_t *const data) {
               << (int)data[2 * m + 11] << " ";
     }
   }
-
-  sstream.flush();
   return sstream.str();
 }
 
-std::string battle_to_string(const pkmn_gen1_battle &battle) {
-  std::stringstream sstream{};
+static std::string battle_to_string(const pkmn_gen1_battle &battle) {
+  std::stringstream ss{};
 
   const auto &b = View::ref(battle);
 
   for (auto s = 0; s < 2; ++s) {
     const auto &side = b.side(s);
 
-    for (auto slot = 0; slot < 6; ++slot) {
-      auto i = side.order()[slot] - 1;
+    for (auto i = 0; i < 6; ++i) {
+      const auto slot = side.order()[i] - 1;
+      auto &pokemon = side.pokemon(slot);
 
-      auto &p = side.pokemon(i);
-
-      if (slot == 0) {
+      if (i == 0) {
         // pass for now
       }
 
-      sstream << Names::species_string(p.species()) << ": ";
-      const auto hp = p.hp();
+      ss << Names::species_string(pokemon.species()) << ": ";
+      const auto hp = pokemon.hp();
       const bool ko = (hp == 0);
       if (!ko) {
-        sstream << p.percent() << "% ";
+        ss << pokemon.percent() << "% ";
       } else {
-        sstream << "KO " << std::endl;
+        ss << "KO " << std::endl;
         continue;
       }
-      const auto st = p.status();
+      const auto st = pokemon.status();
       if (st != Data::Status::None) {
-        sstream << status(st) << ' ';
+        ss << status(st) << ' ';
       }
       for (auto m = 0; m < 4; ++m) {
-        sstream << Names::move_string(p.moves()[m].id) << ' ';
+        ss << Names::move_string(pokemon.moves()[m].id) << ' ';
       }
-      sstream << std::endl;
+      ss << std::endl;
     }
-    sstream << std::endl;
+    ss << std::endl;
   }
-  return sstream.str();
+  return ss.str();
 }
 
-Data::Species string_to_species(const std::string &str) {
+static Data::Species string_to_species(const std::string &str) {
   const int index = unique_index(Names::SPECIES_STRING, str);
   if (index < 0) {
     throw std::runtime_error{"Could not match string to Species"};
@@ -143,7 +145,7 @@ Data::Species string_to_species(const std::string &str) {
   }
 }
 
-Data::Moves string_to_move(const std::string &str) {
+static Data::Moves string_to_move(const std::string &str) {
   const int index = unique_index(Names::MOVE_STRING, str);
   if (index < 0) {
     throw std::runtime_error{"Could not match string to Move"};

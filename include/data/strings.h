@@ -100,26 +100,24 @@ constexpr std::string species_string(const auto species) {
 
 }; // namespace Names
 
-void print_moves(const uint8_t *pokemon) {
+static void print_moves(const uint8_t *pokemon) {
   for (int m = 10; m < 18; m += 2) {
     std::cout << Names::MOVE_STRING[pokemon[m]] << std::endl;
   }
 }
 
-void print_species(const uint8_t *pokemon) {
+static void print_species(const uint8_t *pokemon) {
   std::cout << Names::SPECIES_STRING[pokemon[21]] << std::endl;
 }
 
-constexpr const uint8_t *get_pokemon_from_slot(const uint8_t *side,
-                                               int slot = 1) {
+static constexpr const uint8_t *get_pokemon_from_slot(const uint8_t *side,
+                                                      int slot = 1) {
   const auto index = side[175 + slot] - 1;
   return side + 24 * index;
 }
 
-constexpr const uint8_t *order_bits(const uint8_t *side) { return side + 176; }
-
-constexpr std::string side_choice_string(const uint8_t *side,
-                                         pkmn_choice choice) {
+static constexpr std::string side_choice_string(const uint8_t *side,
+                                                pkmn_choice choice) {
   const auto choice_type = choice & 3;
   const auto choice_data = choice >> 2;
   switch (choice_type) {
@@ -141,7 +139,7 @@ constexpr std::string side_choice_string(const uint8_t *side,
   }
 }
 
-std::string set_string(auto set) {
+static std::string set_string(auto set) {
   std::stringstream stream{};
   stream << Names::species_string(set.species) << " { ";
   for (const auto move : set.moves) {
@@ -152,7 +150,7 @@ std::string set_string(auto set) {
   return stream.str();
 }
 
-constexpr std::string buffer_to_string(const uint8_t *const buf, int n) {
+static constexpr std::string buffer_to_string(const uint8_t *const buf, int n) {
   std::string result;
   for (int i = 0; i < n; ++i) {
     if (i > 0) {

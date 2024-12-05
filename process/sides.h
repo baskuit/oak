@@ -1,6 +1,6 @@
 #pragma once
 
-#include <data/sample-teams.h>
+#include <data/moves.h>
 
 #include <battle/init.h>
 #include <battle/strings.h>
@@ -29,7 +29,7 @@ namespace Sides {
 
 struct Set {
   Data::Species species;
-  std::array<Data::Moves, 4> moves;
+  Data::OrderedMoveSet moves;
 };
 
 struct SideConfig {
@@ -43,6 +43,7 @@ struct ManagedData {
 
 struct ManagerData {
   std::optional<std::string> cli_key;
+  std::optional<size_t> cli_slot;
 };
 
 class Program : public ProgramBase<false, true> {
@@ -53,11 +54,10 @@ public:
   ManagedData data;
   ManagerData mgmt;
 
-  std::string prompt() const noexcept override { return ""; }
+  std::string prompt() const noexcept override;
+
   bool
-  handle_command(const std::span<const std::string> words) noexcept override {
-    return false;
-  }
+  handle_command(const std::span<const std::string> words) noexcept override;
 
   bool save(std::filesystem::path) noexcept override { return false; }
   bool load(std::filesystem::path) noexcept override { return false; }
