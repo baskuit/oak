@@ -1,7 +1,9 @@
 #include <process.h>
 #include <sides.h>
+#include <games.h>
 
 #include <cstdlib>
+#include <iostream>
 #include <getopt.h>
 
 #include <readline/history.h>
@@ -20,7 +22,7 @@ class Program : public ProgramBase<false, false> {
   using Base = ProgramBase<false, false>;
 
   Process::Sides::Program sides_process;
-  Process::Sides::Program games_process;
+  Process::Games::Program games_process;
 
   ManagementData::Focus focus{};
 

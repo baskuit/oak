@@ -1,27 +1,14 @@
 #pragma once
 
 #include <data/moves.h>
-
-#include <battle/init.h>
-#include <battle/strings.h>
-
-#include <pi/eval.h>
-#include <pi/mcts.h>
-#include <pi/tree.h>
+#include <data/species.h>
 
 #include <process.h>
 
-#include <pkmn.h>
-
-#include <iostream>
-#include <map>
-#include <memory>
 #include <optional>
+#include <map>
 #include <span>
 #include <sstream>
-#include <thread>
-#include <unordered_map>
-#include <vector>
 
 namespace Process {
 
@@ -30,6 +17,7 @@ namespace Sides {
 struct Set {
   Data::Species species;
   Data::OrderedMoveSet moves;
+  uint8_t dur_sleep;
 };
 
 struct SideConfig {
@@ -59,8 +47,51 @@ public:
   bool
   handle_command(const std::span<const std::string> words) noexcept override;
 
-  bool save(std::filesystem::path) noexcept override { return false; }
-  bool load(std::filesystem::path) noexcept override { return false; }
+  bool save(std::filesystem::path) noexcept override;
+  bool load(std::filesystem::path) noexcept override;
+
+  bool add(const std::string key) noexcept;
+  bool rm(const std::string key) noexcept;
+
+  bool in(const std::string l) noexcept;
+  bool out() noexcept;
+
+  bool set(const std::span<const std::string> words) noexcept;
+  bool hp(const std::string);
+  bool status(const std::string);
+
+private:
+  void print() noexcept {
+    const auto d = depth();
+    switch (d) {
+    case 0:
+      log(data.sides.size(), " sides:");
+      for (const auto &[key, value] : data.sides) {
+        log(key);
+      }
+      return;
+    case 1:
+      log("TODO print side");
+      return;
+    case 2:
+      log("TODO print slot/active");
+      return;
+    default:
+      return;
+    }
+  }
+
+  size_t depth() const noexcept {
+    if (mgmt.cli_key.has_value()) {
+      if (mgmt.cli_slot.has_value()) {
+        return 2;
+      } else {
+        return 1;
+      }
+    } else {
+      return 0;
+    }
+  }
 };
 
 } // namespace Sides
