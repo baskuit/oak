@@ -1,21 +1,34 @@
 #include <games.h>
 
+#include <sides.h>
+
 namespace Process {
 namespace Games {
+
+// This is probably bad, but I still think of the return type as the actual
+// initialization type
+auto convert_config(const Sides::SideConfig config) {
+  std::array<SampleTeams::Set, 6> side;
+  for (auto i = 0; i < 6; ++i) {
+    side[i].species = config.party[i].species;
+    for (auto j = 0; j < 4; ++j) {
+      side[i].moves[j] = config.party[i].moves._data[j];
+    }
+  }
+  return side;
+}
 
 std::string Program::prompt() const noexcept {
   std::string r{};
   switch (depth()) {
   case 4:
-    r = "/4" + r;
+    r = "/" + std::to_string(mgmt.cli_search.value()) + r;
   case 3:
-    r = "/3" + r;
+    r = "/" + std::to_string(mgmt.cli_node.value()) + r;
   case 2:
-    r = "/2" + r;
+    r = "/" + std::to_string(mgmt.cli_state.value()) + r;
   case 1:
-    r = "/1" + r;
-  case 0:
-    r = "/0" + r;
+    r = "/" + mgmt.cli_key.value() + r;
   default:
     r = "games" + r;
     r += "$ ";
@@ -45,11 +58,12 @@ void Program::print() const noexcept {
   case 0:
     log(data.histories.size(), " games:");
     for (const auto &[key, value] : data.histories) {
-      log(key);
+      log_(key, '\t');
     }
+    log("");
     return;
   case 1:
-    log("TODO print game");
+    log(data.histories.at(mgmt.cli_key.value()).histories.size(), " states.");
     return;
   case 2:
     log("TODO print state");
@@ -60,6 +74,123 @@ void Program::print() const noexcept {
   case 4:
     log("TODO print output");
     return;
+  }
+}
+
+bool Program::cd(const std::span<const std::string> words) noexcept {
+  if (words.empty()) {
+    err("cd: Missing args.");
+    return false;
+  }
+
+  const auto handle_word = [this](std::string s) {
+    if (s == "..") {
+      return up();
+    }
+
+    const auto d = depth();
+
+    if (d == 0) {
+      if (data.histories.contains(s)) {
+        mgmt.cli_key = s;
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    size_t slot;
+    try {
+      slot = std::stoi(s);
+    } catch (...) {
+      return false;
+    }
+
+    std::optional<size_t> *datum;
+    switch (d) {
+    case 3: {
+      datum = &mgmt.cli_search;
+    }
+    case 2: {
+      datum = &mgmt.cli_node;
+      break;
+    }
+    case 1: {
+      datum = &mgmt.cli_state;
+      break;
+    }
+    default: { // case 4
+      return false;
+    }
+    }
+    if (slot < size()) {
+      *datum = slot;
+      return true;
+    } else {
+      return false;
+    }
+  };
+  for (const auto &p : words) {
+    if (!handle_word(p)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+size_t Program::depth() const noexcept {
+  if (mgmt.cli_search.has_value()) {
+    return 4;
+  } else {
+    if (mgmt.cli_node.has_value()) {
+      return 3;
+    } else {
+      if (mgmt.cli_state.has_value()) {
+        return 2;
+      } else {
+        if (mgmt.cli_key.has_value()) {
+          return 1;
+        } else {
+          return 0;
+        }
+      }
+    }
+  }
+}
+
+bool Program::up() noexcept {
+  if (mgmt.cli_search.has_value()) {
+    mgmt.cli_search = std::nullopt;
+    return true;
+  } else if (mgmt.cli_node.has_value()) {
+    mgmt.cli_node = std::nullopt;
+    return true;
+  } else if (mgmt.cli_state.has_value()) {
+    mgmt.cli_state = std::nullopt;
+    return true;
+  } else if (mgmt.cli_key.has_value()) {
+    mgmt.cli_key = std::nullopt;
+    return true;
+  }
+  return true;
+}
+
+size_t Program::size() const noexcept {
+  if (mgmt.cli_search.has_value()) {
+    return data.histories.at(mgmt.cli_key.value())
+        .histories.at(mgmt.cli_state.value())
+        ->output_data.at(mgmt.cli_node.value())
+        .outputs.size();
+  } else if (mgmt.cli_node.has_value()) {
+    return data.histories.at(mgmt.cli_key.value())
+        .histories.at(mgmt.cli_state.value())
+        ->node_data.size();
+  } else if (mgmt.cli_state.has_value()) {
+    return data.histories.at(mgmt.cli_key.value()).histories.size();
+  } else if (mgmt.cli_key.has_value()) {
+    return data.histories.size();
+  } else {
+    return 0;
   }
 }
 

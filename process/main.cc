@@ -2,6 +2,8 @@
 #include <process.h>
 #include <sides.h>
 
+#include <data/sample-teams.h>
+
 #include <cstdlib>
 #include <getopt.h>
 #include <iostream>
@@ -56,6 +58,14 @@ public:
     } else if (command == "clear") {
       std::system("clear");
       return true;
+    } else if (command == "help" || command == "h") {
+      if (words.size() > 1) {
+        log("Commands");
+        log("sides: Switch to Sides context; create teams and battle states.");
+        log("games: Switch to Games context; play out and analyze battles.");
+        log("clear: Clear terminal.");
+        return true;
+      }
     }
 
     switch (focus) {
@@ -72,6 +82,27 @@ public:
   bool save(std::filesystem::path) noexcept { return false; }
 
   bool load(std::filesystem::path) noexcept { return false; }
+
+  bool create_history(const std::string key, const std::string p1_key,
+                      const std::string p2_key) {
+    if (games_process.data.histories.contains(key)) {
+      err("history: key '", key, "' already present.");
+      return false;
+    }
+    const auto &sides = sides_process.data.sides;
+    if (!sides.contains(p1_key)) {
+      err("history: key '", p1_key, "' not found in sides/.");
+      return false;
+    }
+    if (!sides.contains(p2_key)) {
+      err("history: key '", p2_key, "' not found sides/.");
+      return false;
+    }
+    Sides::SideConfig p1 = sides.at(p1_key);
+    Sides::SideConfig p2 = sides.at(p2_key);
+
+    return games_process.create(key, p1, p2);
+  }
 };
 
 } // namespace Process
@@ -84,6 +115,26 @@ std::string trim(const std::string &str) {
   return str.substr(start, end - start + 1);
 }
 
+std::vector<std::vector<std::string>> parse_line(const char *data) {
+  std::stringstream ss{data};
+
+  std::vector<std::vector<std::string>> commands{};
+  for (std::string line; std::getline(ss, line, ';');) {
+    line = trim(line);
+    if (!line.empty()) {
+      std::vector<std::string> command{};
+      std::istringstream stream(line);
+      for (std::string word; stream >> word;) {
+        command.push_back(word);
+      }
+      if (!command.empty()) {
+        commands.push_back(command);
+      }
+    }
+  }
+  return commands;
+}
+
 int loop(int argc, char *argv[]) {
 
   Process::Program program{&std::cout, &std::cerr};
@@ -91,37 +142,19 @@ int loop(int argc, char *argv[]) {
   while (const auto input =
              std::unique_ptr<const char>(readline(program.prompt().data()))) {
 
-    std::vector<std::string> commands{};
-    std::stringstream ss{input.get()};
-
+    const auto commands = parse_line(input.get());
     bool commands_succeeded = true;
 
-    for (std::string line; std::getline(ss, line, ';');) {
-      line = trim(line);
-      if (line.empty())
-        continue;
-      commands.push_back(line);
-
-      std::vector<std::string> words{};
-      std::istringstream stream(line);
-      for (std::string word; stream >> word;) {
-        words.push_back(word);
-      }
-
+    for (const auto &command : commands) {
       bool command_succeeded;
-
-      if (!words.empty()) {
-        try {
-          command_succeeded =
-              program.handle_command({words.data(), words.size()});
-          commands_succeeded &= command_succeeded;
-        } catch (const std::exception &e) {
-          std::cerr << "Uncaught exception in handle_commands: " << e.what()
-                    << std::endl;
-          commands_succeeded = false;
-        }
-      } else {
-        // no error message, just re prompt
+      try {
+        command_succeeded =
+            program.handle_command({command.data(), command.size()});
+        commands_succeeded &= command_succeeded;
+      } catch (const std::exception &e) {
+        std::cerr << "Uncaught exception in handle_commands: " << e.what()
+                  << std::endl;
+        commands_succeeded = false;
       }
     }
 

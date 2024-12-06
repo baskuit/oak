@@ -17,7 +17,8 @@ namespace Sides {
 struct Set {
   Data::Species species;
   Data::OrderedMoveSet moves;
-  uint8_t dur_sleep;
+  size_t percent{100};
+  // uint8_t dur_sleep;
 };
 
 struct SideConfig {
@@ -36,8 +37,7 @@ struct ManagerData {
 
 class Program : public ProgramBase<false, true> {
 public:
-  using Base = ProgramBase<false, true>;
-  using Base::Base;
+  Program(std::ostream *out, std::ostream *err);
 
   ManagedData data;
   ManagerData mgmt;
@@ -50,55 +50,23 @@ public:
   bool save(std::filesystem::path) noexcept override;
   bool load(std::filesystem::path) noexcept override;
 
+private:
   bool add(const std::string key) noexcept;
   bool rm(const std::string key) noexcept;
 
   bool cd(const std::span<const std::string> words) noexcept;
+  bool cp(const std::span<const std::string> words) noexcept;
 
-  bool out() noexcept {
-    if (mgmt.cli_slot.has_value()) {
-      mgmt.cli_slot = std::nullopt;
-      return true;
-    } else {
-      if (mgmt.cli_key.has_value()) {
-        mgmt.cli_key = std::nullopt;
-        return true;
-      } else {
-        return false;
-      }
-    }
-  }
+  bool set(const std::span<const std::string> words) noexcept;
 
   bool hp(const std::string);
   bool status(const std::string);
-  bool set(const std::span<const std::string> words) noexcept;
 
-private:
   void print() const noexcept;
 
-  size_t depth() const noexcept {
-    if (mgmt.cli_key.has_value()) {
-      if (mgmt.cli_slot.has_value()) {
-        return 2;
-      } else {
-        return 1;
-      }
-    } else {
-      return 0;
-    }
-  }
+  size_t depth() const noexcept;
 
-  bool up() noexcept {
-    if (mgmt.cli_slot.has_value()) {
-      mgmt.cli_slot = std::nullopt;
-      return true;
-    }
-    if (mgmt.cli_key.has_value()) {
-      mgmt.cli_key = std::nullopt;
-      return true;
-    }
-    return true; // better than failing surely!
-  }
+  bool up() noexcept;
 };
 
 } // namespace Sides

@@ -4,8 +4,18 @@
 
 #include <data/strings.h>
 
+#include <battle/strings.h>
+
 namespace Process {
 namespace Sides {
+
+Program::Program(std::ostream *out, std::ostream *err)
+    : ProgramBase<false, true>{out, err} {
+  for (auto i = 0; i < 12; ++i) {
+    SideConfig config{};
+    data.sides[std::to_string(i)] = config;
+  }
+}
 
 std::string Program::prompt() const noexcept {
   std::string p{"sides"};
@@ -14,7 +24,7 @@ std::string Program::prompt() const noexcept {
   }
   if (mgmt.cli_slot.has_value()) {
     const auto slot = mgmt.cli_slot.value();
-    p += "/" + (slot == 0 ? "Active" : std::to_string(slot));
+    p += "/" + (slot == 0 ? "active" : std::to_string(slot));
   }
   p += "$ ";
   return p;
@@ -26,10 +36,12 @@ bool Program::handle_command(
     return false;
   }
   const auto &command = words.front();
-  if (command == "print" || command == "p") {
+  if (command == "print" || command == "ls") {
     print();
     return true;
   }
+
+  const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
 
   if (command == "save" || command == "load") {
 
@@ -53,23 +65,26 @@ bool Program::handle_command(
 
   } else if (command == "cd") {
 
-    return cd({words.begin() + 1, words.size() - 1});
+    return cd(tail);
+
+  } else if (command == "set") {
+
+    return set(tail);
+
+  } else if (command == "cp") {
+
+    return cp(tail);
 
   } else if (command == "add") {
 
     return add(words[1]);
 
-  } else if (command == "set") {
-
-    return set({words.begin() + 1, words.size() - 1});
-
   } else if (command == "rm") {
 
-    // return rm(words[1]);
-
+    return rm(words[1]);
   }
 
-  err("error: command '", command, "' not recognized");
+  err("sides: command '", command, "' not recognized");
   return false;
 }
 
@@ -90,37 +105,97 @@ bool Program::add(std::string key) noexcept {
   }
 }
 
+bool Program::rm(std::string key) noexcept {
+  if (!data.sides.contains(key)) {
+    err("rm: ", key, " not present.");
+    return false;
+  } else {
+    data.sides.erase(key);
+    return true;
+  }
+}
+
 bool Program::set(const std::span<const std::string> words) noexcept {
   if (depth() != 2) {
     err("set: a slot must be in focus.");
     return false;
   }
-  if (words.size()) {
+  if (words.empty()) {
     err("set: Missing args.");
     return false;
   }
 
+  Data::OrderedMoveSet move_set{};
+
   Data::Species species{};
   Data::Moves move{};
-  const auto parse = [&species, &move](std::string word) {
+  const auto parse = [&species, &move, &move_set](std::string word) {
     try {
-
+      species = Strings::string_to_species(word);
+      if (species != Data::Species::None) {
+        return true;
+      }
     } catch (...) {
     }
+    try {
+      move = Strings::string_to_move(word);
+      return move_set.insert(move);
+    } catch (...) {
+    }
+    return false;
   };
 
   for (const auto &word : words) {
-    parse(word);
+    if (!parse(word)) {
+      err("set: '", word, "' could not be matched to species/move.");
+      return false;
+    }
   }
 
   if (species == Data::Species::None) {
+    err("set: Could not parse species");
     return false;
   }
+
+  auto &pokemon =
+      data.sides.at(mgmt.cli_key.value()).party.at(mgmt.cli_slot.value() - 1);
+  pokemon.moves = move_set;
+  pokemon.species = species;
+  return true;
+}
+
+bool Program::cp(const std::span<const std::string> words) noexcept {
+  if (words.empty()) {
+    err("cp: Missing source.");
+    return false;
+  }
+  const auto source = words[0];
+  if (!data.sides.contains(source)) {
+    err("cp: Source '", source, "' not found.");
+    return false;
+  }
+
+  std::string dest;
+  if (words.size() >= 2) {
+    dest = words[1];
+    if (data.sides.contains(dest)) {
+      err("cp: Destination '", dest, "' already present.");
+      return false;
+    }
+  } else {
+    size_t i = 1;
+    do {
+      dest = source + "(" + std::to_string(i) + ")";
+      ++i;
+    } while (data.sides.contains(dest));
+  }
+
+  data.sides[dest] = data.sides[source];
   return true;
 }
 
 bool Program::cd(const std::span<const std::string> words) noexcept {
-  if (words.size()) {
+  if (words.empty()) {
     err("cd: Missing args.");
     return false;
   }
@@ -175,8 +250,9 @@ void Program::print() const noexcept {
   case 0: {
     log(data.sides.size(), " sides:");
     for (const auto &[key, value] : data.sides) {
-      log(key);
+      log_(key, '\t');
     }
+    log("");
     return;
   }
   case 1: {
@@ -195,11 +271,13 @@ void Program::print() const noexcept {
     if (slot == 0) {
       log("print: TODO Active.");
     } else {
-      const auto &pokemon = data.sides.at(mgmt.cli_key.value()).party.at(slot);
+      const auto &pokemon =
+          data.sides.at(mgmt.cli_key.value()).party.at(slot - 1);
       log_(Names::species_string(pokemon.species), " : ");
       for (const auto move : pokemon.moves._data) {
         log_(Names::move_string(move), ' ');
       }
+      log("");
     }
     return;
   }
@@ -207,6 +285,30 @@ void Program::print() const noexcept {
     return;
   }
   }
+}
+
+size_t Program::depth() const noexcept {
+  if (mgmt.cli_key.has_value()) {
+    if (mgmt.cli_slot.has_value()) {
+      return 2;
+    } else {
+      return 1;
+    }
+  } else {
+    return 0;
+  }
+}
+
+bool Program::up() noexcept {
+  if (mgmt.cli_slot.has_value()) {
+    mgmt.cli_slot = std::nullopt;
+    return true;
+  }
+  if (mgmt.cli_key.has_value()) {
+    mgmt.cli_key = std::nullopt;
+    return true;
+  }
+  return true; // better than failing surely!
 }
 
 } // namespace Sides

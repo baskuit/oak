@@ -3,6 +3,8 @@
 #include <data/moves.h>
 #include <data/species.h>
 
+#include <pi/mcts.h>
+
 #include <process.h>
 
 #include <map>
@@ -22,11 +24,9 @@ struct BattleData {
   // seed/obs?
 };
 
-struct Output {};
-
 struct SearchOutputs {
-  Output head;
-  std::vector<Output> outputs;
+  MCTS::Output head;
+  std::vector<MCTS::Output> outputs;
 };
 
 using Node = std::map<int, std::unique_ptr<int>>;
@@ -45,7 +45,7 @@ struct State {
   std::vector<std::unique_ptr<Node>> node_data;
   std::mutex mutex;
 
-  State(State &&other) : battle_data{other.battle_data}, node_data{} {}
+  // State(State &&other) : battle_data{other.battle_data}, node_data{} {}
 };
 
 struct History {
@@ -59,7 +59,7 @@ struct ManagedData {
 
 struct ManagerData {
   std::optional<std::string> cli_key;
-  std::optional<size_t> cli_index;
+  std::optional<size_t> cli_state;
   std::optional<size_t> cli_node;
   std::optional<size_t> cli_search;
   std::mutex mutex{};
@@ -84,35 +84,25 @@ public:
   bool create(const std::string key, const auto p1, const auto p2) {
     std::unique_lock lock{mgmt.mutex};
     if (data.histories.contains(key)) {
-      err("add: '", key, "' already present.");
+      err("create: '", key, "' already present.");
       return false;
     }
-    data.histories.emplace(key);
+
+    // SideInitializer p1;
+    // SideInitializer p2;
+
+    // for (const auto set : )
+
+    data.histories[key];
     return true;
   }
 
 private:
+  size_t size() const noexcept;
   void print() const noexcept;
-
-  size_t depth() const noexcept {
-    if (mgmt.cli_search.has_value()) {
-      return 4;
-    } else {
-      if (mgmt.cli_node.has_value()) {
-        return 3;
-      } else {
-        if (mgmt.cli_index.has_value()) {
-          return 2;
-        } else {
-          if (mgmt.cli_key.has_value()) {
-            return 1;
-          } else {
-            return 0;
-          }
-        }
-      }
-    }
-  }
+  bool cd(const std::span<const std::string> words) noexcept;
+  size_t depth() const noexcept;
+  bool up() noexcept;
 };
 
 } // namespace Games

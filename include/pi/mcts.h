@@ -1,22 +1,25 @@
 #pragma once
 
+#include <pkmn.h>
+
+#include <util/random.h>
+
+#include <data/durations.h>
+#include <data/offsets.h>
+#include <data/options.h>
+#include <data/strings.h>
+
+#include <battle/init.h>
+
+#include <pi/exp3.h>
+#include <pi/tree.h>
+
 #include <chrono>
 #include <concepts>
 #include <cstdint>
 #include <iostream>
 #include <type_traits>
 #include <utility>
-
-#include <data/strings.h>
-#include <pi/exp3.h>
-#include <pi/tree.h>
-#include <util/random.h>
-
-#include <pkmn.h>
-
-#include <data/durations.h>
-#include <data/offsets.h>
-#include <data/options.h>
 
 static_assert(Options::chance && Options::calc && !Options::log);
 
@@ -58,13 +61,15 @@ struct MCTS {
   std::array<std::array<float, 9>, 9> value_matrix;
 
   struct Output {
+    size_t m;
+    size_t n;
     size_t iterations;
     float total_value;
     float average_value;
-    std::vector<pkmn_choice> choices1;
-    std::vector<pkmn_choice> choices2;
-    std::vector<float> p1;
-    std::vector<float> p2;
+    std::array<pkmn_choice, 9> choices1;
+    std::array<pkmn_choice, 9> choices2;
+    std::array<float, 9> p1;
+    std::array<float, 9> p2;
     std::array<std::array<uint32_t, 9>, 9> visit_matrix;
     std::array<std::array<float, 9>, 9> value_matrix;
     std::chrono::milliseconds duration;
@@ -148,10 +153,10 @@ struct MCTS {
 
     output.average_value = output.total_value / output.iterations;
     const auto [c1, c2] = Init::choices(input.battle, input.result);
-    output.choices1 = c1;
-    output.choices2 = c2;
-    output.p1.resize(c1.size());
-    output.p2.resize(c2.size());
+    output.m = c1.size();
+    output.n = c2.size();
+    std::copy(c1.begin(), c2.end(), output.choices1.begin());
+    std::copy(c2.begin(), c2.end(), output.choices2.begin());
 
     if constexpr (Options::root_matrix) {
       for (int i = 0; i < c1.size(); ++i) {
@@ -168,9 +173,6 @@ struct MCTS {
       }
       output.visit_matrix = visit_matrix;
       output.value_matrix = value_matrix;
-      // for (const auto &row : value_matrix) {
-
-      // }
     }
 
     return output;
