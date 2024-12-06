@@ -22,18 +22,6 @@ namespace Lab {
 
 namespace Games {
 
-struct BattleData {
-  pkmn_gen1_battle battle;
-  pkmn_gen1_battle_options options;
-  pkmn_result result;
-
-  uint64_t seed;
-  size_t m;
-  size_t n;
-  std::array<pkmn_choice, 9> choices1;
-  std::array<pkmn_choice, 9> choices2;
-};
-
 struct SearchOutputs {
   MCTS::Output head;
   std::vector<MCTS::Output> tail;
@@ -43,28 +31,51 @@ using Node =
     Tree::Node<Exp3::JointBanditData<.03f, false>, std::array<uint8_t, 16>>;
 
 struct State {
+  pkmn_gen1_battle battle;
+  pkmn_gen1_battle_options options;
+  pkmn_result result;
 
-  BattleData battle_data;
+  // interim info
+  uint64_t seed;
+  pkmn_choice c1;
+  pkmn_choice c2;
+
+  size_t m;
+  size_t n;
+  std::array<pkmn_choice, 9> choices1;
+  std::array<pkmn_choice, 9> choices2;
+
   std::vector<SearchOutputs> outputs;
+};
 
+struct StateSearchData {
   std::vector<std::unique_ptr<Node>> nodes;
-  std::mutex mutex;
 };
 
-struct History {
-  std::vector<std::unique_ptr<State>> states;
-  std::mutex mutex;
-};
+using History = std::vector<State>;
+using HistorySearchData = std::vector<StateSearchData>;
 
 struct ManagedData {
-  std::map<std::string, std::unique_ptr<History>> histories;
+  std::map<std::string, std::vector<State>> history_map;
+  std::map<std::string, std::vector<StateSearchData>> search_data_map;
 };
 
 struct ManagerData {
-  std::optional<std::string> cli_key;
-  std::optional<size_t> cli_state;
-  std::optional<size_t> cli_node;
-  std::optional<size_t> cli_search;
+
+  struct Loc {
+    std::string key;
+    size_t depth;
+    std::array<size_t, 3> current;
+  };
+
+  // home = nullopt, 0, {0, 0, 0}
+  // bottom = "key", 3, {1, 1, 1}
+
+  Loc loc;
+  std::array<size_t, 3> bounds;
+
+  // thread access
+  std::map<Loc, bool> locked_map;
   std::mutex mutex{};
 };
 
@@ -92,26 +103,25 @@ private:
   bool update(pkmn_choice c1, pkmn_choice c2) noexcept;
   bool update(std::string c1, std::string c2) noexcept;
   bool rm(std::string key) noexcept;
-  size_t size() const noexcept;
   void print() const noexcept;
   bool cd(const std::span<const std::string> words) noexcept;
-  size_t depth() const noexcept;
   bool up() noexcept;
   bool next() noexcept;
   bool prev() noexcept;
   bool first() noexcept;
   bool last() noexcept;
-  std::optional<size_t> &cli_current();
 
   History &history();
   State &state();
+  SearchOutputs &search_outputs();
   Node &node();
-  MCTS::Output &outputs();
+  MCTS::Output &output();
 
   const History &history() const;
   const State &state() const;
+  const SearchOutputs &search_outputs() const;
   const Node &node() const;
-  const MCTS::Output &outputs() const;
+  const MCTS::Output &output() const;
 };
 
 } // namespace Games

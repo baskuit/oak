@@ -23,11 +23,11 @@ Program::Program(std::ostream *out, std::ostream *err)
 
 std::string Program::prompt() const noexcept {
   std::string p{"sides"};
-  if (mgmt.cli_key.has_value()) {
-    p += "/" + mgmt.cli_key.value();
+  if (mgmt.key.has_value()) {
+    p += "/" + mgmt.key.value();
   }
-  if (mgmt.cli_slot.has_value()) {
-    const auto slot = mgmt.cli_slot.value();
+  if (mgmt.slot.has_value()) {
+    const auto slot = mgmt.slot.value();
     p += "/" + (slot == 0 ? "active" : std::to_string(slot));
   }
   p += "$ ";
@@ -93,8 +93,26 @@ bool Program::handle_command(
 }
 
 bool Program::save(std::filesystem::path path) noexcept {
-  return FS::save(path, data.sides);
+  constexpr bool overwrite = true;
+  const auto mode =
+      overwrite ? std::ios::binary : std::ios::binary | std::ios::trunc;
+  std::ofstream file(path, mode);
+  if (!file.is_open()) {
+    return false;
+  }
+
+  size_t s;
+  for (const auto &[key, value] : data.sides) {
+    s = key.size();
+    file.write(std::bit_cast<const char *>(&s), sizeof(size_t));
+    file.write(std::bit_cast<const char *>(key.data()), s);
+    file.write(std::bit_cast<const char *>(&value), sizeof(Init::Config));
+  }
+
+  file.close();
+  return true;
 }
+
 bool Program::load(std::filesystem::path path) noexcept {
   return FS::load(path, data.sides);
 }
@@ -166,7 +184,7 @@ bool Program::set(const std::span<const std::string> words) noexcept {
   }
 
   auto &pokemon =
-      data.sides.at(mgmt.cli_key.value()).pokemon.at(mgmt.cli_slot.value() - 1);
+      data.sides.at(mgmt.key.value()).pokemon.at(mgmt.slot.value() - 1);
   pokemon.moves = move_set._data;
   pokemon.species = species;
   return true;
@@ -228,16 +246,16 @@ bool Program::cd(const std::span<const std::string> words) noexcept {
       return false;
     case 1:
       if (slot.has_value()) {
-        mgmt.cli_slot = slot;
+        mgmt.slot = slot;
         return true;
       }
       if (s == "active") {
-        mgmt.cli_slot = 0;
+        mgmt.slot = 0;
         return true;
       }
     case 0:
       if (data.sides.contains(s)) {
-        mgmt.cli_key = s;
+        mgmt.key = s;
         return true;
       }
     default:
@@ -264,7 +282,7 @@ void Program::print() const noexcept {
     return;
   }
   case 1: {
-    const auto &party = data.sides.at(mgmt.cli_key.value()).pokemon;
+    const auto &party = data.sides.at(mgmt.key.value()).pokemon;
     size_t i = 0;
     for (const auto &pokemon : party) {
       log_(++i, " : ", Names::species_string(pokemon.species), " : ");
@@ -276,12 +294,12 @@ void Program::print() const noexcept {
     return;
   }
   case 2: {
-    const auto slot = mgmt.cli_slot.value();
+    const auto slot = mgmt.slot.value();
     if (slot == 0) {
       log("print: TODO Active.");
     } else {
       const auto &pokemon =
-          data.sides.at(mgmt.cli_key.value()).pokemon.at(slot - 1);
+          data.sides.at(mgmt.key.value()).pokemon.at(slot - 1);
       log_(Names::species_string(pokemon.species), " : ");
       for (const auto move : pokemon.moves) {
         log_(Names::move_string(move), ' ');
@@ -297,8 +315,8 @@ void Program::print() const noexcept {
 }
 
 size_t Program::depth() const noexcept {
-  if (mgmt.cli_key.has_value()) {
-    if (mgmt.cli_slot.has_value()) {
+  if (mgmt.key.has_value()) {
+    if (mgmt.slot.has_value()) {
       return 2;
     } else {
       return 1;
@@ -309,12 +327,12 @@ size_t Program::depth() const noexcept {
 }
 
 bool Program::up() noexcept {
-  if (mgmt.cli_slot.has_value()) {
-    mgmt.cli_slot = std::nullopt;
+  if (mgmt.slot.has_value()) {
+    mgmt.slot = std::nullopt;
     return true;
   }
-  if (mgmt.cli_key.has_value()) {
-    mgmt.cli_key = std::nullopt;
+  if (mgmt.key.has_value()) {
+    mgmt.key = std::nullopt;
     return true;
   }
   return true; // better than failing surely!

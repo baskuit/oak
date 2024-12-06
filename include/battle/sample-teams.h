@@ -8,13 +8,7 @@
 
 #include <battle/init.h>
 
-namespace Init {
-struct Set;
-struct Config;
-} // namespace Init
-
 namespace SampleTeams {
-// using Init::Set;
 using Data::Moves;
 using Data::Species;
 using enum Moves;

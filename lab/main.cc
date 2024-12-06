@@ -96,7 +96,7 @@ public:
 
   bool create_history(const std::string key, const std::string p1_key,
                       const std::string p2_key, const uint64_t seed = 0) {
-    if (games_process.data.histories.contains(key)) {
+    if (games_process.data.history_map.contains(key)) {
       err("create: key '", key, "' already present.");
       return false;
     }

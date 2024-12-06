@@ -21,8 +21,8 @@ struct ManagedData {
 };
 
 struct ManagerData {
-  std::optional<std::string> cli_key;
-  std::optional<size_t> cli_slot;
+  std::optional<std::string> key;
+  std::optional<size_t> slot;
 };
 
 class Program : public ProgramBase<false, true> {

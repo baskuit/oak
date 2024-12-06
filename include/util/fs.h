@@ -7,32 +7,27 @@
 
 namespace FS {
 
-template <typename Key, typename Value, template <typename...> typename Map>
-bool save(const std::filesystem::path path, const Map<Key, Value> &map,
-          const bool overwrite = true) {
-  const auto mode =
-      overwrite ? std::ios::binary : std::ios::binary | std::ios::trunc;
-  std::ofstream file(path, mode);
-  if (!file.is_open()) {
+template <typename T, template <typename...> typename Container>
+void write_container(std::fstream &file, const Container<T> &container) {
+  uint64_t s = container.size();
+  file.write(std::bit_cast<const char *>(&s), 8);
+  for (const auto &x : container) {
+    file.write(std::bit_cast<const char *>(&x), sizeof(T));
+  }
+}
+
+template <typename T, template <typename...> typename Container>
+bool read_container(std::fstream &file, Container<T> &container) {
+  uint64_t s;
+  file.read(std::bit_cast<char *>(&s), 8);
+  if (const auto g = file.gcount(); g != 8) {
     return false;
   }
-
-  size_t n = 0;
-  size_t s;
-  for (const auto &[key, value] : map) {
-    s = key.size();
-    file.write(std::bit_cast<const char *>(&s), sizeof(size_t));
-    file.write(std::bit_cast<const char *>(key.data()),
-               sizeof(typename Key::value_type) * s);
-    file.write(std::bit_cast<const char *>(&value), sizeof(value));
-    ++n;
+  container.resize(s);
+  file.read(container.data(), s * sizeof(T));
+  if (const auto g = file.gcount(); g != s * sizeof(T)) {
+    return false;
   }
-
-  size_t expected_size = n * (sizeof(Key) + sizeof(Value));
-  // assert()
-
-  file.close();
-  return true;
 }
 
 template <typename Key, typename Value, template <typename...> typename Map>
