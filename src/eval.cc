@@ -1,8 +1,7 @@
 #include <data/durations.h>
 #include <data/options.h>
-#include <data/sample-teams.h>
 
-#include <battle/init.h>
+#include <battle/sample-teams.h>
 #include <battle/strings.h>
 #include <battle/view.h>
 
@@ -123,7 +122,7 @@ void print_score(bool *flag, size_t *n, size_t *score) {
 
 int abstract_test(int argc, char **argv) {
 
-  using Team = std::array<SampleTeams::Set, 6>;
+  using Team = std::array<Init::Set, 6>;
 
   size_t ms = 100;
   size_t threads = 3;

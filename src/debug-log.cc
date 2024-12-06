@@ -1,9 +1,9 @@
-#include <iostream>
-
 #include <util/random.h>
 
 #include <battle/debug-log.h>
-#include <battle/init.h>
+#include <battle/sample-teams.h>
+
+#include <iostream>
 
 int rollout_sample_teams_and_stream_debug_log(int argc, char **argv) {
   constexpr size_t log_size{128};

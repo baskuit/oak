@@ -2,7 +2,7 @@
 #include <process.h>
 #include <sides.h>
 
-#include <data/sample-teams.h>
+#include <battle/sample-teams.h>
 
 #include <cstdlib>
 #include <getopt.h>
@@ -68,6 +68,17 @@ public:
       }
     }
 
+    if (command == "create") {
+      if (words.size() < 4) {
+        err("create: Invalid args.");
+        return false;
+      }
+      uint64_t seed = 0x123456;
+      if (words.size() == 5) {
+      }
+      return create_history(words[1], words[2], words[3]);
+    }
+
     switch (focus) {
     case ManagementData::Focus::S:
       return sides_process.handle_command(words);
@@ -84,23 +95,22 @@ public:
   bool load(std::filesystem::path) noexcept { return false; }
 
   bool create_history(const std::string key, const std::string p1_key,
-                      const std::string p2_key) {
+                      const std::string p2_key, const uint64_t seed = 0) {
     if (games_process.data.histories.contains(key)) {
-      err("history: key '", key, "' already present.");
+      err("create: key '", key, "' already present.");
       return false;
     }
     const auto &sides = sides_process.data.sides;
     if (!sides.contains(p1_key)) {
-      err("history: key '", p1_key, "' not found in sides/.");
+      err("create: p1 key '", p1_key, "' not found in sides/.");
       return false;
     }
     if (!sides.contains(p2_key)) {
-      err("history: key '", p2_key, "' not found sides/.");
+      err("create: p2 key '", p2_key, "' not found sides/.");
       return false;
     }
-    Sides::SideConfig p1 = sides.at(p1_key);
-    Sides::SideConfig p2 = sides.at(p2_key);
-
+    auto p1 = sides.at(p1_key);
+    auto p2 = sides.at(p2_key);
     return games_process.create(key, p1, p2);
   }
 };
@@ -133,6 +143,15 @@ std::vector<std::vector<std::string>> parse_line(const char *data) {
     }
   }
   return commands;
+}
+
+int debug(int argc, char *argv[]) {
+  Process::Program program{&std::cout, &std::cerr};
+  std::vector<std::string> com0{"save", "100"};
+  std::vector<std::string> com1{"load", "100"};
+  program.handle_command(com0);
+  program.handle_command(com1);
+  return 0;
 }
 
 int loop(int argc, char *argv[]) {

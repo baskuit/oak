@@ -2,7 +2,6 @@
 
 #include <data/moves.h>
 #include <data/offsets.h>
-#include <data/sample-teams.h>
 #include <data/species.h>
 #include <data/types.h>
 
@@ -162,6 +161,20 @@ constexpr void init_side(const auto &side, uint8_t *const bytes) noexcept {
 } // end anonymous namespace
 
 namespace Init {
+
+struct Set {
+  Species species;
+  std::array<Moves, 4> moves;
+  float hp = 1;
+  uint8_t status = 0;
+
+  constexpr bool operator==(const Set &) const = default;
+};
+
+struct Config {
+  std::array<Set, 6> pokemon;
+};
+
 constexpr auto battle(const auto &p1, const auto &p2,
                       uint64_t seed = 0x123445) {
   pkmn_gen1_battle battle{};

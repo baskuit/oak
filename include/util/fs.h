@@ -22,7 +22,8 @@ bool save(const std::filesystem::path path, const Map<Key, Value> &map,
   for (const auto &[key, value] : map) {
     s = key.size();
     file.write(std::bit_cast<const char *>(&s), sizeof(size_t));
-    file.write(std::bit_cast<const char *>(key.data()), sizeof(typename Key::value_type) * s);
+    file.write(std::bit_cast<const char *>(key.data()),
+               sizeof(typename Key::value_type) * s);
     file.write(std::bit_cast<const char *>(&value), sizeof(value));
     ++n;
   }

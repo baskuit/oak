@@ -1843,6 +1843,8 @@ public:
     }
     return true;
   }
+
+  auto size() const { return _data.size(); } // TODO rm
 };
 }; // namespace Detail
 

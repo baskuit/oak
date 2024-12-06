@@ -125,8 +125,8 @@ public:
     return id;
   }
 
-  static constexpr SampleTeams::Set fromID(SetID id) noexcept {
-    SampleTeams::Set set{};
+  static constexpr Init::Set fromID(SetID id) noexcept {
+    Init::Set set{};
     for (int i = 0; i < 4; ++i) {
       const uint8_t moveid = id % n_moves_with_none;
       id -= moveid;

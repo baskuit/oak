@@ -1,10 +1,9 @@
 #include <util/random.h>
 
 #include <data/options.h>
-#include <data/sample-teams.h>
 #include <data/strings.h>
 
-#include <battle/init.h>
+#include <battle/sample-teams.h>
 
 #include <pi/eval.h>
 #include <pi/exp3.h>
@@ -21,7 +20,7 @@ static_assert(Options::calc && Options::chance && !Options::log);
 
 namespace Sets {
 struct SetCompare {
-  constexpr bool operator()(SampleTeams::Set a, SampleTeams::Set b) const {
+  constexpr bool operator()(Init::Set a, Init::Set b) const {
     if (a.species == b.species) {
       return a.moves < b.moves;
     } else {
@@ -31,7 +30,7 @@ struct SetCompare {
 };
 
 auto get_sorted_set_array() {
-  std::map<SampleTeams::Set, size_t, SetCompare> map{};
+  std::map<Init::Set, size_t, SetCompare> map{};
   for (const auto &team : SampleTeams::teams) {
     for (const auto &set : team) {
       auto set_sorted = set;
@@ -39,7 +38,7 @@ auto get_sorted_set_array() {
       ++map[set_sorted];
     }
   }
-  std::vector<std::pair<SampleTeams::Set, size_t>> sets_sorted_by_use{};
+  std::vector<std::pair<Init::Set, size_t>> sets_sorted_by_use{};
   for (const auto &[set, n] : map) {
     sets_sorted_by_use.emplace_back(set, n);
   }
@@ -50,7 +49,7 @@ auto get_sorted_set_array() {
 } // namespace Sets
 
 void thread_fn(std::atomic<int> *const atomic,
-               const std::vector<SampleTeams::Set> *sets, Eval::OVODict *dict,
+               const std::vector<Init::Set> *sets, Eval::OVODict *dict,
                std::mutex *mutex) {
   const auto n = sets->size();
   const auto seek = [sets, dict, n, mutex](const auto index) {
@@ -97,7 +96,7 @@ int generate(int argc, char **argv) {
   // std::endl;
 
   const auto sorted_set_array = Sets::get_sorted_set_array();
-  std::vector<SampleTeams::Set> sets{};
+  std::vector<Init::Set> sets{};
   for (const auto &pair : sorted_set_array) {
     const auto &set = pair.first;
     sets.emplace_back(set);

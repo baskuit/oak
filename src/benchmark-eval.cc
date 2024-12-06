@@ -1,6 +1,4 @@
-#include <data/sample-teams.h>
-
-#include <battle/init.h>
+#include <battle/sample-teams.h>
 
 #include <pi/eval.h>
 #include <pi/exp3.h>

@@ -1,25 +1,23 @@
-#include <data/sample-teams.h>
+#include <util/random.h>
+
+#include <data/options.h>
 #include <data/strings.h>
 
-#include <battle/init.h>
+#include <battle/sample-teams.h>
 
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>
 
-#include <util/random.h>
-
 #include <iostream>
 #include <numeric>
 #include <sstream>
-
-#include <data/options.h>
 
 static_assert(Options::calc && Options::chance && !Options::log);
 
 namespace Sets {
 struct SetCompare {
-  constexpr bool operator()(SampleTeams::Set a, SampleTeams::Set b) const {
+  constexpr bool operator()(Init::Set a, Init::Set b) const {
     if (a.species == b.species) {
       return a.moves < b.moves;
     } else {
@@ -29,7 +27,7 @@ struct SetCompare {
 };
 
 auto get_sorted_set_array() {
-  std::map<SampleTeams::Set, size_t, SetCompare> map{};
+  std::map<Init::Set, size_t, SetCompare> map{};
   for (const auto &team : SampleTeams::teams) {
     for (const auto &set : team) {
       auto set_sorted = set;
@@ -37,7 +35,7 @@ auto get_sorted_set_array() {
       ++map[set_sorted];
     }
   }
-  std::vector<std::pair<SampleTeams::Set, size_t>> sets_sorted_by_use{};
+  std::vector<std::pair<Init::Set, size_t>> sets_sorted_by_use{};
   for (const auto &[set, n] : map) {
     sets_sorted_by_use.emplace_back(set, n);
   }
@@ -105,7 +103,7 @@ int print1v1(int argc, char **argv) {
 
   // sorting, printing the sets take from sample teams
   const auto sorted_set_array = Sets::get_sorted_set_array();
-  std::vector<SampleTeams::Set> sets{};
+  std::vector<Init::Set> sets{};
   for (const auto &pair : sorted_set_array) {
     const auto &set = pair.first;
     sets.emplace_back(set);
@@ -119,8 +117,8 @@ int print1v1(int argc, char **argv) {
   std::cout << set_a_str << " vs " << set_b_str << std::endl;
 
   MonteCarlo::Input battle_data;
-  battle_data.battle = Init::battle(std::vector<SampleTeams::Set>{set_a},
-                                    std::vector<SampleTeams::Set>{set_b});
+  battle_data.battle = Init::battle(std::vector<Init::Set>{set_a},
+                                    std::vector<Init::Set>{set_b});
   MonteCarlo::Model model;
   model.device = prng{device.uniform_64()};
   MCTS search{};

@@ -3,9 +3,12 @@
 #include <data/moves.h>
 #include <data/species.h>
 
+#include <battle/init.h>
+
 #include <pi/mcts.h>
 
 #include <process.h>
+#include <sides.h>
 
 #include <map>
 #include <mutex>
@@ -18,10 +21,8 @@ namespace Process {
 namespace Games {
 
 struct BattleData {
-  // battle
-  // result
-  // options
-  // seed/obs?
+  pkmn_gen1_battle battle;
+  pkmn_gen1_battle_options options;
 };
 
 struct SearchOutputs {
@@ -81,21 +82,8 @@ public:
   bool save(std::filesystem::path) noexcept override;
   bool load(std::filesystem::path) noexcept override;
 
-  bool create(const std::string key, const auto p1, const auto p2) {
-    std::unique_lock lock{mgmt.mutex};
-    if (data.histories.contains(key)) {
-      err("create: '", key, "' already present.");
-      return false;
-    }
-
-    // SideInitializer p1;
-    // SideInitializer p2;
-
-    // for (const auto set : )
-
-    data.histories[key];
-    return true;
-  }
+  bool create(const std::string key, const Sides::SideConfig p1,
+              const Sides::SideConfig p2);
 
 private:
   size_t size() const noexcept;

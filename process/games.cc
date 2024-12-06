@@ -1,5 +1,7 @@
 #include <games.h>
 
+#include <battle/sample-teams.h>
+
 #include <sides.h>
 
 namespace Process {
@@ -8,7 +10,7 @@ namespace Games {
 // This is probably bad, but I still think of the return type as the actual
 // initialization type
 auto convert_config(const Sides::SideConfig config) {
-  std::array<SampleTeams::Set, 6> side;
+  std::array<Init::Set, 6> side;
   for (auto i = 0; i < 6; ++i) {
     side[i].species = config.party[i].species;
     for (auto j = 0; j < 4; ++j) {
@@ -75,6 +77,20 @@ void Program::print() const noexcept {
     log("TODO print output");
     return;
   }
+}
+
+bool Program::create(const std::string key, const Sides::SideConfig p1,
+                     const Sides::SideConfig p2) {
+  std::unique_lock lock{mgmt.mutex};
+  if (data.histories.contains(key)) {
+    err("create: '", key, "' already present.");
+    return false;
+  }
+
+  const auto battle = Init::battle(convert_config(p1), convert_config(p2));
+  const auto &history = data.histories[key];
+
+  return true;
 }
 
 bool Program::cd(const std::span<const std::string> words) noexcept {

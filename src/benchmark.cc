@@ -1,5 +1,4 @@
-#include <battle/init.h>
-#include <data/sample-teams.h>
+#include <battle/sample-teams.h>
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>
