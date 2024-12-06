@@ -12,7 +12,7 @@
 #include <span>
 #include <sstream>
 
-namespace Process {
+namespace Lab {
 
 namespace Sides {
 
@@ -61,4 +61,4 @@ private:
 
 } // namespace Sides
 
-} // namespace Process
+} // namespace Lab

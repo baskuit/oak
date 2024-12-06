@@ -7,7 +7,7 @@
 #include <battle/sample-teams.h>
 #include <battle/strings.h>
 
-namespace Process {
+namespace Lab {
 namespace Sides {
 
 constexpr size_t max_sample_teams{10};
@@ -321,4 +321,4 @@ bool Program::up() noexcept {
 }
 
 } // namespace Sides
-} // namespace Process
+} // namespace Lab

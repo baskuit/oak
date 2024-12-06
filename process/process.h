@@ -5,7 +5,7 @@
 #include <span>
 #include <string>
 
-namespace Process {
+namespace Lab {
 
 template <bool multi_threaded = false, bool filesystem = false>
 class ProgramBase {
@@ -38,4 +38,4 @@ public:
   }
 };
 
-} // namespace Process
+} // namespace Lab

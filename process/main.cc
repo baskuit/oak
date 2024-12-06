@@ -11,7 +11,7 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 
-namespace Process {
+namespace Lab {
 
 struct ManagementData {
   enum class Focus {
@@ -23,8 +23,8 @@ struct ManagementData {
 class Program : public ProgramBase<false, false> {
   using Base = ProgramBase<false, false>;
 
-  Process::Sides::Program sides_process;
-  Process::Games::Program games_process;
+  Lab::Sides::Program sides_process;
+  Lab::Games::Program games_process;
 
   ManagementData::Focus focus{};
 
@@ -115,7 +115,7 @@ public:
   }
 };
 
-} // namespace Process
+} // namespace Lab
 
 std::string trim(const std::string &str) {
   auto start = str.find_first_not_of(" ");
@@ -146,7 +146,7 @@ std::vector<std::vector<std::string>> parse_line(const char *data) {
 }
 
 int debug(int argc, char *argv[]) {
-  Process::Program program{&std::cout, &std::cerr};
+  Lab::Program program{&std::cout, &std::cerr};
   std::vector<std::string> com0{"create", "123", "0", "1"};
   program.handle_command(com0);
   // program.handle_command(com1);
@@ -155,7 +155,7 @@ int debug(int argc, char *argv[]) {
 
 int loop(int argc, char *argv[]) {
 
-  Process::Program program{&std::cout, &std::cerr};
+  Lab::Program program{&std::cout, &std::cerr};
 
   while (const auto input =
              std::unique_ptr<const char>(readline(program.prompt().data()))) {

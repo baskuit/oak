@@ -18,7 +18,7 @@
 #include <span>
 #include <sstream>
 
-namespace Process {
+namespace Lab {
 
 namespace Games {
 
@@ -97,12 +97,22 @@ private:
   bool cd(const std::span<const std::string> words) noexcept;
   size_t depth() const noexcept;
   bool up() noexcept;
+  bool next() noexcept;
+  bool prev() noexcept;
+  bool first() noexcept;
+  bool last() noexcept;
+  std::optional<size_t> &cli_current();
 
   History &history();
   State &state();
   Node &node();
   MCTS::Output &outputs();
+
+  const History &history() const;
+  const State &state() const;
+  const Node &node() const;
+  const MCTS::Output &outputs() const;
 };
 
 } // namespace Games
-} // namespace Process
+} // namespace Lab

@@ -5,7 +5,7 @@
 
 #include <sides.h>
 
-namespace Process {
+namespace Lab {
 namespace Games {
 
 std::string Program::prompt() const noexcept {
@@ -37,6 +37,17 @@ bool Program::handle_command(
     return true;
   } else if (command == "rollout") {
     return rollout();
+  } else if (command == "prev") {
+    return prev();
+  } else if (command == "next") {
+    return next();
+  } else if (command == "first") {
+    return first();
+  } else if (command == "last") {
+    return last();
+  } else if (command == "size") {
+    log("size: ", size());
+    return true;
   }
 
   const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
@@ -273,6 +284,62 @@ bool Program::rm(std::string key) noexcept {
   }
 }
 
+bool Program::up() noexcept {
+  if (mgmt.cli_search.has_value()) {
+    mgmt.cli_search = std::nullopt;
+    return true;
+  } else if (mgmt.cli_node.has_value()) {
+    mgmt.cli_node = std::nullopt;
+    return true;
+  } else if (mgmt.cli_state.has_value()) {
+    mgmt.cli_state = std::nullopt;
+    return true;
+  } else if (mgmt.cli_key.has_value()) {
+    mgmt.cli_key = std::nullopt;
+    return true;
+  }
+  return true;
+}
+
+bool Program::next() noexcept {
+  if (depth() < 2) {
+    return false;
+  }
+  auto &cur = cli_current();
+  if (cur.value() + 1 < size()) {
+    cur = cur.value() + 1;
+    return true;
+  }
+  return false;
+}
+bool Program::prev() noexcept {
+  if (depth() < 2) {
+    return false;
+  }
+  auto &cur = cli_current();
+  if (cur.value() > 0) {
+    cur = cur.value() - 1;
+    return true;
+  }
+  return false;
+}
+bool Program::first() noexcept {
+  if (depth() < 2) {
+    return false;
+  }
+  auto &cur = cli_current();
+  cur = 0;
+  return true;
+}
+bool Program::last() noexcept {
+  if (depth() < 2) {
+    return false;
+  }
+  auto &cur = cli_current();
+  cur = size() - 1;
+  return true;
+}
+
 size_t Program::depth() const noexcept {
   if (mgmt.cli_search.has_value()) {
     return 4;
@@ -293,40 +360,30 @@ size_t Program::depth() const noexcept {
   }
 }
 
-bool Program::up() noexcept {
-  if (mgmt.cli_search.has_value()) {
-    mgmt.cli_search = std::nullopt;
-    return true;
-  } else if (mgmt.cli_node.has_value()) {
-    mgmt.cli_node = std::nullopt;
-    return true;
-  } else if (mgmt.cli_state.has_value()) {
-    mgmt.cli_state = std::nullopt;
-    return true;
-  } else if (mgmt.cli_key.has_value()) {
-    mgmt.cli_key = std::nullopt;
-    return true;
-  }
-  return true;
-}
-
 size_t Program::size() const noexcept {
   if (!mgmt.cli_key.has_value()) {
     return data.histories.size();
   }
-  const auto &history = *data.histories.at(mgmt.cli_key.value());
   if (!mgmt.cli_state.has_value()) {
-    return history.states.size();
+    return history().states.size();
   }
-  const auto &state = *history.states.at(mgmt.cli_state.value());
   if (!mgmt.cli_node.has_value()) {
-    return state.nodes.size();
+    return state().nodes.size();
   }
-  const auto &output = state.outputs[mgmt.cli_node.value()];
   if (!mgmt.cli_search.has_value()) {
-    return output.tail.size();
+    return state().outputs.at(mgmt.cli_node.value()).tail.size();
   }
   return 0;
+}
+
+std::optional<size_t> &Program::cli_current() {
+  if (mgmt.cli_search.has_value()) {
+    return mgmt.cli_search;
+  } else if (mgmt.cli_node.has_value()) {
+    return mgmt.cli_node;
+  } else {
+    return mgmt.cli_state;
+  }
 }
 
 History &Program::history() { return *data.histories.at(mgmt.cli_key.value()); }
@@ -337,6 +394,22 @@ MCTS::Output &Program::outputs() {
       .outputs.at(mgmt.cli_node.value())
       .tail.at(mgmt.cli_search.value());
 }
+const History &Program::history() const {
+  return *data.histories.at(mgmt.cli_key.value());
+}
+const State &Program::state() const {
+  return *history().states.at(mgmt.cli_state.value());
+}
+const Node &Program::node() const {
+  return *state().nodes.at(mgmt.cli_node.value());
+}
+const MCTS::Output &Program::outputs() const {
+  return state()
+      .outputs.at(mgmt.cli_node.value())
+      .tail.at(mgmt.cli_search.value());
+}
+
+
 
 } // namespace Games
-} // namespace Process
+} // namespace Lab
