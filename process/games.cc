@@ -33,7 +33,7 @@ bool Program::handle_command(
     print();
     return true;
   }
-  err("Sides: command '", command, "' not recognized");
+  err("games: command '", command, "' not recognized");
   return false;
 }
 

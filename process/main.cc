@@ -53,7 +53,11 @@ public:
     } else if (command == "games") {
       focus = ManagementData::Focus::G;
       return true;
+    } else if (command == "clear") {
+      std::system("clear");
+      return true;
     }
+
     switch (focus) {
     case ManagementData::Focus::S:
       return sides_process.handle_command(words);

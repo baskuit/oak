@@ -53,7 +53,8 @@ public:
   bool add(const std::string key) noexcept;
   bool rm(const std::string key) noexcept;
 
-  bool in(const std::string l) noexcept {}
+  bool cd(const std::span<const std::string> words) noexcept;
+
   bool out() noexcept {
     if (mgmt.cli_slot.has_value()) {
       mgmt.cli_slot = std::nullopt;
@@ -85,6 +86,18 @@ private:
     } else {
       return 0;
     }
+  }
+
+  bool up() noexcept {
+    if (mgmt.cli_slot.has_value()) {
+      mgmt.cli_slot = std::nullopt;
+      return true;
+    }
+    if (mgmt.cli_key.has_value()) {
+      mgmt.cli_key = std::nullopt;
+      return true;
+    }
+    return true; // better than failing surely!
   }
 };
 

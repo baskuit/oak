@@ -28,6 +28,14 @@ public:
   template <typename... Args> void err(const Args &...messages) const {
     ((*mErr << messages << " "), ...) << std::endl;
   }
+
+  template <typename... Args> void log_(const Args &...messages) const {
+    ((*mOut << messages << " "), ...);
+  }
+
+  template <typename... Args> void err_(const Args &...messages) const {
+    ((*mErr << messages << " "), ...);
+  }
 };
 
 } // namespace Process
