@@ -85,7 +85,7 @@ public:
   using Base::Base;
 
   ManagedData data;
-  ManagerData mgmt;
+  ManagerData mgmt{};
 
   std::string prompt() const noexcept override;
 
