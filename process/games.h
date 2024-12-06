@@ -26,6 +26,12 @@ struct BattleData {
   pkmn_gen1_battle battle;
   pkmn_gen1_battle_options options;
   pkmn_result result;
+
+  uint64_t seed;
+  size_t m;
+  size_t n;
+  std::array<pkmn_choice, 9> choices1;
+  std::array<pkmn_choice, 9> choices2;
 };
 
 struct SearchOutputs {
@@ -80,14 +86,22 @@ public:
 
   bool create(const std::string key, const Init::Config p1,
               const Init::Config p2);
-              
-private:
 
+private:
+  bool rollout();
+  bool update(pkmn_choice c1, pkmn_choice c2) noexcept;
+  bool update(std::string c1, std::string c2) noexcept;
+  bool rm(std::string key) noexcept;
   size_t size() const noexcept;
   void print() const noexcept;
   bool cd(const std::span<const std::string> words) noexcept;
   size_t depth() const noexcept;
   bool up() noexcept;
+
+  History &history();
+  State &state();
+  Node &node();
+  MCTS::Output &outputs();
 };
 
 } // namespace Games
