@@ -13,7 +13,7 @@ namespace Sides {
 constexpr size_t max_sample_teams{10};
 
 Program::Program(std::ostream *out, std::ostream *err)
-    : ProgramBase<false, true>{out, err} {
+    : ProgramBase<false, true>{out, err}, data{}, mgmt{} {
   for (auto i = 0; i < max_sample_teams; ++i) {
     Init::Config config{};
     config.pokemon = SampleTeams::teams[i];
