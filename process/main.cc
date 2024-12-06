@@ -147,10 +147,9 @@ std::vector<std::vector<std::string>> parse_line(const char *data) {
 
 int debug(int argc, char *argv[]) {
   Process::Program program{&std::cout, &std::cerr};
-  std::vector<std::string> com0{"save", "100"};
-  std::vector<std::string> com1{"load", "100"};
+  std::vector<std::string> com0{"create", "123", "0", "1"};
   program.handle_command(com0);
-  program.handle_command(com1);
+  // program.handle_command(com1);
   return 0;
 }
 
@@ -216,6 +215,7 @@ int main(int argc, char *argv[]) {
   }
 
   loop(argc, argv);
+  // return debug(argc, argv);
 
   return 0;
 }

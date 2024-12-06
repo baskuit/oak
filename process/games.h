@@ -5,7 +5,9 @@
 
 #include <battle/init.h>
 
+#include <pi/exp3.h>
 #include <pi/mcts.h>
+#include <pi/tree.h>
 
 #include <process.h>
 #include <sides.h>
@@ -23,39 +25,33 @@ namespace Games {
 struct BattleData {
   pkmn_gen1_battle battle;
   pkmn_gen1_battle_options options;
+  pkmn_result result;
 };
 
 struct SearchOutputs {
   MCTS::Output head;
-  std::vector<MCTS::Output> outputs;
+  std::vector<MCTS::Output> tail;
 };
 
-using Node = std::map<int, std::unique_ptr<int>>;
-
-struct NodeData {
-
-  Node node;
-  SearchOutputs outputs;
-};
+using Node =
+    Tree::Node<Exp3::JointBanditData<.03f, false>, std::array<uint8_t, 16>>;
 
 struct State {
 
   BattleData battle_data;
-  std::vector<SearchOutputs> output_data;
+  std::vector<SearchOutputs> outputs;
 
-  std::vector<std::unique_ptr<Node>> node_data;
+  std::vector<std::unique_ptr<Node>> nodes;
   std::mutex mutex;
-
-  // State(State &&other) : battle_data{other.battle_data}, node_data{} {}
 };
 
 struct History {
-  std::vector<std::unique_ptr<State>> histories;
+  std::vector<std::unique_ptr<State>> states;
   std::mutex mutex;
 };
 
 struct ManagedData {
-  std::map<std::string, History> histories;
+  std::map<std::string, std::unique_ptr<History>> histories;
 };
 
 struct ManagerData {
@@ -82,10 +78,11 @@ public:
   bool save(std::filesystem::path) noexcept override;
   bool load(std::filesystem::path) noexcept override;
 
-  bool create(const std::string key, const Sides::SideConfig p1,
-              const Sides::SideConfig p2);
-
+  bool create(const std::string key, const Init::Config p1,
+              const Init::Config p2);
+              
 private:
+
   size_t size() const noexcept;
   void print() const noexcept;
   bool cd(const std::span<const std::string> words) noexcept;

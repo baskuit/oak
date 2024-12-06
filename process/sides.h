@@ -3,6 +3,8 @@
 #include <data/moves.h>
 #include <data/species.h>
 
+#include <battle/init.h>
+
 #include <process.h>
 
 #include <map>
@@ -14,20 +16,8 @@ namespace Process {
 
 namespace Sides {
 
-struct Set {
-  Data::Species species;
-  Data::OrderedMoveSet moves;
-  size_t percent{100};
-  // uint8_t dur_sleep;
-};
-
-struct SideConfig {
-  std::array<Set, 6> party;
-  // View::ActivePokemon active;
-};
-
 struct ManagedData {
-  std::map<std::string, SideConfig> sides;
+  std::map<std::string, Init::Config> sides;
 };
 
 struct ManagerData {

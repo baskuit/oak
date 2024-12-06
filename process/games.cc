@@ -7,19 +7,6 @@
 namespace Process {
 namespace Games {
 
-// This is probably bad, but I still think of the return type as the actual
-// initialization type
-auto convert_config(const Sides::SideConfig config) {
-  std::array<Init::Set, 6> side;
-  for (auto i = 0; i < 6; ++i) {
-    side[i].species = config.party[i].species;
-    for (auto j = 0; j < 4; ++j) {
-      side[i].moves[j] = config.party[i].moves._data[j];
-    }
-  }
-  return side;
-}
-
 std::string Program::prompt() const noexcept {
   std::string r{};
   switch (depth()) {
@@ -44,10 +31,18 @@ bool Program::handle_command(
     return false;
   }
   const auto &command = words.front();
-  if (command == "print" || command == "p") {
+  if (command == "print" || command == "ls") {
     print();
     return true;
   }
+
+  const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
+
+  if (command == "cd") {
+
+    return cd(tail);
+  }
+
   err("games: command '", command, "' not recognized");
   return false;
 }
@@ -65,7 +60,7 @@ void Program::print() const noexcept {
     log("");
     return;
   case 1:
-    log(data.histories.at(mgmt.cli_key.value()).histories.size(), " states.");
+    log(data.histories.at(mgmt.cli_key.value())->states.size(), " states.");
     return;
   case 2:
     log("TODO print state");
@@ -79,16 +74,26 @@ void Program::print() const noexcept {
   }
 }
 
-bool Program::create(const std::string key, const Sides::SideConfig p1,
-                     const Sides::SideConfig p2) {
+bool Program::create(const std::string key, const Init::Config p1,
+                     const Init::Config p2) {
   std::unique_lock lock{mgmt.mutex};
   if (data.histories.contains(key)) {
     err("create: '", key, "' already present.");
     return false;
   }
 
-  const auto battle = Init::battle(convert_config(p1), convert_config(p2));
-  const auto &history = data.histories[key];
+  const auto battle = Init::battle(p1, p2);
+  // data.histories.insert(key);
+  data.histories[key] = std::make_unique<History>();
+  auto &history = *data.histories[key];
+  // history = std
+  history.states.emplace_back(std::make_unique<State>());
+  auto &state = *history.states.front();
+  state.battle_data.battle = battle;
+  state.battle_data.options = {};
+  state.nodes.emplace_back(new Node{});
+  state.nodes.emplace_back(new Node{});
+  state.outputs.resize(2);
 
   return true;
 }
@@ -99,6 +104,7 @@ bool Program::cd(const std::span<const std::string> words) noexcept {
     return false;
   }
 
+  // worst code ever
   const auto handle_word = [this](std::string s) {
     if (s == "..") {
       return up();
@@ -192,22 +198,22 @@ bool Program::up() noexcept {
 }
 
 size_t Program::size() const noexcept {
-  if (mgmt.cli_search.has_value()) {
-    return data.histories.at(mgmt.cli_key.value())
-        .histories.at(mgmt.cli_state.value())
-        ->output_data.at(mgmt.cli_node.value())
-        .outputs.size();
-  } else if (mgmt.cli_node.has_value()) {
-    return data.histories.at(mgmt.cli_key.value())
-        .histories.at(mgmt.cli_state.value())
-        ->node_data.size();
-  } else if (mgmt.cli_state.has_value()) {
-    return data.histories.at(mgmt.cli_key.value()).histories.size();
-  } else if (mgmt.cli_key.has_value()) {
+  if (!mgmt.cli_key.has_value()) {
     return data.histories.size();
-  } else {
-    return 0;
   }
+  const auto &history = *data.histories.at(mgmt.cli_key.value());
+  if (!mgmt.cli_state.has_value()) {
+    return history.states.size();
+  }
+  const auto &state = *history.states.at(mgmt.cli_state.value());
+  if (!mgmt.cli_node.has_value()) {
+    return state.nodes.size();
+  }
+  const auto &output = state.outputs[mgmt.cli_node.value()];
+  if (!mgmt.cli_search.has_value()) {
+    return output.tail.size();
+  }
+  return 0;
 }
 
 } // namespace Games

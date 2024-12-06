@@ -4,15 +4,19 @@
 
 #include <data/strings.h>
 
+#include <battle/sample-teams.h>
 #include <battle/strings.h>
 
 namespace Process {
 namespace Sides {
 
+constexpr size_t max_sample_teams{10};
+
 Program::Program(std::ostream *out, std::ostream *err)
     : ProgramBase<false, true>{out, err} {
-  for (auto i = 0; i < 12; ++i) {
-    SideConfig config{};
+  for (auto i = 0; i < max_sample_teams; ++i) {
+    Init::Config config{};
+    config.pokemon = SampleTeams::teams[i];
     data.sides[std::to_string(i)] = config;
   }
 }
@@ -100,7 +104,7 @@ bool Program::add(std::string key) noexcept {
     err("add: ", key, " already present.");
     return false;
   } else {
-    data.sides.emplace(key, SideConfig{});
+    data.sides.emplace(key, Init::Config{});
     return true;
   }
 }
@@ -162,8 +166,8 @@ bool Program::set(const std::span<const std::string> words) noexcept {
   }
 
   auto &pokemon =
-      data.sides.at(mgmt.cli_key.value()).party.at(mgmt.cli_slot.value() - 1);
-  pokemon.moves = move_set;
+      data.sides.at(mgmt.cli_key.value()).pokemon.at(mgmt.cli_slot.value() - 1);
+  pokemon.moves = move_set._data;
   pokemon.species = species;
   return true;
 }
@@ -260,11 +264,11 @@ void Program::print() const noexcept {
     return;
   }
   case 1: {
-    const auto &party = data.sides.at(mgmt.cli_key.value()).party;
+    const auto &party = data.sides.at(mgmt.cli_key.value()).pokemon;
     size_t i = 0;
     for (const auto &pokemon : party) {
       log_(++i, " : ", Names::species_string(pokemon.species), " : ");
-      for (const auto move : pokemon.moves._data) {
+      for (const auto move : pokemon.moves) {
         log_(Names::move_string(move), ' ');
       }
       log("");
@@ -277,9 +281,9 @@ void Program::print() const noexcept {
       log("print: TODO Active.");
     } else {
       const auto &pokemon =
-          data.sides.at(mgmt.cli_key.value()).party.at(slot - 1);
+          data.sides.at(mgmt.cli_key.value()).pokemon.at(slot - 1);
       log_(Names::species_string(pokemon.species), " : ");
-      for (const auto move : pokemon.moves._data) {
+      for (const auto move : pokemon.moves) {
         log_(Names::move_string(move), ' ');
       }
       log("");
