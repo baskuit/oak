@@ -18,8 +18,11 @@ bool save(const std::filesystem::path path, const Map<Key, Value> &map,
   }
 
   size_t n = 0;
+  size_t s;
   for (const auto &[key, value] : map) {
-    file.write(std::bit_cast<const char *>(&key), sizeof(key));
+    s = key.size();
+    file.write(std::bit_cast<const char *>(&s), sizeof(size_t));
+    file.write(std::bit_cast<const char *>(key.data()), sizeof(typename Key::value_type) * s);
     file.write(std::bit_cast<const char *>(&value), sizeof(value));
     ++n;
   }
@@ -41,12 +44,22 @@ bool load(const std::filesystem::path path, Map<Key, Value> &map) {
   file.seekg(0, std::ios::beg);
   while (file.peek() != EOF) {
     Key key;
+    size_t s;
     Value value;
 
-    file.read(std::bit_cast<char *>(&key), sizeof(Key));
-    if (const auto g = file.gcount(); g != sizeof(Key)) {
+    file.read(std::bit_cast<char *>(&s), sizeof(size_t));
+    if (const auto g = file.gcount(); g != sizeof(size_t)) {
       return false;
     }
+    std::vector<char> buffer{};
+    buffer.resize(s);
+    file.read(buffer.data(), s * sizeof(typename Key::value_type));
+    if (const auto g = file.gcount(); g != s) {
+      return false;
+    }
+    key = Key{buffer.data(), s};
+    // file.seekg(0, std::ios::cur);
+
     file.read(std::bit_cast<char *>(&value), sizeof(Value));
     if (const auto g = file.gcount(); g != sizeof(Value)) {
       return false;

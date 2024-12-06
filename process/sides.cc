@@ -106,6 +106,10 @@ bool Program::add(std::string key) noexcept {
 }
 
 bool Program::rm(std::string key) noexcept {
+  if (depth() != 0) {
+    err("rm: A side cannot be in focus");
+    return false;
+  }
   if (!data.sides.contains(key)) {
     err("rm: ", key, " not present.");
     return false;
@@ -117,7 +121,7 @@ bool Program::rm(std::string key) noexcept {
 
 bool Program::set(const std::span<const std::string> words) noexcept {
   if (depth() != 2) {
-    err("set: a slot must be in focus.");
+    err("set: A slot must be in focus.");
     return false;
   }
   if (words.empty()) {
@@ -257,8 +261,9 @@ void Program::print() const noexcept {
   }
   case 1: {
     const auto &party = data.sides.at(mgmt.cli_key.value()).party;
+    size_t i = 0;
     for (const auto &pokemon : party) {
-      log_(Names::species_string(pokemon.species), " : ");
+      log_(++i, " : ", Names::species_string(pokemon.species), " : ");
       for (const auto move : pokemon.moves._data) {
         log_(Names::move_string(move), ' ');
       }
