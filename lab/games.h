@@ -105,7 +105,7 @@ private:
   bool update(std::string c1, std::string c2) noexcept;
   bool rm(std::string key) noexcept;
   void print() const noexcept;
-  bool cd(const std::span<const std::string> words) noexcept;
+  bool cd(const std::span<const std::string> words) ;
   bool up() noexcept;
   bool next() noexcept;
   bool prev() noexcept;

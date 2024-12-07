@@ -134,7 +134,7 @@ bool Program::up() noexcept {
   return true;
 }
 
-bool Program::cd(const std::span<const std::string> words) noexcept {
+bool Program::cd(const std::span<const std::string> words) {
   if (words.empty()) {
     err("cd: Missing args.");
     return false;
@@ -334,12 +334,11 @@ bool Program::create(const std::string key, const Init::Config p1,
 // }
 
 bool Program::update(pkmn_choice c1, pkmn_choice c2) noexcept {
-  if (mgmt.loc.depth == 0) {
-    err("update: A game must be in focus");
-    return false;
-  }
+  // if (mgmt.loc.depth == 0) {
+  //   err("update: A game must be in focus");
+  //   return false;
+  // }
   auto &h = history();
-  auto &s = search_data();
   const auto &state = h.back();
 
   State next{};
@@ -361,6 +360,10 @@ bool Program::update(pkmn_choice c1, pkmn_choice c2) noexcept {
   std::copy(choices2.begin(), choices2.end(), next.choices2.begin());
 
   h.emplace_back(next);
+
+  auto &search_data_history = data.search_data_map.at(mgmt.loc.key);
+  search_data_history.emplace_back();
+  auto &s = search_data_history.at(h.size() - 1);
   s.nodes.emplace_back(std::make_unique<Node>());
   s.nodes.emplace_back(std::make_unique<Node>());
 
