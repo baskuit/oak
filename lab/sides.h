@@ -48,8 +48,8 @@ private:
 
   bool set(const std::span<const std::string> words);
 
-  bool hp(const std::string);
-  bool status(const std::string);
+  bool hp(const std::span<const std::string> words);
+  bool status(const std::span<const std::string> words);
 
   void print() const;
 

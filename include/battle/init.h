@@ -167,7 +167,7 @@ struct Set {
   std::array<Moves, 4> moves;
   float hp = 1;
   uint8_t status = 0;
-
+  uint8_t sleep = 0;
   constexpr bool operator==(const Set &) const = default;
 };
 

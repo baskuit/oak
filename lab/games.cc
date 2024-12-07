@@ -338,6 +338,10 @@ bool Program::create(const std::string key, const Init::Config p1,
   state.n = 1;
   state.outputs.resize(2);
 
+  // auto *durations = pkmn_gen1_battle_options_chance_durations(&state.options);
+  // auto &d = View::ref(*durations);
+  // d.duration(0).set_sleep()
+
   auto &search_data = data.search_data_map[key];
   search_data.emplace_back();
   search_data.front().nodes.emplace_back(std::make_unique<Node>());
@@ -358,10 +362,9 @@ bool Program::update(std::string str1, std::string str2) {
     x = std::stoi(str1);
   } catch (...) {
     std::array<std::string, 9> str_choices{};
-    std::transform(s.choices1.begin(), s.choices1.begin() + s.m,
-                   str_choices.begin(), [&s](const auto c) {
-                     return side_choice_string(s.battle.bytes, c);
-                   });
+    std::transform(
+        s.choices1.begin(), s.choices1.begin() + s.m, str_choices.begin(),
+        [&s](const auto c) { return side_choice_string(s.battle.bytes, c); });
     int i = Strings::unique_index(str_choices, str1);
     log("update: str1: ", str1, " i: ", i);
     if (i == -1) {
@@ -376,7 +379,8 @@ bool Program::update(std::string str1, std::string str2) {
     std::array<std::string, 9> str_choices{};
     std::transform(s.choices2.begin(), s.choices2.begin() + s.n,
                    str_choices.begin(), [&s](const auto c) {
-                     return side_choice_string(s.battle.bytes + Offsets::side, c);
+                     return side_choice_string(s.battle.bytes + Offsets::side,
+                                               c);
                    });
     int i = Strings::unique_index(str_choices, str2);
     log("update: str2: ", str2, " i: ", i);

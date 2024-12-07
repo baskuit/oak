@@ -44,6 +44,10 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return true;
   }
 
+  if (words.size() < 2) {
+    return false;
+  }
+
   const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
 
   if (command == "save" || command == "load") {
@@ -85,6 +89,10 @@ bool Program::handle_command(const std::span<const std::string> words) {
   } else if (command == "rm") {
 
     return rm(words[1]);
+  } else if (command == "hp") {
+    return hp(tail);
+  } else if (command == "status") {
+    return status(tail);
   }
 
   err("sides: command '", command, "' not recognized");
@@ -138,6 +146,72 @@ bool Program::rm(std::string key) {
     data.sides.erase(key);
     return true;
   }
+}
+bool Program::hp(const std::span<const std::string> words) {
+  if (depth() != 2) {
+    err("hp: A non-active slot must by in focus.");
+    return false;
+  }
+  if (mgmt.slot.value() == 0) {
+    err("hp: A non-active slot must by in focus.");
+    return false;
+  }
+  if (words.empty()) {
+    err("hp: Missing args.");
+    return false;
+  }
+
+  size_t hp;
+  try {
+    hp = std::min(100, std::stoi(words[0]));
+  } catch (...) {
+    err("hp: Could not parse arg (percent).");
+    return false;
+  }
+  auto &pokemon =
+      data.sides.at(mgmt.key.value()).pokemon.at(mgmt.slot.value() - 1);
+  pokemon.hp = hp / 100.0f;
+  return true;
+}
+
+bool Program::status(const std::span<const std::string> words) {
+  if (depth() != 2) {
+    err("hp: A non-active slot must by in focus.");
+    return false;
+  }
+  if (mgmt.slot.value() == 0) {
+    err("hp: A non-active slot must by in focus.");
+    return false;
+  }
+  if (words.empty()) {
+    err("hp: Missing args.");
+    return false;
+  }
+
+  const auto &first = words[0];
+
+  auto &pokemon =
+      data.sides.at(mgmt.key.value()).pokemon.at(mgmt.slot.value() - 1);
+
+  if (first == "slp") {
+    if (words.size() > 2) {
+      pokemon.status = static_cast<uint8_t>(Data::Status::Sleep1);
+    }
+  } else if (first == "par") {
+    pokemon.status = static_cast<uint8_t>(Data::Status::Paralysis);
+  } else if (first == "psn") {
+    pokemon.status = static_cast<uint8_t>(Data::Status::Poison);
+  } else if (first == "frz") {
+    pokemon.status = static_cast<uint8_t>(Data::Status::Freeze);
+  } else if (first == "brn") {
+    pokemon.status = static_cast<uint8_t>(Data::Status::Burn);
+  } else {
+    err("status: Invalid input");
+    return false;
+  }
+
+
+  return true;
 }
 
 bool Program::set(const std::span<const std::string> words) {
