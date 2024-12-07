@@ -281,7 +281,7 @@ State &Program::state() { return history().at(mgmt.loc.current[0]); }
 SearchOutputs &Program::search_outputs() {
   return data.history_map.at(mgmt.loc.key)
       .at(mgmt.loc.current[0])
-      .outputs.at(mgmt.loc.current[2]);
+      .outputs.at(mgmt.loc.current[1]);
 }
 StateSearchData &Program::search_data() {
   return data.search_data_map.at(mgmt.loc.key).at(mgmt.loc.current[0]);
@@ -548,7 +548,7 @@ bool Program::search(const std::span<const std::string> words) {
   search_outputs().tail.push_back(output);
   accumulate(search_outputs().head, output);
   ++mgmt.bounds[2];
-  log("2^20 searches completed in ",
+  log(output.iterations, " searches completed in ",
       search_outputs().tail.back().duration.count(), " ms.");
   return true;
 }
