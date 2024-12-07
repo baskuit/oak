@@ -340,8 +340,8 @@ bool Program::create(const std::string key, const Init::Config p1,
 
   auto &search_data = data.search_data_map[key];
   search_data.emplace_back();
-  search_data.front().nodes.emplace_back(std::unique_ptr<Node>());
-  search_data.front().nodes.emplace_back(std::unique_ptr<Node>());
+  search_data.front().nodes.emplace_back(std::make_unique<Node>());
+  search_data.front().nodes.emplace_back(std::make_unique<Node>());
 
   return true;
 }
