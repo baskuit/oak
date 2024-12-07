@@ -87,30 +87,30 @@ public:
   ManagedData data;
   ManagerData mgmt{};
 
-  std::string prompt() const noexcept override;
+  std::string prompt() const  override;
 
   bool
-  handle_command(const std::span<const std::string> words) noexcept override;
+  handle_command(const std::span<const std::string> words)  override;
 
-  bool save(std::filesystem::path) noexcept override;
-  bool load(std::filesystem::path) noexcept override;
+  bool save(std::filesystem::path)  override;
+  bool load(std::filesystem::path)  override;
 
   bool create(const std::string key, const Init::Config p1,
               const Init::Config p2);
 
 private:
-  void loc() const noexcept;
+  void loc() const ;
   bool rollout();
-  bool update(pkmn_choice c1, pkmn_choice c2) noexcept;
-  bool update(std::string c1, std::string c2) noexcept;
-  bool rm(std::string key) noexcept;
-  void print() const noexcept;
+  bool update(pkmn_choice c1, pkmn_choice c2) ;
+  bool update(std::string c1, std::string c2) ;
+  bool rm(std::string key) ;
+  void print() const ;
   bool cd(const std::span<const std::string> words) ;
-  bool up() noexcept;
-  bool next() noexcept;
-  bool prev() noexcept;
-  bool first() noexcept;
-  bool last() noexcept;
+  bool up() ;
+  bool next() ;
+  bool prev() ;
+  bool first() ;
+  bool last() ;
 
   History &history();
   State &state();

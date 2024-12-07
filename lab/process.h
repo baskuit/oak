@@ -15,11 +15,11 @@ class ProgramBase {
 public:
   ProgramBase(std::ostream *out, std::ostream *err) : mOut{out}, mErr{err} {}
 
-  virtual std::string prompt() const noexcept = 0;
-  virtual bool handle_command(const std::span<const std::string>) noexcept = 0;
+  virtual std::string prompt() const  = 0;
+  virtual bool handle_command(const std::span<const std::string>)  = 0;
 
-  virtual bool save(std::filesystem::path) noexcept = 0;
-  virtual bool load(std::filesystem::path) noexcept = 0;
+  virtual bool save(std::filesystem::path)  = 0;
+  virtual bool load(std::filesystem::path)  = 0;
 
   template <typename... Args> void log(const Args &...messages) const {
     ((*mOut << messages << " "), ...) << std::endl;

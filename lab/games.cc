@@ -8,7 +8,7 @@
 namespace Lab {
 namespace Games {
 
-std::string Program::prompt() const noexcept {
+std::string Program::prompt() const  {
   std::stringstream p{};
   p << "games";
   if (mgmt.loc.depth >= 1) {
@@ -22,7 +22,7 @@ std::string Program::prompt() const noexcept {
   return p.str();
 }
 
-void Program::loc() const noexcept {
+void Program::loc() const  {
   std::stringstream p{};
   p << "depth: " << mgmt.loc.depth << " index: " << mgmt.loc.current[0] << ' '
     << mgmt.loc.current[1] << ' ' << mgmt.loc.current[2] << std::endl;
@@ -32,7 +32,7 @@ void Program::loc() const noexcept {
 }
 
 bool Program::handle_command(
-    const std::span<const std::string> words) noexcept {
+    const std::span<const std::string> words)  {
   if (words.empty()) {
     return false;
   }
@@ -53,9 +53,6 @@ bool Program::handle_command(
     return first();
   } else if (command == "last") {
     return last();
-    // } else if (command == "size") {
-    //   log("size: ", size());
-    //   return true;
   }
   // if (command == "update") {
   //   if (words.size() < 3) {
@@ -73,10 +70,10 @@ bool Program::handle_command(
   return false;
 }
 
-bool Program::save(std::filesystem::path path) noexcept { return false; }
-bool Program::load(std::filesystem::path path) noexcept { return false; }
+bool Program::save(std::filesystem::path path)  { return false; }
+bool Program::load(std::filesystem::path path)  { return false; }
 
-void Program::print() const noexcept {
+void Program::print() const  {
   switch (mgmt.loc.depth) {
   case 0: {
     log(data.history_map.size(), " games:");
@@ -117,7 +114,7 @@ void Program::print() const noexcept {
   }
 }
 
-bool Program::up() noexcept {
+bool Program::up()  {
   if (mgmt.loc.depth == 0) {
     return true;
   } else if (mgmt.loc.depth == 1) {
@@ -189,9 +186,7 @@ bool Program::cd(const std::span<const std::string> words) {
       return;
     }
     case 2: {
-      mgmt.bounds[1] = data.search_data_map.at(mgmt.loc.key)
-                           .at(mgmt.loc.current[1])
-                           .nodes.size();
+      mgmt.bounds[1] = search_data().nodes.size();
       return;
     }
     case 3: {
@@ -212,7 +207,7 @@ bool Program::cd(const std::span<const std::string> words) {
   return true;
 }
 
-bool Program::prev() noexcept {
+bool Program::prev()  {
   if (mgmt.loc.depth < 2) {
     err("prev: A list must be in focus.");
     return false;
@@ -223,31 +218,31 @@ bool Program::prev() noexcept {
   }
   return true;
 }
-bool Program::next() noexcept {
+bool Program::next()  {
   if (mgmt.loc.depth < 2) {
     err("next: A list must be in focus.");
     return false;
   }
   auto &cur = mgmt.loc.current[mgmt.loc.depth - 2];
-  if (cur < mgmt.bounds[mgmt.loc.depth - 2]) {
+  if (cur < mgmt.bounds[mgmt.loc.depth - 2] - 1) {
     ++cur;
   }
   return true;
 }
-bool Program::last() noexcept {
+bool Program::first()  {
+  if (mgmt.loc.depth < 2) {
+    err("first: A list must be in focus.");
+    return false;
+  }
+  mgmt.loc.current[mgmt.loc.depth - 2] = 0;
+  return true;
+}
+bool Program::last()  {
   if (mgmt.loc.depth < 2) {
     err("last: A list must be in focus.");
     return false;
   }
   mgmt.loc.current[mgmt.loc.depth - 2] = mgmt.bounds[mgmt.loc.depth - 2] - 1;
-  return true;
-}
-bool Program::first() noexcept {
-  if (mgmt.loc.depth < 2) {
-    err("first: A list must be in focus.");
-    return false;
-  }
-  mgmt.loc.current[mgmt.loc.depth - 2] = mgmt.bounds[0];
   return true;
 }
 
@@ -256,7 +251,7 @@ State &Program::state() { return history().at(mgmt.loc.current[0]); }
 SearchOutputs &Program::search_outputs() {
   return data.history_map.at(mgmt.loc.key)
       .at(mgmt.loc.current[0])
-      .outputs.at(mgmt.loc.current[1]);
+      .outputs.at(mgmt.loc.current[2]);
 }
 StateSearchData &Program::search_data() {
   return data.search_data_map.at(mgmt.loc.key).at(mgmt.loc.current[0]);
@@ -279,7 +274,7 @@ const State &Program::state() const {
 const SearchOutputs &Program::search_outputs() const {
   return data.history_map.at(mgmt.loc.key)
       .at(mgmt.loc.current[0])
-      .outputs.at(mgmt.loc.current[1]);
+      .outputs.at(mgmt.loc.current[2]);
 }
 const StateSearchData &Program::search_data() const {
   return data.search_data_map.at(mgmt.loc.key).at(mgmt.loc.current[0]);
@@ -321,7 +316,7 @@ bool Program::create(const std::string key, const Init::Config p1,
   return true;
 }
 
-// bool Program::update(std::string str1, std::string str2) noexcept {
+// bool Program::update(std::string str1, std::string str2)  {
 //   uint8_t x, y;
 //   try {
 //     x = std::stoi(str1);
@@ -333,13 +328,16 @@ bool Program::create(const std::string key, const Init::Config p1,
 //   return update(x, y);
 // }
 
-bool Program::update(pkmn_choice c1, pkmn_choice c2) noexcept {
+bool Program::update(pkmn_choice c1, pkmn_choice c2)  {
   // if (mgmt.loc.depth == 0) {
   //   err("update: A game must be in focus");
   //   return false;
   // }
   auto &h = history();
-  const auto &state = h.back();
+  auto &state = h.back();
+
+  state.c1 = c1;
+  state.c2 = c2;  
 
   State next{};
   next.battle = state.battle;
@@ -348,6 +346,7 @@ bool Program::update(pkmn_choice c1, pkmn_choice c2) noexcept {
   next.options = state.options;
   next.result = Init::update(next.battle, c1, c2, next.options);
   const auto [choices1, choices2] = Init::choices(next.battle, next.result);
+  next.outputs.resize(2);
 
   if (pkmn_result_type(next.result)) {
     next.m = 0;
@@ -394,7 +393,7 @@ bool Program::rollout() {
   return true;
 };
 
-// bool Program::rm(std::string key) noexcept {
+// bool Program::rm(std::string key)  {
 //   if (depth() != 0) {
 //     err("rm: A game cannot be in focus");
 //     return false;

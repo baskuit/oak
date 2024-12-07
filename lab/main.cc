@@ -32,7 +32,7 @@ public:
   Program(std::ostream *out, std::ostream *err)
       : Base{out, err}, sides_process{out, err}, games_process{out, err} {}
 
-  std::string prompt() const noexcept {
+  std::string prompt() const  {
     switch (focus) {
     case ManagementData::Focus::S:
       return sides_process.prompt();
@@ -43,7 +43,7 @@ public:
     }
   }
 
-  bool handle_command(const std::span<const std::string> words) noexcept {
+  bool handle_command(const std::span<const std::string> words)  {
     if (words.empty()) {
       return false;
     }
@@ -90,9 +90,9 @@ public:
     }
   }
 
-  bool save(std::filesystem::path) noexcept { return false; }
+  bool save(std::filesystem::path)  { return false; }
 
-  bool load(std::filesystem::path) noexcept { return false; }
+  bool load(std::filesystem::path)  { return false; }
 
   bool create_history(const std::string key, const std::string p1_key,
                       const std::string p2_key, const uint64_t seed = 0) {
