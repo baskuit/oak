@@ -53,14 +53,18 @@ bool Program::handle_command(const std::span<const std::string> words) {
   } else if (command == "last") {
     return last();
   }
-  // if (command == "update") {
-  //   if (words.size() < 3) {
-  //     return false;
-  //   }
-  //   return update(words[1], words[2]);
-  // }
 
   const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
+
+  if (command == "update") {
+    if (words.size() < 3) {
+      err("update: Please enter u8 value of c1, c2 as a decimal (e.g. 5, 17)");
+      return false;
+    }
+    return update(words[1], words[2]);
+  } else if (command == "search") {
+    return search(tail);
+  }
 
   if (command == "cd") {
     return cd(tail);
@@ -73,6 +77,32 @@ bool Program::save(std::filesystem::path path) { return false; }
 bool Program::load(std::filesystem::path path) { return false; }
 
 void Program::print() const {
+  const auto print_output = [this](const MCTS::Output &o) {
+    log("average value: ", o.average_value);
+    log("iterations: ", o.iterations);
+    for (auto i = 0; i < o.m; ++i) {
+      for (auto j = 0; j < o.n; ++j) {
+        auto value = std::format(
+            "{:5.3f}",
+            o.value_matrix[i][j] / std::max(uint32_t{1}, o.visit_matrix[i][j]));
+        value = std::string{"", 5 - value.size()} + value;
+        log_(value, " ");
+      }
+      log("");
+    }
+    const auto &battle = state().battle;
+    for (auto i = 0; i < o.m; ++i) {
+      log_(side_choice_string(battle.bytes, o.choices1[i]),
+           std::format("{:>5.3f}", o.p1[i]), ' ');
+    }
+    log("");
+    for (auto i = 0; i < o.n; ++i) {
+      log_(side_choice_string(battle.bytes + Offsets::side, o.choices2[i]),
+           std::format("{:>5.3f}", o.p2[i]), ' ');
+    }
+    log("");
+  };
+
   switch (mgmt.loc.depth) {
   case 0: {
     log(data.history_map.size(), " games:");
@@ -103,11 +133,12 @@ void Program::print() const {
     return;
   }
   case 3: {
-    log("TODO print node");
+    const auto &o = search_outputs().head;
+    print_output(o);
     return;
   }
   case 4: {
-    log("TODO print output");
+    print_output(output());
     return;
   }
   }
@@ -315,23 +346,23 @@ bool Program::create(const std::string key, const Init::Config p1,
   return true;
 }
 
-// bool Program::update(std::string str1, std::string str2)  {
-//   uint8_t x, y;
-//   try {
-//     x = std::stoi(str1);
-//     y = std::stoi(str2);
-//   } catch (...) {
-//     err("update: bad w/e.");
-//     return false;
-//   }
-//   return update(x, y);
-// }
+bool Program::update(std::string str1, std::string str2) {
+  uint8_t x, y;
+  try {
+    x = std::stoi(str1);
+    y = std::stoi(str2);
+  } catch (...) {
+    err("update: Bad conversion of args to u8.");
+    return false;
+  }
+  return update(x, y);
+}
 
 bool Program::update(pkmn_choice c1, pkmn_choice c2) {
-  // if (mgmt.loc.depth == 0) {
-  //   err("update: A game must be in focus");
-  //   return false;
-  // }
+  if (mgmt.loc.depth == 0) {
+    err("update: A game must be in focus");
+    return false;
+  }
   auto &h = history();
   auto &state = h.back();
 
@@ -345,8 +376,6 @@ bool Program::update(pkmn_choice c1, pkmn_choice c2) {
   next.options = state.options;
   next.result = Init::update(next.battle, c1, c2, next.options);
   const auto [choices1, choices2] = Init::choices(next.battle, next.result);
-  next.outputs.resize(2);
-
   if (pkmn_result_type(next.result)) {
     next.m = 0;
     next.n = 0;
@@ -356,6 +385,16 @@ bool Program::update(pkmn_choice c1, pkmn_choice c2) {
   }
   std::copy(choices1.begin(), choices1.end(), next.choices1.begin());
   std::copy(choices2.begin(), choices2.end(), next.choices2.begin());
+
+  // set up head of search outputs
+  next.outputs.emplace_back();
+  auto &o = next.outputs.front().head;
+  o.m = next.m;
+  o.n = next.n;
+  o.choices1 = next.choices1;
+  o.choices2 = next.choices2;
+  next.outputs.emplace_back();
+  next.outputs.back().head = o;
 
   h.emplace_back(next);
 
@@ -391,6 +430,96 @@ bool Program::rollout() {
   log("rollout: ", h.size(), " states.");
   return true;
 };
+
+void accumulate(MCTS::Output &head, MCTS::Output &foot) {
+  head.iterations += foot.iterations;
+  head.duration += foot.duration;
+  head.total_value += foot.total_value;
+  head.average_value = head.total_value / head.iterations;
+  head.p1 = {};
+  head.p2 = {};
+  for (auto i = 0; i < 9; ++i) {
+    for (auto j = 0; j < 9; ++j) {
+      head.visit_matrix[i][j] += foot.visit_matrix[i][j];
+      head.value_matrix[i][j] += foot.value_matrix[i][j];
+      head.p1[i] += head.visit_matrix[i][j];
+      head.p2[j] += head.visit_matrix[i][j];
+    }
+  }
+  for (auto i = 0; i < 9; ++i) {
+    head.p1[i] /= head.iterations;
+  }
+  for (auto j = 0; j < 9; ++j) {
+    head.p2[j] /= head.iterations;
+  }
+}
+
+bool Program::search(const std::span<const std::string> words) {
+  if (mgmt.loc.depth < 3) {
+    err("words: Node must be in focus.");
+    return false;
+  }
+  if (words.size() != 3) {
+    err("words: Invalid Args. Expecting 'mc'/'eval', 'time'/'count', <n> ");
+    return false;
+  }
+  bool mc;
+  if (words[0] == "mc") {
+    mc = true;
+  } else if (words[0] == "eval" && false) {
+    mc = false;
+  } else {
+    err("search: Could not parse value estimatation mode e.g. mc/eval");
+    return false;
+  }
+  bool iter;
+  if (words[1] == "time" || words[1] == "ms") {
+    iter = false;
+  } else if (words[1] == "count" || words[1] == "n") {
+    iter = true;
+  } else {
+    err("search: Could not parse mode e.g. time/count");
+    return false;
+  }
+  size_t n;
+  try {
+    n = std::stoi(words[2]);
+  } catch (...) {
+    err("search: Could not parse Arg #3");
+    return false;
+  }
+
+  const auto &s = state();
+  MCTS search{};
+  MonteCarlo::Input input;
+  input.battle = s.battle;
+  input.durations = *pkmn_gen1_battle_options_chance_durations(&s.options);
+  input.result = s.result;
+  const auto &d = View::ref(input.durations);
+  MCTS::Output output;
+  MonteCarlo::Model model{9823457230948};
+  try {
+    if (iter) {
+      if (mc) {
+        output = search.run(n, node(), input, model);
+      } else {
+      }
+    } else {
+      if (mc) {
+        output = search.run(std::chrono::milliseconds{n}, node(), input, model);
+      } else {
+      }
+    }
+  } catch (const std::exception &e) {
+    err("search: Exception thrown during run: ", e.what());
+  }
+  search_outputs().tail.push_back(output);
+  accumulate(search_outputs().head, output);
+  ++mgmt.bounds[2];
+  log("2^20 searches completed in ",
+      search_outputs().tail.back().duration.count(), " ms.");
+  return true;
+}
 
 // bool Program::rm(std::string key)  {
 //   if (depth() != 0) {

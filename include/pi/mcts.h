@@ -155,7 +155,7 @@ struct MCTS {
     const auto [c1, c2] = Init::choices(input.battle, input.result);
     output.m = c1.size();
     output.n = c2.size();
-    std::copy(c1.begin(), c2.end(), output.choices1.begin());
+    std::copy(c1.begin(), c1.end(), output.choices1.begin());
     std::copy(c2.begin(), c2.end(), output.choices2.begin());
 
     if constexpr (Options::root_matrix) {

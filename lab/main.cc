@@ -151,9 +151,10 @@ int debug(int argc, char *argv[]) {
   std::vector<std::string> com1{"games"};
   std::vector<std::string> com2{"cd", "a"};
   std::vector<std::string> com3{"rollout"};
-  std::vector<std::string> com4{"cd", "10"};
-  std::vector<std::string> com5{"loc"};
-  std::vector<std::string> com6{"cd", "0"};
+  std::vector<std::string> com4{"cd", "10", "0"};
+  std::vector<std::string> com5{"search", "mc", "iter",
+                                std::to_string(1 << 20)};
+  // std::vector<std::string> com6{"cd", "0"};
 
   program.handle_command(com0);
   program.handle_command(com1);
@@ -161,7 +162,7 @@ int debug(int argc, char *argv[]) {
   program.handle_command(com3);
   program.handle_command(com4);
   program.handle_command(com5);
-  program.handle_command(com6);
+  // program.handle_command(com6);
   // program.handle_command(com1);
   return 0;
 }

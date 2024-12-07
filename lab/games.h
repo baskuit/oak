@@ -98,6 +98,7 @@ public:
               const Init::Config p2);
 
 private:
+  bool search(const std::span<const std::string> words);
   void loc() const;
   bool rollout();
   bool update(pkmn_choice c1, pkmn_choice c2);
@@ -110,6 +111,8 @@ private:
   bool prev();
   bool first();
   bool last();
+
+  bool search();
 
   History &history();
   State &state();
