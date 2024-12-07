@@ -347,14 +347,46 @@ bool Program::create(const std::string key, const Init::Config p1,
 }
 
 bool Program::update(std::string str1, std::string str2) {
+  if (mgmt.loc.depth == 0) {
+    err("update: A game must be in focus");
+    return false;
+  }
+
+  const auto &s = history().back();
   uint8_t x, y;
   try {
     x = std::stoi(str1);
+  } catch (...) {
+    std::array<std::string, 9> str_choices{};
+    std::transform(s.choices1.begin(), s.choices1.begin() + s.m,
+                   str_choices.begin(), [&s](const auto c) {
+                     return side_choice_string(s.battle.bytes, c);
+                   });
+    int i = Strings::unique_index(str_choices, str1);
+    log("update: str1: ", str1, " i: ", i);
+    if (i == -1) {
+      err("update: Could not parse c1: ", str1);
+      return false;
+    }
+    x = static_cast<size_t>(s.choices1[i]);
+  }
+  try {
     y = std::stoi(str2);
   } catch (...) {
-    err("update: Bad conversion of args to u8.");
-    return false;
+    std::array<std::string, 9> str_choices{};
+    std::transform(s.choices2.begin(), s.choices2.begin() + s.n,
+                   str_choices.begin(), [&s](const auto c) {
+                     return side_choice_string(s.battle.bytes + Offsets::side, c);
+                   });
+    int i = Strings::unique_index(str_choices, str2);
+    log("update: str2: ", str2, " i: ", i);
+    if (i == -1) {
+      err("update: Could not parse c2: ", str2);
+      return false;
+    }
+    y = static_cast<size_t>(s.choices2[i]);
   }
+
   return update(x, y);
 }
 
