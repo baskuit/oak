@@ -32,31 +32,30 @@ public:
   ManagedData data;
   ManagerData mgmt;
 
-  std::string prompt() const  override;
+  std::string prompt() const override;
 
-  bool
-  handle_command(const std::span<const std::string> words)  override;
+  bool handle_command(const std::span<const std::string> words) override;
 
-  bool save(std::filesystem::path)  override;
-  bool load(std::filesystem::path)  override;
+  bool save(std::filesystem::path) override;
+  bool load(std::filesystem::path) override;
 
 private:
-  bool add(const std::string key) ;
-  bool rm(const std::string key) ;
+  bool add(const std::string key);
+  bool rm(const std::string key);
 
-  bool cd(const std::span<const std::string> words) ;
-  bool cp(const std::span<const std::string> words) ;
+  bool cd(const std::span<const std::string> words);
+  bool cp(const std::span<const std::string> words);
 
-  bool set(const std::span<const std::string> words) ;
+  bool set(const std::span<const std::string> words);
 
   bool hp(const std::string);
   bool status(const std::string);
 
-  void print() const ;
+  void print() const;
 
-  size_t depth() const ;
+  size_t depth() const;
 
-  bool up() ;
+  bool up();
 };
 
 } // namespace Sides

@@ -32,7 +32,7 @@ public:
   Program(std::ostream *out, std::ostream *err)
       : Base{out, err}, sides_process{out, err}, games_process{out, err} {}
 
-  std::string prompt() const  {
+  std::string prompt() const {
     switch (focus) {
     case ManagementData::Focus::S:
       return sides_process.prompt();
@@ -43,7 +43,7 @@ public:
     }
   }
 
-  bool handle_command(const std::span<const std::string> words)  {
+  bool handle_command(const std::span<const std::string> words) {
     if (words.empty()) {
       return false;
     }
@@ -90,9 +90,9 @@ public:
     }
   }
 
-  bool save(std::filesystem::path)  { return false; }
+  bool save(std::filesystem::path) { return false; }
 
-  bool load(std::filesystem::path)  { return false; }
+  bool load(std::filesystem::path) { return false; }
 
   bool create_history(const std::string key, const std::string p1_key,
                       const std::string p2_key, const uint64_t seed = 0) {
@@ -154,8 +154,6 @@ int debug(int argc, char *argv[]) {
   std::vector<std::string> com4{"cd", "10"};
   std::vector<std::string> com5{"loc"};
   std::vector<std::string> com6{"cd", "0"};
-
-
 
   program.handle_command(com0);
   program.handle_command(com1);

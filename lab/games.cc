@@ -8,7 +8,7 @@
 namespace Lab {
 namespace Games {
 
-std::string Program::prompt() const  {
+std::string Program::prompt() const {
   std::stringstream p{};
   p << "games";
   if (mgmt.loc.depth >= 1) {
@@ -22,7 +22,7 @@ std::string Program::prompt() const  {
   return p.str();
 }
 
-void Program::loc() const  {
+void Program::loc() const {
   std::stringstream p{};
   p << "depth: " << mgmt.loc.depth << " index: " << mgmt.loc.current[0] << ' '
     << mgmt.loc.current[1] << ' ' << mgmt.loc.current[2] << std::endl;
@@ -31,8 +31,7 @@ void Program::loc() const  {
   log(p.str());
 }
 
-bool Program::handle_command(
-    const std::span<const std::string> words)  {
+bool Program::handle_command(const std::span<const std::string> words) {
   if (words.empty()) {
     return false;
   }
@@ -70,10 +69,10 @@ bool Program::handle_command(
   return false;
 }
 
-bool Program::save(std::filesystem::path path)  { return false; }
-bool Program::load(std::filesystem::path path)  { return false; }
+bool Program::save(std::filesystem::path path) { return false; }
+bool Program::load(std::filesystem::path path) { return false; }
 
-void Program::print() const  {
+void Program::print() const {
   switch (mgmt.loc.depth) {
   case 0: {
     log(data.history_map.size(), " games:");
@@ -114,7 +113,7 @@ void Program::print() const  {
   }
 }
 
-bool Program::up()  {
+bool Program::up() {
   if (mgmt.loc.depth == 0) {
     return true;
   } else if (mgmt.loc.depth == 1) {
@@ -207,7 +206,7 @@ bool Program::cd(const std::span<const std::string> words) {
   return true;
 }
 
-bool Program::prev()  {
+bool Program::prev() {
   if (mgmt.loc.depth < 2) {
     err("prev: A list must be in focus.");
     return false;
@@ -218,7 +217,7 @@ bool Program::prev()  {
   }
   return true;
 }
-bool Program::next()  {
+bool Program::next() {
   if (mgmt.loc.depth < 2) {
     err("next: A list must be in focus.");
     return false;
@@ -229,7 +228,7 @@ bool Program::next()  {
   }
   return true;
 }
-bool Program::first()  {
+bool Program::first() {
   if (mgmt.loc.depth < 2) {
     err("first: A list must be in focus.");
     return false;
@@ -237,7 +236,7 @@ bool Program::first()  {
   mgmt.loc.current[mgmt.loc.depth - 2] = 0;
   return true;
 }
-bool Program::last()  {
+bool Program::last() {
   if (mgmt.loc.depth < 2) {
     err("last: A list must be in focus.");
     return false;
@@ -328,7 +327,7 @@ bool Program::create(const std::string key, const Init::Config p1,
 //   return update(x, y);
 // }
 
-bool Program::update(pkmn_choice c1, pkmn_choice c2)  {
+bool Program::update(pkmn_choice c1, pkmn_choice c2) {
   // if (mgmt.loc.depth == 0) {
   //   err("update: A game must be in focus");
   //   return false;
@@ -337,7 +336,7 @@ bool Program::update(pkmn_choice c1, pkmn_choice c2)  {
   auto &state = h.back();
 
   state.c1 = c1;
-  state.c2 = c2;  
+  state.c2 = c2;
 
   State next{};
   next.battle = state.battle;

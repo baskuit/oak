@@ -21,7 +21,7 @@ Program::Program(std::ostream *out, std::ostream *err)
   }
 }
 
-std::string Program::prompt() const  {
+std::string Program::prompt() const {
   std::string p{"sides"};
   if (mgmt.key.has_value()) {
     p += "/" + mgmt.key.value();
@@ -34,8 +34,7 @@ std::string Program::prompt() const  {
   return p;
 }
 
-bool Program::handle_command(
-    const std::span<const std::string> words)  {
+bool Program::handle_command(const std::span<const std::string> words) {
   if (words.empty()) {
     return false;
   }
@@ -92,7 +91,7 @@ bool Program::handle_command(
   return false;
 }
 
-bool Program::save(std::filesystem::path path)  {
+bool Program::save(std::filesystem::path path) {
   constexpr bool overwrite = true;
   const auto mode =
       overwrite ? std::ios::binary : std::ios::binary | std::ios::trunc;
@@ -113,11 +112,11 @@ bool Program::save(std::filesystem::path path)  {
   return true;
 }
 
-bool Program::load(std::filesystem::path path)  {
+bool Program::load(std::filesystem::path path) {
   return FS::load(path, data.sides);
 }
 
-bool Program::add(std::string key)  {
+bool Program::add(std::string key) {
   if (data.sides.contains(key)) {
     err("add: ", key, " already present.");
     return false;
@@ -127,7 +126,7 @@ bool Program::add(std::string key)  {
   }
 }
 
-bool Program::rm(std::string key)  {
+bool Program::rm(std::string key) {
   if (depth() != 0) {
     err("rm: A side cannot be in focus");
     return false;
@@ -141,7 +140,7 @@ bool Program::rm(std::string key)  {
   }
 }
 
-bool Program::set(const std::span<const std::string> words)  {
+bool Program::set(const std::span<const std::string> words) {
   if (depth() != 2) {
     err("set: A slot must be in focus.");
     return false;
@@ -190,7 +189,7 @@ bool Program::set(const std::span<const std::string> words)  {
   return true;
 }
 
-bool Program::cp(const std::span<const std::string> words)  {
+bool Program::cp(const std::span<const std::string> words) {
   if (words.empty()) {
     err("cp: Missing source.");
     return false;
@@ -220,7 +219,7 @@ bool Program::cp(const std::span<const std::string> words)  {
   return true;
 }
 
-bool Program::cd(const std::span<const std::string> words)  {
+bool Program::cd(const std::span<const std::string> words) {
   if (words.empty()) {
     err("cd: Missing args.");
     return false;
@@ -271,7 +270,7 @@ bool Program::cd(const std::span<const std::string> words)  {
   return true;
 }
 
-void Program::print() const  {
+void Program::print() const {
   switch (depth()) {
   case 0: {
     log(data.sides.size(), " sides:");
@@ -314,7 +313,7 @@ void Program::print() const  {
   }
 }
 
-size_t Program::depth() const  {
+size_t Program::depth() const {
   if (mgmt.key.has_value()) {
     if (mgmt.slot.has_value()) {
       return 2;
@@ -326,7 +325,7 @@ size_t Program::depth() const  {
   }
 }
 
-bool Program::up()  {
+bool Program::up() {
   if (mgmt.slot.has_value()) {
     mgmt.slot = std::nullopt;
     return true;
