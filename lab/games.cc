@@ -11,14 +11,24 @@ namespace Games {
 std::string Program::prompt() const noexcept {
   std::stringstream p{};
   p << "games";
-  if (mgmt.loc.depth > 0) {
+  if (mgmt.loc.depth >= 1) {
     p << "/" << mgmt.loc.key;
-    for (auto i = 0; i < mgmt.loc.depth - 1; ++i) {
-      p << '/' << mgmt.loc.current[i];
-    }
   }
-  p << "$" << mgmt.loc.depth << " ";
+  for (int i = 0; i < static_cast<int>(mgmt.loc.depth) - 1; ++i) {
+    p << '/' << mgmt.loc.current[i];
+  }
+  p << "$ ";
+
   return p.str();
+}
+
+void Program::loc() const noexcept {
+  std::stringstream p{};
+  p << "depth: " << mgmt.loc.depth << " index: " << mgmt.loc.current[0] << ' '
+    << mgmt.loc.current[1] << ' ' << mgmt.loc.current[2] << std::endl;
+  p << "bound: " << mgmt.bounds[0] << ' ' << mgmt.bounds[1] << ' '
+    << mgmt.bounds[2] << std::endl;
+  log(p.str());
 }
 
 bool Program::handle_command(
@@ -27,30 +37,26 @@ bool Program::handle_command(
     return false;
   }
   const auto &command = words.front();
-  if (command == "print" || command == "ls") {
+  if (command == "ls") {
     print();
     return true;
-    // } else if (command == "rollout") {
-    //   return rollout();
-    // } else if (command == "prev") {
-    //   return prev();
-    // } else if (command == "next") {
-    //   return next();
-    // } else if (command == "first") {
-    //   return first();
-    // } else if (command == "last") {
-    //   return last();
+  } else if (command == "loc") {
+    loc();
+    return true;
+  } else if (command == "rollout") {
+    return rollout();
+  } else if (command == "prev") {
+    return prev();
+  } else if (command == "next") {
+    return next();
+  } else if (command == "first") {
+    return first();
+  } else if (command == "last") {
+    return last();
     // } else if (command == "size") {
     //   log("size: ", size());
     //   return true;
   }
-
-  const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
-
-  if (command == "cd") {
-    return cd(tail);
-  }
-
   // if (command == "update") {
   //   if (words.size() < 3) {
   //     return false;
@@ -58,6 +64,11 @@ bool Program::handle_command(
   //   return update(words[1], words[2]);
   // }
 
+  const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
+
+  if (command == "cd") {
+    return cd(tail);
+  }
   err("games: command '", command, "' not recognized");
   return false;
 }
@@ -135,6 +146,7 @@ bool Program::cd(const std::span<const std::string> words) noexcept {
     }
 
     if (mgmt.loc.depth == 4) {
+      err("cd: Only '..' allowed here.");
       return false;
     } else if (mgmt.loc.depth == 0) {
       if (data.history_map.contains(word)) {
@@ -142,34 +154,51 @@ bool Program::cd(const std::span<const std::string> words) noexcept {
         ++mgmt.loc.depth;
         return true;
       } else {
+        err("cd: Game key '", word, "' not found.");
         return false;
       }
     }
 
     size_t index;
-
-    if (mgmt.bounds[mgmt.loc.depth - 1] <= index) {
+    try {
+      index = std::stoi(word);
+    } catch (...) {
+      err("cd: Bad argument; expecting index.");
       return false;
     }
+
+    if (mgmt.bounds[mgmt.loc.depth - 1] <= index) {
+      err("cd: {depth: ", mgmt.loc.depth, " index: ", index,
+          " bound: ", mgmt.bounds[mgmt.loc.depth - 1]);
+      return false;
+    }
+
     mgmt.loc.current[mgmt.loc.depth - 1] = index;
+    ++mgmt.loc.depth;
+
     return true;
   };
 
   const auto update_bounds = [this]() {
     switch (mgmt.loc.depth) {
-      case 1: {
-        mgmt.bounds[0] = history().size();
-        return;
-      }
-      case 2: {
-        mgmt.bounds[1] = data.search_data_map.at(mgmt.loc.key)
-              .at(mgmt.loc.current[0]).nodes.size();
-        return;
-      }
-      case 3: {
-        mgmt.bounds[2] = search_outputs().tail.size();
-        return;
-      }
+    case 0: {
+      return;
+    }
+    case 1: {
+      mgmt.bounds[0] = history().size();
+      return;
+    }
+    case 2: {
+      mgmt.bounds[1] = data.search_data_map.at(mgmt.loc.key)
+                           .at(mgmt.loc.current[1])
+                           .nodes.size();
+      return;
+    }
+    case 3: {
+      mgmt.bounds[2] = search_outputs().tail.size();
+      return;
+    }
+    default:
     }
   };
 
@@ -183,12 +212,54 @@ bool Program::cd(const std::span<const std::string> words) noexcept {
   return true;
 }
 
+bool Program::prev() noexcept {
+  if (mgmt.loc.depth < 2) {
+    err("prev: A list must be in focus.");
+    return false;
+  }
+  auto &cur = mgmt.loc.current[mgmt.loc.depth - 2];
+  if (cur != 0) {
+    --cur;
+  }
+  return true;
+}
+bool Program::next() noexcept {
+  if (mgmt.loc.depth < 2) {
+    err("next: A list must be in focus.");
+    return false;
+  }
+  auto &cur = mgmt.loc.current[mgmt.loc.depth - 2];
+  if (cur < mgmt.bounds[mgmt.loc.depth - 2]) {
+    ++cur;
+  }
+  return true;
+}
+bool Program::last() noexcept {
+  if (mgmt.loc.depth < 2) {
+    err("last: A list must be in focus.");
+    return false;
+  }
+  mgmt.loc.current[mgmt.loc.depth - 2] = mgmt.bounds[mgmt.loc.depth - 2] - 1;
+  return true;
+}
+bool Program::first() noexcept {
+  if (mgmt.loc.depth < 2) {
+    err("first: A list must be in focus.");
+    return false;
+  }
+  mgmt.loc.current[mgmt.loc.depth - 2] = mgmt.bounds[0];
+  return true;
+}
+
 History &Program::history() { return data.history_map.at(mgmt.loc.key); }
 State &Program::state() { return history().at(mgmt.loc.current[0]); }
 SearchOutputs &Program::search_outputs() {
   return data.history_map.at(mgmt.loc.key)
       .at(mgmt.loc.current[0])
       .outputs.at(mgmt.loc.current[1]);
+}
+StateSearchData &Program::search_data() {
+  return data.search_data_map.at(mgmt.loc.key).at(mgmt.loc.current[0]);
 }
 Node &Program::node() {
   return *data.search_data_map.at(mgmt.loc.key)
@@ -210,6 +281,10 @@ const SearchOutputs &Program::search_outputs() const {
       .at(mgmt.loc.current[0])
       .outputs.at(mgmt.loc.current[1]);
 }
+const StateSearchData &Program::search_data() const {
+  return data.search_data_map.at(mgmt.loc.key).at(mgmt.loc.current[0]);
+}
+
 const Node &Program::node() const {
   return *data.search_data_map.at(mgmt.loc.key)
               .at(mgmt.loc.current[0])
@@ -246,7 +321,6 @@ bool Program::create(const std::string key, const Init::Config p1,
   return true;
 }
 
-
 // bool Program::update(std::string str1, std::string str2) noexcept {
 //   uint8_t x, y;
 //   try {
@@ -259,64 +333,63 @@ bool Program::create(const std::string key, const Init::Config p1,
 //   return update(x, y);
 // }
 
-// bool Program::update(pkmn_choice c1, pkmn_choice c2) noexcept {
-//   if (!mgmt.cli_key.has_value()) {
-//     err("update: A game must be in focus");
-//     return false;
-//   }
-//   auto &history = *data.histories[mgmt.cli_key.value()];
-//   const auto &state = *history.states.back();
+bool Program::update(pkmn_choice c1, pkmn_choice c2) noexcept {
+  if (mgmt.loc.depth == 0) {
+    err("update: A game must be in focus");
+    return false;
+  }
+  auto &h = history();
+  auto &s = search_data();
+  const auto &state = h.back();
 
-//   auto next = std::make_unique<State>();
-//   auto &bd = next->battle_data;
-//   bd.battle = state.battle_data.battle;
-//   bd.seed = *std::bit_cast<const uint64_t *>(bd.battle.bytes +
-//   Offsets::seed); bd.options = state.battle_data.options; bd.result =
-//   Init::update(bd.battle, c1, c2, bd.options); const auto [choices1,
-//   choices2] = Init::choices(bd.battle, bd.result);
+  State next{};
+  next.battle = state.battle;
+  next.seed =
+      *std::bit_cast<const uint64_t *>(next.battle.bytes + Offsets::seed);
+  next.options = state.options;
+  next.result = Init::update(next.battle, c1, c2, next.options);
+  const auto [choices1, choices2] = Init::choices(next.battle, next.result);
 
-//   if (pkmn_result_type(bd.result)) {
-//     bd.m = 0;
-//     bd.n = 0;
-//   } else {
-//     bd.m = choices1.size();
-//     bd.n = choices2.size();
-//   }
-//   std::copy(choices1.begin(), choices1.end(), bd.choices1.begin());
-//   std::copy(choices2.begin(), choices2.end(), bd.choices2.begin());
+  if (pkmn_result_type(next.result)) {
+    next.m = 0;
+    next.n = 0;
+  } else {
+    next.m = choices1.size();
+    next.n = choices2.size();
+  }
+  std::copy(choices1.begin(), choices1.end(), next.choices1.begin());
+  std::copy(choices2.begin(), choices2.end(), next.choices2.begin());
 
-//   next->nodes.emplace_back(std::make_unique<Node>());
-//   next->nodes.emplace_back(std::make_unique<Node>());
-//   next->outputs.resize(2);
+  h.emplace_back(next);
+  s.nodes.emplace_back(std::make_unique<Node>());
+  s.nodes.emplace_back(std::make_unique<Node>());
 
-//   history.states.emplace_back(std::move(next));
+  ++mgmt.bounds[0];
 
-//   return true;
-// }
+  return true;
+}
 
-// bool Program::rollout() {
-//   if (depth() == 0) {
-//     err("rollout: A Game must be in focus.");
-//     return false;
-//   }
-//   auto &history = *data.histories[mgmt.cli_key.value()];
-//   const auto *state = history.states.back().get();
-//   prng device{123123};
-//   while ((state->battle_data.m * state->battle_data.n) > 0) {
-//     const auto i = device.random_int(state->battle_data.m);
-//     const auto j = device.random_int(state->battle_data.n);
-//     const bool success =
-//         update(state->battle_data.choices1[i],
-//         state->battle_data.choices2[j]);
-//     if (!success) {
-//       err("rollout: Bad update.");
-//       return false;
-//     }
-//     state = history.states.back().get();
-//   }
-//   log("rollout: ", history.states.size(), " states.");
-//   return true;
-// };
+bool Program::rollout() {
+  if (mgmt.loc.depth == 0) {
+    err("rollout: A Game must be in focus.");
+    return false;
+  }
+  auto &h = history();
+  const auto *state = &h.back();
+  prng device{123123};
+  while ((state->m * state->n) > 0) {
+    const auto i = device.random_int(state->m);
+    const auto j = device.random_int(state->n);
+    const bool success = update(state->choices1[i], state->choices2[j]);
+    if (!success) {
+      err("rollout: Bad update.");
+      return false;
+    }
+    state = &h.back();
+  }
+  log("rollout: ", h.size(), " states.");
+  return true;
+};
 
 // bool Program::rm(std::string key) noexcept {
 //   if (depth() != 0) {

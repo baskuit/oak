@@ -99,6 +99,7 @@ public:
               const Init::Config p2);
 
 private:
+  void loc() const noexcept;
   bool rollout();
   bool update(pkmn_choice c1, pkmn_choice c2) noexcept;
   bool update(std::string c1, std::string c2) noexcept;
@@ -113,14 +114,16 @@ private:
 
   History &history();
   State &state();
-  SearchOutputs &search_outputs();
+  StateSearchData &search_data();
   Node &node();
+  SearchOutputs &search_outputs();
   MCTS::Output &output();
 
   const History &history() const;
   const State &state() const;
-  const SearchOutputs &search_outputs() const;
+  const StateSearchData &search_data() const;
   const Node &node() const;
+  const SearchOutputs &search_outputs() const;
   const MCTS::Output &output() const;
 };
 
