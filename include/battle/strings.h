@@ -105,8 +105,11 @@ static std::string battle_to_string(const pkmn_gen1_battle &battle) {
     const auto &side = b.side(s);
 
     for (auto i = 0; i < 6; ++i) {
-      const auto slot = side.order()[i] - 1;
-      auto &pokemon = side.pokemon(slot);
+      const auto slot = side.order()[i];
+      if (slot == 0) {
+        continue;
+      }
+      auto &pokemon = side.pokemon(slot - 1);
 
       if (i == 0) {
         // pass for now
