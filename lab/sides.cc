@@ -22,7 +22,9 @@ Program::Program(std::ostream *out, std::ostream *err)
 }
 
 std::string Program::prompt() const {
-  std::string p{"sides"};
+  const std::string esc{"\033[0m"};
+  std::string p{"\033[32m(sides)"};
+  p += esc;
   if (mgmt.key.has_value()) {
     p += "/" + mgmt.key.value();
   }
@@ -209,6 +211,25 @@ bool Program::status(const std::span<const std::string> words) {
     }
     pokemon.status = static_cast<uint8_t>(Data::Status::Sleep1);
     pokemon.sleep = dur;
+  } else if (first == "rest") {
+    if (words.size() < 2) {
+      err("status: Missing rest duration [1, 2].");
+      return false;
+    }
+    uint8_t dur;
+    try {
+      dur = std::stoi(words[1]);
+    } catch (...) {
+      err("status: Could not rest duration.");
+      return false;
+    }
+    if ((dur > 2) || (dur < 1)) {
+      err("status: Invalid rest duration.");
+      return false;
+    }
+    pokemon.status = dur | 0b10000000;
+  } else if (first == "none" || first == "clear" || first == "clr") {
+    pokemon.status = 0;
   } else if (first == "par") {
     pokemon.status = static_cast<uint8_t>(Data::Status::Paralysis);
   } else if (first == "psn") {
@@ -225,8 +246,8 @@ bool Program::status(const std::span<const std::string> words) {
 }
 
 bool Program::set(const std::span<const std::string> words) {
-  if (depth() != 2) {
-    err("set: A slot must be in focus.");
+  if (depth() != 2 || mgmt.slot == 0) {
+    err("set: A non-active slot must be in focus.");
     return false;
   }
   if (words.empty()) {
@@ -269,7 +290,8 @@ bool Program::set(const std::span<const std::string> words) {
   auto &pokemon =
       data.sides.at(mgmt.key.value()).pokemon.at(mgmt.slot.value() - 1);
   pokemon.moves = move_set._data;
-  std::sort(pokemon.moves.begin(), pokemon.moves.end(), std::greater<Data::Moves>());
+  std::sort(pokemon.moves.begin(), pokemon.moves.end(),
+            std::greater<Data::Moves>());
   pokemon.species = species;
   return true;
 }
