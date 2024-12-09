@@ -347,8 +347,8 @@ bool Program::last() {
 History &Program::history() { return data.history_map.at(mgmt.loc.key); }
 State &Program::state() { return history().states.at(mgmt.loc.current[0]); }
 SearchOutputs &Program::search_outputs() {
-  return data.history_map.at(mgmt.loc.key).states
-      .at(mgmt.loc.current[0])
+  return data.history_map.at(mgmt.loc.key)
+      .states.at(mgmt.loc.current[0])
       .outputs.at(mgmt.loc.current[1]);
 }
 StateSearchData &Program::search_data() {
@@ -370,8 +370,8 @@ const State &Program::state() const {
   return history().states.at(mgmt.loc.current[0]);
 }
 const SearchOutputs &Program::search_outputs() const {
-  return data.history_map.at(mgmt.loc.key).states
-      .at(mgmt.loc.current[0])
+  return data.history_map.at(mgmt.loc.key)
+      .states.at(mgmt.loc.current[0])
       .outputs.at(mgmt.loc.current[1]);
 }
 const StateSearchData &Program::search_data() const {
@@ -653,7 +653,8 @@ bool Program::search(const std::span<const std::string> words) {
         output = search.run(std::chrono::milliseconds{n}, node(), input, model);
       } else {
         log("searching using eval");
-        output = search.run(std::chrono::milliseconds{n}, node(), eval_input, eval);
+        output =
+            search.run(std::chrono::milliseconds{n}, node(), eval_input, eval);
       }
     }
   } catch (const std::exception &e) {
@@ -668,7 +669,7 @@ bool Program::search(const std::span<const std::string> words) {
 }
 
 // try {
-//   auto &x = 
+//   auto &x =
 // }
 
 // bool Program::rm(std::string key)  {

@@ -5,10 +5,10 @@
 
 #include <battle/init.h>
 
+#include <pi/eval.h>
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>
-#include <pi/eval.h>
 
 #include <process.h>
 #include <sides.h>
@@ -74,7 +74,7 @@ struct ManagerData {
     std::string key;
     std::array<size_t, 3> current;
 
-    bool operator<(const Loc& other) const {
+    bool operator<(const Loc &other) const {
       if (depth > other.depth) {
         return false;
       }

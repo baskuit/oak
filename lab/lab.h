@@ -27,7 +27,8 @@ public:
 
 public:
   Program(std::ostream *out, std::ostream *err)
-      : Base{out, err}, sides_process{out, err}, games_process{out, err}, focus{}, thread_manager{} {}
+      : Base{out, err}, sides_process{out, err}, games_process{out, err},
+        focus{}, thread_manager{} {}
 
   std::string prompt() const {
     switch (focus) {

@@ -4,10 +4,13 @@
 #include <data/species.h>
 
 #include <battle/init.h>
+#include <battle/sample-teams.h>
 #include <battle/view.h>
+
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>
+
 #include <util/random.h>
 
 #include <algorithm>
