@@ -1,5 +1,7 @@
 #include <games.h>
 
+#include <data/strings.h>
+
 #include <battle/sample-teams.h>
 #include <battle/strings.h>
 
@@ -52,6 +54,10 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return first();
   } else if (command == "last") {
     return last();
+  } else if (command == "battle") {
+    return battle_bytes();
+  } else if (command == "pokemon") {
+    return pokemon_bytes();
   }
 
   const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
@@ -223,7 +229,9 @@ bool Program::cd(const std::span<const std::string> words) {
       mgmt.bounds[2] = search_outputs().tail.size();
       return;
     }
-    default:
+    default: {
+      return;
+    }
     }
   };
 
@@ -338,9 +346,16 @@ bool Program::create(const std::string key, const Init::Config p1,
   state.n = 1;
   state.outputs.resize(2);
 
-  // auto *durations = pkmn_gen1_battle_options_chance_durations(&state.options);
-  // auto &d = View::ref(*durations);
-  // d.duration(0).set_sleep()
+  auto *durations = pkmn_gen1_battle_options_chance_durations(&state.options);
+  auto &d = View::ref(*durations);
+  for (auto s = 0; s < 2; ++s) {
+    for (auto i = 0; i < 6; ++i) {
+      const auto &set = s == 0 ? p1.pokemon[i] : p2.pokemon[i];
+      if (Data::is_sleep(set.status)) {
+        d.duration(s).set_sleep(i, set.sleep);
+      }
+    }
+  }
 
   auto &search_data = data.search_data_map[key];
   search_data.emplace_back();
@@ -488,6 +503,31 @@ void accumulate(MCTS::Output &head, MCTS::Output &foot) {
   for (auto j = 0; j < 9; ++j) {
     head.p2[j] /= head.iterations;
   }
+}
+
+bool Program::battle_bytes() const {
+  if (mgmt.loc.depth < 2) {
+    err("battle: State must be in focus.");
+    return false;
+  }
+  const auto &battle = state().battle;
+  log(buffer_to_string(battle.bytes, 384));
+  return true;
+}
+bool Program::pokemon_bytes() const {
+  if (mgmt.loc.depth < 2) {
+    err("battle: State must be in focus.");
+    return false;
+  }
+  const auto &battle = state().battle;
+  for (auto s = 0; s < 2; ++s) {
+    for (auto p = 0; p < 6; ++p) {
+      log(buffer_to_string(battle.bytes + (s * Offsets::side) +
+                               (p * Offsets::pokemon),
+                           Offsets::pokemon));
+    }
+  }
+  return true;
 }
 
 bool Program::search(const std::span<const std::string> words) {
