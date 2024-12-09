@@ -149,11 +149,11 @@ bool Program::rm(std::string key) {
 }
 bool Program::hp(const std::span<const std::string> words) {
   if (depth() != 2) {
-    err("hp: A non-active slot must by in focus.");
+    err("hp: A non-active slot must be in focus.");
     return false;
   }
   if (mgmt.slot.value() == 0) {
-    err("hp: A non-active slot must by in focus.");
+    err("hp: A non-active slot must be in focus.");
     return false;
   }
   if (words.empty()) {
@@ -176,11 +176,11 @@ bool Program::hp(const std::span<const std::string> words) {
 
 bool Program::status(const std::span<const std::string> words) {
   if (depth() != 2) {
-    err("hp: A non-active slot must by in focus.");
+    err("hp: A non-active slot must be in focus.");
     return false;
   }
   if (mgmt.slot.value() == 0) {
-    err("hp: A non-active slot must by in focus.");
+    err("hp: A non-active slot must be in focus.");
     return false;
   }
   if (words.empty()) {
@@ -189,14 +189,26 @@ bool Program::status(const std::span<const std::string> words) {
   }
 
   const auto &first = words[0];
-
   auto &pokemon =
       data.sides.at(mgmt.key.value()).pokemon.at(mgmt.slot.value() - 1);
-
   if (first == "slp") {
-    if (words.size() > 2) {
-      pokemon.status = static_cast<uint8_t>(Data::Status::Sleep1);
+    if (words.size() < 2) {
+      err("status: Missing sleep turns [0, 7].");
+      return false;
     }
+    size_t dur;
+    try {
+      dur = std::stoi(words[1]);
+    } catch (...) {
+      err("status: Could not parse sleep turns.");
+      return false;
+    }
+    if (dur > 7) {
+      err("status: Sleep turns too high.");
+      return false;
+    }
+    pokemon.status = static_cast<uint8_t>(Data::Status::Sleep1);
+    pokemon.sleep = dur;
   } else if (first == "par") {
     pokemon.status = static_cast<uint8_t>(Data::Status::Paralysis);
   } else if (first == "psn") {
@@ -209,8 +221,6 @@ bool Program::status(const std::span<const std::string> words) {
     err("status: Invalid input");
     return false;
   }
-
-
   return true;
 }
 
@@ -345,6 +355,19 @@ bool Program::cd(const std::span<const std::string> words) {
 }
 
 void Program::print() const {
+
+  const auto print_poke = [this](const auto &pokemon) {
+    log_(Names::species_string(pokemon.species));
+    if (pokemon.status) {
+      log_(" ", Strings::status(pokemon.status), " (", pokemon.sleep, ")");
+    }
+    log_(" : ");
+    for (const auto move : pokemon.moves) {
+      log_(Names::move_string(move), ' ');
+    }
+    log("");
+  };
+
   switch (depth()) {
   case 0: {
     log(data.sides.size(), " sides:");
@@ -358,11 +381,7 @@ void Program::print() const {
     const auto &party = data.sides.at(mgmt.key.value()).pokemon;
     size_t i = 0;
     for (const auto &pokemon : party) {
-      log_(++i, " : ", Names::species_string(pokemon.species), " : ");
-      for (const auto move : pokemon.moves) {
-        log_(Names::move_string(move), ' ');
-      }
-      log("");
+      print_poke(pokemon);
     }
     return;
   }
@@ -373,11 +392,7 @@ void Program::print() const {
     } else {
       const auto &pokemon =
           data.sides.at(mgmt.key.value()).pokemon.at(slot - 1);
-      log_(Names::species_string(pokemon.species), " : ");
-      for (const auto move : pokemon.moves) {
-        log_(Names::move_string(move), ' ');
-      }
-      log("");
+      print_poke(pokemon);
     }
     return;
   }
