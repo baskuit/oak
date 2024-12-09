@@ -7,6 +7,7 @@
 #include <data/durations.h>
 #include <data/offsets.h>
 #include <data/options.h>
+#include <data/status.h>
 #include <data/strings.h>
 
 #include <battle/init.h>
@@ -83,15 +84,15 @@ struct MCTS {
         if (const auto d = Durations::sleep(durations, s, p)) {
           const auto slot = order[p] - 1;
           const auto pokemon = side + Offsets::pokemon * slot;
+          uint8_t &status = pokemon[Offsets::status];
 
-          if (0b10000000 & pokemon[Offsets::status]) {
+          if (!Data::is_sleep(status) || Data::self(status)) {
             continue;
           }
 
           const uint8_t max = 8 - d;
-          pokemon[Offsets::status] &= 0b11111000;
-          pokemon[Offsets::status] |=
-              static_cast<uint8_t>(device.random_int(max) + 1);
+          status &= 0b11111000;
+          status |= static_cast<uint8_t>(device.random_int(max) + 1);
         }
       }
     }
@@ -287,7 +288,7 @@ struct MCTS {
 
     total_depth += depth;
 
-    switch (pkmn_result_type(result)) {
+    switch (const uint8_t result_type = pkmn_result_type(result)) {
     case PKMN_RESULT_NONE:
       [[likely]] {
         print("Initializing node");
@@ -342,7 +343,8 @@ struct MCTS {
     pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
     result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
     stats.init(m, n);
-    while (!pkmn_result_type(result)) {
+    uint8_t result_type = pkmn_result_type(result);
+    while (result_type == 0) {
       seed = prng.uniform_64();
       m = pkmn_gen1_battle_choices(&battle, PKMN_PLAYER_P1,
                                    pkmn_result_p1(result), choices.data(),
@@ -355,8 +357,9 @@ struct MCTS {
       c2 = choices[seed % n];
       pkmn_gen1_battle_options_set(&options, nullptr, nullptr, nullptr);
       result = pkmn_gen1_battle_update(&battle, c1, c2, &options);
+      result_type = pkmn_result_type(result);
     }
-    switch (pkmn_result_type(result)) {
+    switch (result_type) {
     case PKMN_RESULT_WIN: {
       return 1.0;
     }
