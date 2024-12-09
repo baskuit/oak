@@ -269,6 +269,7 @@ bool Program::set(const std::span<const std::string> words) {
   auto &pokemon =
       data.sides.at(mgmt.key.value()).pokemon.at(mgmt.slot.value() - 1);
   pokemon.moves = move_set._data;
+  std::sort(pokemon.moves.begin(), pokemon.moves.end(), std::greater<Data::Moves>());
   pokemon.species = species;
   return true;
 }
