@@ -8,6 +8,7 @@
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>
+#include <pi/eval.h>
 
 #include <process.h>
 #include <sides.h>
@@ -52,24 +53,42 @@ struct StateSearchData {
   std::vector<std::unique_ptr<Node>> nodes;
 };
 
-using History = std::vector<State>;
+struct History {
+  std::vector<State> states;
+  Eval::CachedEval eval;
+};
+
+// using History = std::vector<State>;
 using HistorySearchData = std::vector<StateSearchData>;
 
 struct ManagedData {
-  std::map<std::string, std::vector<State>> history_map;
+  std::map<std::string, History> history_map;
   std::map<std::string, std::vector<StateSearchData>> search_data_map;
+  Eval::OVODict ovo_dict;
 };
 
 struct ManagerData {
 
   struct Loc {
-    std::string key;
     size_t depth;
+    std::string key;
     std::array<size_t, 3> current;
-  };
 
-  // home = nullopt, 0, {0, 0, 0}
-  // bottom = "key", 3, {1, 1, 1}
+    bool operator<(const Loc& other) const {
+      if (depth > other.depth) {
+        return false;
+      }
+      if (key != other.key) {
+        return false;
+      }
+      for (auto i = 0; i < depth - 1; ++i) {
+        if (current[i] != other.current[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
+  };
 
   Loc loc;
   std::array<size_t, 3> bounds;
@@ -133,6 +152,26 @@ private:
   const Node &node() const;
   const SearchOutputs &search_outputs() const;
   const MCTS::Output &output() const;
+
+  bool lock_location(const ManagerData::Loc &loc) {
+    std::unique_lock lock{mgmt.mutex};
+    for (const auto [key, value] : mgmt.locked_map) {
+      if ((key < loc) || (loc < key)) {
+        return false;
+      }
+    }
+    mgmt.locked_map[loc] = true;
+    return true;
+  }
+
+  bool unlock_location(const ManagerData::Loc &loc) {
+    std::unique_lock lock{mgmt.mutex};
+    if (mgmt.locked_map.contains(loc)) {
+      mgmt.locked_map.erase(loc);
+      return true;
+    }
+    return false;
+  }
 };
 
 } // namespace Games
