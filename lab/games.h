@@ -112,6 +112,10 @@ private:
   bool first();
   bool last();
 
+  bool battle_bytes() const;
+  bool side_bytes() const;
+  bool pokemon_bytes() const;
+
   bool search();
 
   History &history();
