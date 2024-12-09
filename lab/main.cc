@@ -147,23 +147,49 @@ std::vector<std::vector<std::string>> parse_line(const char *data) {
 
 int debug(int argc, char *argv[]) {
   Lab::Program program{&std::cout, &std::cerr};
-  std::vector<std::string> com0{"create", "a", "0", "1"};
-  std::vector<std::string> com1{"games"};
-  std::vector<std::string> com2{"cd", "a"};
-  std::vector<std::string> com3{"rollout"};
-  std::vector<std::string> com4{"cd", "10", "0"};
-  std::vector<std::string> com5{"search", "mc", "iter",
-                                std::to_string(1 << 20)};
-  // std::vector<std::string> com6{"cd", "0"};
 
-  program.handle_command(com0);
-  program.handle_command(com1);
-  program.handle_command(com2);
-  program.handle_command(com3);
-  program.handle_command(com4);
-  program.handle_command(com5);
-  // program.handle_command(com6);
-  // program.handle_command(com1);
+  std::vector<std::string> lines{};
+
+  lines.push_back("add tauros");
+  lines.push_back("cd tauros 1");
+  lines.push_back("set tauros bodyslam scratch earthq strength");
+  lines.push_back("hp 1");
+  lines.push_back("status slp 7");
+
+  lines.push_back("cd .. ..");
+  lines.push_back("add snorlax");
+  lines.push_back("cd snorlax 1");
+  lines.push_back("set snorlax bodyslam scratch earthq strength");
+  lines.push_back("hp 1");
+
+  lines.push_back("games");
+  lines.push_back("create a tauros snorlax");
+  // lines.push_back("create a 0 1");
+
+  lines.push_back("cd a");
+  lines.push_back("update 0 0; cd 1 0");
+  lines.push_back("search mc n 100000");
+  lines.push_back("ls");
+
+  for (const auto line : lines) {
+
+    const auto commands = parse_line(line.data());
+    bool commands_succeeded = true;
+
+    for (const auto &command : commands) {
+      bool command_succeeded;
+      try {
+        command_succeeded =
+            program.handle_command({command.data(), command.size()});
+        commands_succeeded &= command_succeeded;
+      } catch (const std::exception &e) {
+        std::cerr << "Uncaught exception in handle_commands: " << e.what()
+                  << std::endl;
+        commands_succeeded = false;
+      }
+    }
+  }
+
   return 0;
 }
 
@@ -204,7 +230,7 @@ void print_usage(const char *prog_name) {
             << "  -v, --version    Print version information\n";
 }
 
-int main(int argc, char *argv[]) {
+int lab(int argc, char *argv[]) {
   const char *const short_opts = "hv";
   const option long_opts[] = {{"help", no_argument, nullptr, 'h'},
                               {"version", no_argument, nullptr, 'v'},
@@ -229,7 +255,11 @@ int main(int argc, char *argv[]) {
   }
 
   loop(argc, argv);
-  // return debug(argc, argv);
 
   return 0;
+}
+
+int main(int argc, char *argv[]) {
+  // return lab(argc, argv);
+  return debug(argc, argv);
 }
