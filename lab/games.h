@@ -111,6 +111,8 @@ private:
   bool prev();
   bool first();
   bool last();
+  bool trunc();
+  bool cp(const std::span<const std::string> words);
 
   bool battle_bytes() const;
   bool side_bytes() const;
