@@ -12,15 +12,19 @@ namespace Games {
 
 std::string Program::prompt() const {
   std::stringstream p{};
-  p << "games";
+  const std::string esc{"\033[0m"};
+  p << "\033[31m" << "(games)";
+
+  std::array<std::string, 4> color_codes{"\033[33m Game ", "\033[34m State ",
+                                         "\033[35m Node ", "\033[36m Output "};
+
   if (mgmt.loc.depth >= 1) {
-    p << "/" << mgmt.loc.key;
+    p << color_codes[0] << mgmt.loc.key;
   }
   for (int i = 0; i < static_cast<int>(mgmt.loc.depth) - 1; ++i) {
-    p << '/' << mgmt.loc.current[i];
+    p << color_codes[i + 1] << mgmt.loc.current[i];
   }
-  p << "$ ";
-
+  p << "$ " << esc;
   return p.str();
 }
 
@@ -58,6 +62,8 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return battle_bytes();
   } else if (command == "pokemon") {
     return pokemon_bytes();
+  } else if (command == "trunc") {
+    return trunc();
   }
 
   const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
@@ -70,13 +76,63 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return update(words[1], words[2]);
   } else if (command == "search") {
     return search(tail);
-  }
-
-  if (command == "cd") {
+  } else if (command == "cp") {
+    return cp(tail);
+  } else if (command == "cd") {
     return cd(tail);
   }
   err("games: command '", command, "' not recognized");
   return false;
+}
+
+bool Program::trunc() {
+  if (mgmt.loc.depth < 2) {
+    err("trunc: A State must be in focus.");
+    return false;
+  }
+  auto &h = history();
+  const auto n = mgmt.loc.current[0] + 1;
+  h.resize(n);
+  data.search_data_map.at(mgmt.loc.key).resize(n);
+  return true;
+}
+
+bool Program::cp(const std::span<const std::string> words) {
+  if (words.empty()) {
+    err("cp: Missing source.");
+    return false;
+  }
+  const auto source = words[0];
+  if (!data.history_map.contains(source)) {
+    err("cp: Source '", source, "' not found.");
+    return false;
+  }
+
+  std::string dest;
+  if (words.size() >= 2) {
+    dest = words[1];
+    if (data.history_map.contains(dest)) {
+      err("cp: Destination '", dest, "' already present.");
+      return false;
+    }
+  } else {
+    size_t i = 1;
+    do {
+      dest = source + "(" + std::to_string(i) + ")";
+      ++i;
+    } while (data.history_map.contains(dest));
+  }
+
+  data.history_map[dest] = data.history_map[source];
+  data.search_data_map[dest].clear();
+  data.search_data_map[dest].resize(data.history_map[source].size());
+
+  for (auto &vec : data.search_data_map[dest]) {
+    vec.nodes.emplace_back(std::make_unique<Node>());
+    vec.nodes.emplace_back(std::make_unique<Node>());
+  }
+
+  return true;
 }
 
 bool Program::save(std::filesystem::path path) { return false; }
@@ -312,7 +368,7 @@ const State &Program::state() const {
 const SearchOutputs &Program::search_outputs() const {
   return data.history_map.at(mgmt.loc.key)
       .at(mgmt.loc.current[0])
-      .outputs.at(mgmt.loc.current[2]);
+      .outputs.at(mgmt.loc.current[1]);
 }
 const StateSearchData &Program::search_data() const {
   return data.search_data_map.at(mgmt.loc.key).at(mgmt.loc.current[0]);
@@ -592,7 +648,7 @@ bool Program::search(const std::span<const std::string> words) {
   search_outputs().tail.push_back(output);
   accumulate(search_outputs().head, output);
   ++mgmt.bounds[2];
-  log(output.iterations, " searches completed in ",
+  log(output.iterations, " MCTS iterations completed in ",
       search_outputs().tail.back().duration.count(), " ms.");
   return true;
 }
