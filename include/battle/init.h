@@ -133,17 +133,22 @@ constexpr void init_party(const auto &party, uint8_t *const bytes) noexcept {
   assert(n > 0 && n <= 6);
   std::memset(bytes, 0, 24 * 6);
   std::memset(bytes + Offsets::order, 0, 6);
+
+  uint8_t n_alive = 0;
+
   for (uint8_t i = 0; i < n; ++i) {
     const auto &set = party[i];
     assert(set.moves.size() <= 4);
     init_pokemon(set, bytes + i * Offsets::pokemon);
 
-    if constexpr (requires { set.hp; }) {
-      if (set.hp != 0) {
-        bytes[Offsets::order + i] = i + 1;
+    if (set.species != Data::Species::None) {
+      if constexpr (requires { set.hp; }) {
+        if (set.hp == 0) {
+          continue;
+        }
       }
-    } else {
-      bytes[Offsets::order + i] = i + 1;
+      bytes[Offsets::order + n_alive] = i + 1;
+      ++n_alive;
     }
   }
 }
