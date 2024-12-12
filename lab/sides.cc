@@ -335,6 +335,10 @@ bool Program::cd(const std::span<const std::string> words) {
   const auto handle_word = [this](std::string s) {
     if (s == "..") {
       return up();
+    } else if (s == "/") {
+      mgmt.key = std::nullopt;
+      mgmt.slot = std::nullopt;
+      return true;
     }
 
     std::optional<size_t> slot;
