@@ -436,6 +436,10 @@ bool Program::cd(const std::span<const std::string> words) {
   const auto handle_word = [this](std::string word) {
     if (word == "..") {
       return up();
+    } else if (word == "/") {
+      mgmt.loc = {};
+      mgmt.bounds = {};
+      return true;
     }
 
     if (mgmt.loc.depth == 4) {
@@ -613,7 +617,7 @@ bool Program::create(const std::string key, const Init::Config p1,
     for (auto i = 0; i < 6; ++i) {
       const auto &set = s == 0 ? p1.pokemon[i] : p2.pokemon[i];
       if (Data::is_sleep(set.status)) {
-        d.duration(s).set_sleep(i, set.sleep);
+        d.duration(s).set_sleep(i, set.sleep); // TODO null mons will break this
       }
     }
   }
@@ -714,13 +718,14 @@ bool Program::update(pkmn_choice c1, pkmn_choice c2) {
 
   // set up head of search outputs
   next.outputs.emplace_back();
-  auto &o = next.outputs.front().head;
-  o.m = next.m;
-  o.n = next.n;
-  o.choices1 = next.choices1;
-  o.choices2 = next.choices2;
   next.outputs.emplace_back();
-  next.outputs.back().head = o;
+  for (auto &so : next.outputs) {
+    auto &o = so.head;
+    o.m = next.m;
+    o.n = next.n;
+    o.choices1 = next.choices1;
+    o.choices2 = next.choices2;
+  }
 
   h.states.emplace_back(next);
 
