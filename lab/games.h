@@ -142,14 +142,14 @@ private:
   History &history();
   State &state();
   StateSearchData &search_data();
-  Node &node();
+  Node *node();
   SearchOutputs &search_outputs();
   MCTS::Output &output();
 
   const History &history() const;
   const State &state() const;
   const StateSearchData &search_data() const;
-  const Node &node() const;
+  const Node *node() const;
   const SearchOutputs &search_outputs() const;
   const MCTS::Output &output() const;
 

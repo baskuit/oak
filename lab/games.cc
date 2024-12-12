@@ -46,7 +46,27 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return false;
   }
   const auto &command = words.front();
-  if (command == "ls") {
+
+  if (command == "save" || command == "load") {
+
+    if (words.size() < 2) {
+      err(command, ": missing arg(s).");
+      return false;
+    }
+    bool success;
+    std::filesystem::path path{words[1]};
+    if (command == "save") {
+      success = save(path);
+    } else {
+      success = load(path);
+    }
+    if (!success) {
+      err(command, ": Failed.");
+    } else {
+      log(command, ": Operation at path: '", path.string(), "' succeeded.");
+    }
+    return success;
+  } else if (command == "ls") {
     print();
     return true;
   } else if (command == "loc") {
@@ -155,7 +175,13 @@ bool Program::save(std::filesystem::path path) {
   for (const auto &[key, history] : data.history_map) {
     size_t s = key.size();
     file.write(std::bit_cast<const char *>(&s), sizeof(size_t));
+    file.write(std::bit_cast<const char *>(key.data()), s);
+
+    size_t n_states = history.states.size();
+    file.write(std::bit_cast<const char *>(&n_states), sizeof(size_t));
+
     for (const auto &state : history.states) {
+
       file.write(std::bit_cast<const char *>(&state.battle),
                  PKMN_GEN1_BATTLE_SIZE);
       file.write(std::bit_cast<const char *>(&state.options),
@@ -168,13 +194,16 @@ bool Program::save(std::filesystem::path path) {
       file.write(std::bit_cast<const char *>(&state.n), sizeof(size_t));
       file.write(std::bit_cast<const char *>(&state.choices1), 9);
       file.write(std::bit_cast<const char *>(&state.choices2), 9);
+
       size_t n_nodes = state.outputs.size();
       file.write(std::bit_cast<const char *>(&n_nodes), sizeof(size_t));
       for (int i = 0; i < n_nodes; ++i) {
-        size_t n_searches = state.outputs[i].tail.size();
         const auto &o = state.outputs[i];
         file.write(std::bit_cast<const char *>(&o.head), sizeof(MCTS::Output));
+
+        size_t n_searches = state.outputs[i].tail.size();
         file.write(std::bit_cast<const char *>(&n_searches), sizeof(size_t));
+
         for (int j = 0; j < n_searches; ++j) {
           file.write(std::bit_cast<const char *>(&o.tail[j]),
                      sizeof(MCTS::Output));
@@ -193,20 +222,33 @@ bool Program::load(std::filesystem::path path) {
     return false;
   }
 
+  std::map<std::string, History> history_map{};
+
   file.seekg(0, std::ios::beg);
   while (file.peek() != EOF) {
 
-    size_t s;
-    if (const auto g = file.gcount(); g != sizeof(size_t)) {
+
+    size_t n_key;
+    if (!FS::try_read<size_t>(file, n_key)) {
+      return false;
+    }
+    std::vector<char> buffer{};
+    buffer.resize(n_key);
+    file.read(buffer.data(), n_key);
+    if (const auto g = file.gcount(); g != n_key) {
+      return false;
+    }
+    std::string key{buffer.data(), n_key};
+    auto& history = history_map[key];
+
+    size_t n_states;
+    if (!FS::try_read<size_t>(file, n_states)) {
       return false;
     }
 
-    if (!FS::try_read<size_t>(file, s)) {
-      return false;
-    }
-    for (auto i = 0; i < s; ++i) {
-
-      State s;
+    for (auto i = 0; i < n_states; ++i) {
+      history.states.emplace_back();
+      State& s = history.states.back();
       if (!FS::try_read<pkmn_gen1_battle>(file, s.battle)) {
         return false;
       }
@@ -237,12 +279,15 @@ bool Program::load(std::filesystem::path path) {
       if (!FS::try_read<std::array<pkmn_choice, 9>>(file, s.choices2)) {
         return false;
       }
+      
       size_t n_nodes;
       if (!FS::try_read<size_t>(file, n_nodes)) {
         return false;
       }
       for (int j = 0; j < n_nodes; ++j) {
-        SearchOutputs so{};
+        s.outputs.emplace_back();
+
+        auto &so = s.outputs.back();
         if (!FS::try_read<MCTS::Output>(file, so.head)) {
           return false;
         }
@@ -257,12 +302,46 @@ bool Program::load(std::filesystem::path path) {
           }
         }
       }
+
+
     }
+  }
+
+  // set 
+  data.history_map = history_map;
+  data.search_data_map.clear();
+  for (const auto &[key, value] : history_map) {
+    auto& search_data = data.search_data_map[key];
+
+    for (const auto &state : value.states) {
+      search_data.emplace_back();
+      search_data.back().nodes.resize(state.outputs.size());
+    }
+
   }
 
   file.close();
   return true;
 }
+
+// struct StateSearchData {
+//   std::vector<std::unique_ptr<Node>> nodes;
+// };
+
+// struct History {
+//   std::vector<State> states;
+//   Eval::CachedEval eval;
+// };
+
+// // using History = std::vector<State>;
+// using HistorySearchData = std::vector<StateSearchData>;
+
+// struct ManagedData {
+//   std::map<std::string, History> history_map;
+//   std::map<std::string, std::vector<StateSearchData>> search_data_map;
+//   Eval::OVODict ovo_dict;
+// };
+
 
 void Program::print() const {
   const auto print_output = [this](const MCTS::Output &o) {
@@ -475,10 +554,10 @@ SearchOutputs &Program::search_outputs() {
 StateSearchData &Program::search_data() {
   return data.search_data_map.at(mgmt.loc.key).at(mgmt.loc.current[0]);
 }
-Node &Program::node() {
-  return *data.search_data_map.at(mgmt.loc.key)
+Node *Program::node() {
+  return data.search_data_map.at(mgmt.loc.key)
               .at(mgmt.loc.current[0])
-              .nodes.at(mgmt.loc.current[1]);
+              .nodes.at(mgmt.loc.current[1]).get();
 }
 MCTS::Output &Program::output() {
   return search_outputs().tail.at(mgmt.loc.current[2]);
@@ -499,10 +578,10 @@ const StateSearchData &Program::search_data() const {
   return data.search_data_map.at(mgmt.loc.key).at(mgmt.loc.current[0]);
 }
 
-const Node &Program::node() const {
-  return *data.search_data_map.at(mgmt.loc.key)
+const Node *Program::node() const {
+  return data.search_data_map.at(mgmt.loc.key)
               .at(mgmt.loc.current[0])
-              .nodes.at(mgmt.loc.current[1]);
+              .nodes.at(mgmt.loc.current[1]).get();
 }
 const MCTS::Output &Program::output() const {
   return search_outputs().tail.at(mgmt.loc.current[2]);
@@ -520,7 +599,7 @@ bool Program::create(const std::string key, const Init::Config p1,
   data.history_map[key] = {};
   auto &history = data.history_map[key];
   history.states.emplace_back();
-  history.eval = Eval::CachedEval{p1.pokemon, p2.pokemon, data.ovo_dict};
+  // history.eval = Eval::CachedEval{p1.pokemon, p2.pokemon, data.ovo_dict};
   auto &state = history.states.front();
   state.battle = battle;
   state.options = {};
@@ -545,6 +624,20 @@ bool Program::create(const std::string key, const Init::Config p1,
   search_data.front().nodes.emplace_back(std::make_unique<Node>());
 
   return true;
+}
+
+bool Program::rm(std::string key) {
+  if (mgmt.loc.depth != 0) {
+    err("rm: A game cannot be in focus");
+    return false;
+  }
+  if (!data.history_map.contains(key)) {
+    err("rm: ", key, " not present.");
+    return false;
+  } else {
+    data.history_map.erase(key);
+    return true;
+  }
 }
 
 bool Program::update(std::string str1, std::string str2) {
@@ -714,11 +807,15 @@ bool Program::pokemon_bytes() const {
 
 bool Program::search(const std::span<const std::string> words) {
   if (mgmt.loc.depth < 3) {
-    err("words: Node must be in focus.");
+    err("search: Node must be in focus.");
     return false;
   }
   if (words.size() != 3) {
-    err("words: Invalid Args. Expecting 'mc'/'eval', 'time'/'count', <n> ");
+    err("search: Invalid Args. Expecting 'mc'/'eval', 'time'/'count', <n> ");
+    return false;
+  }
+  if (node() == nullptr) {
+    err("search: Cannot search on loaded (archived) games. Copy this game then search on that.");
     return false;
   }
   bool mc;
@@ -764,18 +861,18 @@ bool Program::search(const std::span<const std::string> words) {
   try {
     if (iter) {
       if (mc) {
-        output = search.run(n, node(), input, model);
+        output = search.run(n, *node(), input, model);
       } else {
-        output = search.run(n, node(), eval_input, eval);
+        output = search.run(n, *node(), eval_input, eval);
         log("searching using eval");
       }
     } else {
       if (mc) {
-        output = search.run(std::chrono::milliseconds{n}, node(), input, model);
+        output = search.run(std::chrono::milliseconds{n}, *node(), input, model);
       } else {
         log("searching using eval");
         output =
-            search.run(std::chrono::milliseconds{n}, node(), eval_input, eval);
+            search.run(std::chrono::milliseconds{n}, *node(), eval_input, eval);
       }
     }
   } catch (const std::exception &e) {
@@ -788,24 +885,6 @@ bool Program::search(const std::span<const std::string> words) {
       search_outputs().tail.back().duration.count(), " ms.");
   return true;
 }
-
-// try {
-//   auto &x =
-// }
-
-// bool Program::rm(std::string key)  {
-//   if (depth() != 0) {
-//     err("rm: A game cannot be in focus");
-//     return false;
-//   }
-//   if (!data.histories.contains(key)) {
-//     err("rm: ", key, " not present.");
-//     return false;
-//   } else {
-//     data.histories.erase(key);
-//     return true;
-//   }
-// }
 
 } // namespace Games
 } // namespace Lab
