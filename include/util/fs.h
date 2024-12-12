@@ -30,6 +30,14 @@ bool read_container(std::fstream &file, Container<T> &container) {
   }
 }
 
+template <typename T> bool try_read(std::fstream &file, T &t) {
+  file.read(std::bit_cast<char *>(&t), sizeof(T));
+  if (const auto g = file.gcount(); g != sizeof(T)) {
+    return false;
+  }
+  return true;
+}
+
 template <typename Key, typename Value, template <typename...> typename Map>
 bool load(const std::filesystem::path path, Map<Key, Value> &map) {
   std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary);

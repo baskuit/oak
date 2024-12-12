@@ -1,5 +1,7 @@
 #include <games.h>
 
+#include <util/fs.h>
+
 #include <data/strings.h>
 
 #include <battle/sample-teams.h>
@@ -140,8 +142,127 @@ bool Program::cp(const std::span<const std::string> words) {
   return true;
 }
 
-bool Program::save(std::filesystem::path path) { return false; }
-bool Program::load(std::filesystem::path path) { return false; }
+bool Program::save(std::filesystem::path path) {
+
+  constexpr bool overwrite = true;
+  const auto mode =
+      overwrite ? std::ios::binary : std::ios::binary | std::ios::trunc;
+  std::ofstream file(path, mode);
+  if (!file.is_open()) {
+    return false;
+  }
+
+  for (const auto &[key, history] : data.history_map) {
+    size_t s = key.size();
+    file.write(std::bit_cast<const char *>(&s), sizeof(size_t));
+    for (const auto &state : history.states) {
+      file.write(std::bit_cast<const char *>(&state.battle),
+                 PKMN_GEN1_BATTLE_SIZE);
+      file.write(std::bit_cast<const char *>(&state.options),
+                 PKMN_GEN1_BATTLE_OPTIONS_SIZE);
+      file.write(std::bit_cast<const char *>(&state.result), 1);
+      file.write(std::bit_cast<const char *>(&state.seed), 8);
+      file.write(std::bit_cast<const char *>(&state.c1), 1);
+      file.write(std::bit_cast<const char *>(&state.c2), 1);
+      file.write(std::bit_cast<const char *>(&state.m), sizeof(size_t));
+      file.write(std::bit_cast<const char *>(&state.n), sizeof(size_t));
+      file.write(std::bit_cast<const char *>(&state.choices1), 9);
+      file.write(std::bit_cast<const char *>(&state.choices2), 9);
+      size_t n_nodes = state.outputs.size();
+      file.write(std::bit_cast<const char *>(&n_nodes), sizeof(size_t));
+      for (int i = 0; i < n_nodes; ++i) {
+        size_t n_searches = state.outputs[i].tail.size();
+        const auto &o = state.outputs[i];
+        file.write(std::bit_cast<const char *>(&o.head), sizeof(MCTS::Output));
+        file.write(std::bit_cast<const char *>(&n_searches), sizeof(size_t));
+        for (int j = 0; j < n_searches; ++j) {
+          file.write(std::bit_cast<const char *>(&o.tail[j]),
+                     sizeof(MCTS::Output));
+        }
+      }
+    }
+  }
+
+  file.close();
+  return true;
+}
+
+bool Program::load(std::filesystem::path path) {
+  std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary);
+  if (!file.is_open()) {
+    return false;
+  }
+
+  file.seekg(0, std::ios::beg);
+  while (file.peek() != EOF) {
+
+    size_t s;
+    if (const auto g = file.gcount(); g != sizeof(size_t)) {
+      return false;
+    }
+
+    if (!FS::try_read<size_t>(file, s)) {
+      return false;
+    }
+    for (auto i = 0; i < s; ++i) {
+
+      State s;
+      if (!FS::try_read<pkmn_gen1_battle>(file, s.battle)) {
+        return false;
+      }
+      if (!FS::try_read<pkmn_gen1_battle_options>(file, s.options)) {
+        return false;
+      }
+      if (!FS::try_read<pkmn_result>(file, s.result)) {
+        return false;
+      }
+      if (!FS::try_read<uint64_t>(file, s.seed)) {
+        return false;
+      }
+      if (!FS::try_read<pkmn_choice>(file, s.c1)) {
+        return false;
+      }
+      if (!FS::try_read<pkmn_choice>(file, s.c2)) {
+        return false;
+      }
+      if (!FS::try_read<size_t>(file, s.m)) {
+        return false;
+      }
+      if (!FS::try_read<size_t>(file, s.n)) {
+        return false;
+      }
+      if (!FS::try_read<std::array<pkmn_choice, 9>>(file, s.choices1)) {
+        return false;
+      }
+      if (!FS::try_read<std::array<pkmn_choice, 9>>(file, s.choices2)) {
+        return false;
+      }
+      size_t n_nodes;
+      if (!FS::try_read<size_t>(file, n_nodes)) {
+        return false;
+      }
+      for (int j = 0; j < n_nodes; ++j) {
+        SearchOutputs so{};
+        if (!FS::try_read<MCTS::Output>(file, so.head)) {
+          return false;
+        }
+        size_t n_outputs;
+        if (!FS::try_read<size_t>(file, n_outputs)) {
+          return false;
+        }
+        for (int k = 0; k < n_outputs; ++k) {
+          so.tail.emplace_back();
+          if (!FS::try_read<MCTS::Output>(file, so.tail.back())) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  file.close();
+  return true;
+}
 
 void Program::print() const {
   const auto print_output = [this](const MCTS::Output &o) {
