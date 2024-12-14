@@ -10,6 +10,7 @@
 #include <pi/eval.h>
 
 #include <sides.h>
+// #include <log.h>
 
 namespace Lab {
 namespace Games {
@@ -38,7 +39,7 @@ void Program::loc() const {
     << mgmt.loc.current[1] << ' ' << mgmt.loc.current[2] << std::endl;
   p << "bound: " << mgmt.bounds[0] << ' ' << mgmt.bounds[1] << ' '
     << mgmt.bounds[2] << std::endl;
-  log(p.str());
+  Base::log(p.str());
 }
 
 bool Program::handle_command(const std::span<const std::string> words) {
@@ -50,7 +51,7 @@ bool Program::handle_command(const std::span<const std::string> words) {
   if (command == "save" || command == "load") {
 
     if (words.size() < 2) {
-      err(command, ": missing arg(s).");
+      Base::err(command, ": missing arg(s).");
       return false;
     }
     bool success;
@@ -61,9 +62,9 @@ bool Program::handle_command(const std::span<const std::string> words) {
       success = load(path);
     }
     if (!success) {
-      err(command, ": Failed.");
+      Base::err(command, ": Failed.");
     } else {
-      log(command, ": Operation at path: '", path.string(), "' succeeded.");
+      Base::log(command, ": Operation at path: '", path.string(), "' succeeded.");
     }
     return success;
   } else if (command == "ls") {
@@ -88,13 +89,15 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return pokemon_bytes();
   } else if (command == "trunc") {
     return trunc();
+  } else if (command == "log") {
+    return log();
   }
-
+  
   const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
 
   if (command == "update") {
     if (words.size() < 3) {
-      err("update: Please enter u8 value of c1, c2 as a decimal (e.g. 5, 17)");
+      Base::err("update: Please enter u8 value of c1, c2 as a decimal (e.g. 5, 17)");
       return false;
     }
     return update(words[1], words[2]);
@@ -105,14 +108,30 @@ bool Program::handle_command(const std::span<const std::string> words) {
   } else if (command == "cd") {
     return cd(tail);
   }
-  err("games: command '", command, "' not recognized");
+  Base::err("games: command '", command, "' not recognized");
   return false;
+}
+
+bool Program::pkmn_debug(std::string word) {
+  mgmt.pkmn_debug_path = word;
+  return true;
+}
+
+bool Program::log() const {
+  if (mgmt.loc.depth < 1) {
+    return false;
+  }
+  // std::system(mgmt.pkmn_debug_path)
+  const auto &h = history();
+  h.debug_log.save_data_to_path("aa");
+
+  return true;
 }
 
 bool Program::trunc() {
 
   if (mgmt.loc.depth < 2) {
-    err("trunc: A State must be in focus.");
+    Base::err("trunc: A State must be in focus.");
     return false;
   }
   std::unique_lock lock{mgmt.mutex};
@@ -126,12 +145,12 @@ bool Program::trunc() {
 
 bool Program::cp(const std::span<const std::string> words) {
   if (words.empty()) {
-    err("cp: Missing source.");
+    Base::err("cp: Missing source.");
     return false;
   }
   const auto source = words[0];
   if (!data.history_map.contains(source)) {
-    err("cp: Source '", source, "' not found.");
+    Base::err("cp: Source '", source, "' not found.");
     return false;
   }
 
@@ -139,7 +158,7 @@ bool Program::cp(const std::span<const std::string> words) {
   if (words.size() >= 2) {
     dest = words[1];
     if (data.history_map.contains(dest)) {
-      err("cp: Destination '", dest, "' already present.");
+      Base::err("cp: Destination '", dest, "' already present.");
       return false;
     }
   } else {
@@ -227,7 +246,6 @@ bool Program::load(std::filesystem::path path) {
   file.seekg(0, std::ios::beg);
   while (file.peek() != EOF) {
 
-
     size_t n_key;
     if (!FS::try_read<size_t>(file, n_key)) {
       return false;
@@ -239,7 +257,7 @@ bool Program::load(std::filesystem::path path) {
       return false;
     }
     std::string key{buffer.data(), n_key};
-    auto& history = history_map[key];
+    auto &history = history_map[key];
 
     size_t n_states;
     if (!FS::try_read<size_t>(file, n_states)) {
@@ -248,7 +266,7 @@ bool Program::load(std::filesystem::path path) {
 
     for (auto i = 0; i < n_states; ++i) {
       history.states.emplace_back();
-      State& s = history.states.back();
+      State &s = history.states.back();
       if (!FS::try_read<pkmn_gen1_battle>(file, s.battle)) {
         return false;
       }
@@ -279,7 +297,7 @@ bool Program::load(std::filesystem::path path) {
       if (!FS::try_read<std::array<pkmn_choice, 9>>(file, s.choices2)) {
         return false;
       }
-      
+
       size_t n_nodes;
       if (!FS::try_read<size_t>(file, n_nodes)) {
         return false;
@@ -302,22 +320,19 @@ bool Program::load(std::filesystem::path path) {
           }
         }
       }
-
-
     }
   }
 
-  // set 
+  // set
   data.history_map = history_map;
   data.search_data_map.clear();
   for (const auto &[key, value] : history_map) {
-    auto& search_data = data.search_data_map[key];
+    auto &search_data = data.search_data_map[key];
 
     for (const auto &state : value.states) {
       search_data.emplace_back();
       search_data.back().nodes.resize(state.outputs.size());
     }
-
   }
 
   file.close();
@@ -342,60 +357,59 @@ bool Program::load(std::filesystem::path path) {
 //   Eval::OVODict ovo_dict;
 // };
 
-
 void Program::print() const {
   const auto print_output = [this](const MCTS::Output &o) {
-    log("average value: ", o.average_value);
-    log("iterations: ", o.iterations);
+    Base::log("average value: ", o.average_value);
+    Base::log("iterations: ", o.iterations);
     for (auto i = 0; i < o.m; ++i) {
       for (auto j = 0; j < o.n; ++j) {
         auto value = std::format(
             "{:5.3f}",
             o.value_matrix[i][j] / std::max(uint32_t{1}, o.visit_matrix[i][j]));
         value = std::string{"", 5 - value.size()} + value;
-        log_(value, " ");
+        Base::log_(value, " ");
       }
-      log("");
+      Base::log("");
     }
     const auto &battle = state().battle;
     for (auto i = 0; i < o.m; ++i) {
-      log_(side_choice_string(battle.bytes, o.choices1[i]),
+      Base::log_(side_choice_string(battle.bytes, o.choices1[i]),
            std::format("{:>5.3f}", o.p1[i]), ' ');
     }
-    log("");
+    Base::log("");
     for (auto i = 0; i < o.n; ++i) {
-      log_(side_choice_string(battle.bytes + Offsets::side, o.choices2[i]),
+      Base::log_(side_choice_string(battle.bytes + Offsets::side, o.choices2[i]),
            std::format("{:>5.3f}", o.p2[i]), ' ');
     }
-    log("");
+    Base::log("");
   };
 
   switch (mgmt.loc.depth) {
   case 0: {
-    log(data.history_map.size(), " games:");
+    Base::log(data.history_map.size(), " games:");
     for (const auto &[key, value] : data.history_map) {
-      log_(key, '\t');
+      Base::log_(key, '\t');
     }
-    log("");
+    Base::log("");
     return;
   }
   case 1: {
-    log(history().states.size(), " states.");
+    Base::log(history().states.size(), " states.");
     return;
   }
   case 2: {
     const auto &s = state();
-    log(Strings::battle_to_string(s.battle));
+    Base::log(Strings::battle_to_string(s.battle));
     for (auto i = 0; i < s.m; ++i) {
       const auto c = s.choices1[i];
-      log_(side_choice_string(s.battle.bytes, c), ' ');
+      Base::log_(side_choice_string(s.battle.bytes, c), ' ');
     }
-    log("");
+    Base::log("");
     for (auto i = 0; i < s.n; ++i) {
       const auto c = s.choices2[i];
-      log_(side_choice_string(s.battle.bytes + Offsets::side, c), ' ');
+      Base::log_(side_choice_string(s.battle.bytes + Offsets::side, c), ' ');
     }
-    log("");
+    Base::log("");
     return;
   }
   case 3: {
@@ -429,7 +443,7 @@ bool Program::up() {
 
 bool Program::cd(const std::span<const std::string> words) {
   if (words.empty()) {
-    err("cd: Missing args.");
+    Base::err("cd: Missing args.");
     return false;
   }
 
@@ -443,7 +457,7 @@ bool Program::cd(const std::span<const std::string> words) {
     }
 
     if (mgmt.loc.depth == 4) {
-      err("cd: Only '..' allowed here.");
+      Base::err("cd: Only '..' allowed here.");
       return false;
     } else if (mgmt.loc.depth == 0) {
       if (data.history_map.contains(word)) {
@@ -451,7 +465,7 @@ bool Program::cd(const std::span<const std::string> words) {
         ++mgmt.loc.depth;
         return true;
       } else {
-        err("cd: Game key '", word, "' not found.");
+        Base::err("cd: Game key '", word, "' not found.");
         return false;
       }
     }
@@ -460,12 +474,12 @@ bool Program::cd(const std::span<const std::string> words) {
     try {
       index = std::stoi(word);
     } catch (...) {
-      err("cd: Bad argument; expecting index.");
+      Base::err("cd: Bad argument; expecting index.");
       return false;
     }
 
     if (mgmt.bounds[mgmt.loc.depth - 1] <= index) {
-      err("cd: {depth: ", mgmt.loc.depth, " index: ", index,
+      Base::err("cd: {depth: ", mgmt.loc.depth, " index: ", index,
           " bound: ", mgmt.bounds[mgmt.loc.depth - 1]);
       return false;
     }
@@ -511,7 +525,7 @@ bool Program::cd(const std::span<const std::string> words) {
 
 bool Program::prev() {
   if (mgmt.loc.depth < 2) {
-    err("prev: A list must be in focus.");
+    Base::err("prev: A list must be in focus.");
     return false;
   }
   auto &cur = mgmt.loc.current[mgmt.loc.depth - 2];
@@ -522,7 +536,7 @@ bool Program::prev() {
 }
 bool Program::next() {
   if (mgmt.loc.depth < 2) {
-    err("next: A list must be in focus.");
+    Base::err("next: A list must be in focus.");
     return false;
   }
   auto &cur = mgmt.loc.current[mgmt.loc.depth - 2];
@@ -533,7 +547,7 @@ bool Program::next() {
 }
 bool Program::first() {
   if (mgmt.loc.depth < 2) {
-    err("first: A list must be in focus.");
+    Base::err("first: A list must be in focus.");
     return false;
   }
   mgmt.loc.current[mgmt.loc.depth - 2] = 0;
@@ -541,7 +555,7 @@ bool Program::first() {
 }
 bool Program::last() {
   if (mgmt.loc.depth < 2) {
-    err("last: A list must be in focus.");
+    Base::err("last: A list must be in focus.");
     return false;
   }
   mgmt.loc.current[mgmt.loc.depth - 2] = mgmt.bounds[mgmt.loc.depth - 2] - 1;
@@ -560,8 +574,9 @@ StateSearchData &Program::search_data() {
 }
 Node *Program::node() {
   return data.search_data_map.at(mgmt.loc.key)
-              .at(mgmt.loc.current[0])
-              .nodes.at(mgmt.loc.current[1]).get();
+      .at(mgmt.loc.current[0])
+      .nodes.at(mgmt.loc.current[1])
+      .get();
 }
 MCTS::Output &Program::output() {
   return search_outputs().tail.at(mgmt.loc.current[2]);
@@ -584,8 +599,9 @@ const StateSearchData &Program::search_data() const {
 
 const Node *Program::node() const {
   return data.search_data_map.at(mgmt.loc.key)
-              .at(mgmt.loc.current[0])
-              .nodes.at(mgmt.loc.current[1]).get();
+      .at(mgmt.loc.current[0])
+      .nodes.at(mgmt.loc.current[1])
+      .get();
 }
 const MCTS::Output &Program::output() const {
   return search_outputs().tail.at(mgmt.loc.current[2]);
@@ -595,7 +611,7 @@ bool Program::create(const std::string key, const Init::Config p1,
                      const Init::Config p2) {
   std::unique_lock lock{mgmt.mutex};
   if (data.history_map.contains(key)) {
-    err("create: '", key, "' already present.");
+    Base::err("create: '", key, "' already present.");
     return false;
   }
 
@@ -627,16 +643,18 @@ bool Program::create(const std::string key, const Init::Config p1,
   search_data.front().nodes.emplace_back(std::make_unique<Node>());
   search_data.front().nodes.emplace_back(std::make_unique<Node>());
 
+  history.debug_log.set_header(battle);
+
   return true;
 }
 
 bool Program::rm(std::string key) {
   if (mgmt.loc.depth != 0) {
-    err("rm: A game cannot be in focus");
+    Base::err("rm: A game cannot be in focus");
     return false;
   }
   if (!data.history_map.contains(key)) {
-    err("rm: ", key, " not present.");
+    Base::err("rm: ", key, " not present.");
     return false;
   } else {
     data.history_map.erase(key);
@@ -646,7 +664,7 @@ bool Program::rm(std::string key) {
 
 bool Program::update(std::string str1, std::string str2) {
   if (mgmt.loc.depth == 0) {
-    err("update: A game must be in focus");
+    Base::err("update: A game must be in focus");
     return false;
   }
 
@@ -660,9 +678,9 @@ bool Program::update(std::string str1, std::string str2) {
         s.choices1.begin(), s.choices1.begin() + s.m, str_choices.begin(),
         [&s](const auto c) { return side_choice_string(s.battle.bytes, c); });
     int i = Strings::unique_index(str_choices, str1);
-    log("update: str1: ", str1, " i: ", i);
+    Base::log("update: str1: ", str1, " i: ", i);
     if (i == -1) {
-      err("update: Could not parse c1: ", str1);
+      Base::err("update: Could not parse c1: ", str1);
       return false;
     }
     x = static_cast<size_t>(s.choices1[i]);
@@ -677,9 +695,9 @@ bool Program::update(std::string str1, std::string str2) {
                                                c);
                    });
     int i = Strings::unique_index(str_choices, str2);
-    log("update: str2: ", str2, " i: ", i);
+    Base::log("update: str2: ", str2, " i: ", i);
     if (i == -1) {
-      err("update: Could not parse c2: ", str2);
+      Base::err("update: Could not parse c2: ", str2);
       return false;
     }
     y = static_cast<size_t>(s.choices2[i]);
@@ -690,7 +708,7 @@ bool Program::update(std::string str1, std::string str2) {
 
 bool Program::update(pkmn_choice c1, pkmn_choice c2) {
   if (mgmt.loc.depth == 0) {
-    err("update: A game must be in focus");
+    Base::err("update: A game must be in focus");
     return false;
   }
   auto &h = history();
@@ -704,7 +722,8 @@ bool Program::update(pkmn_choice c1, pkmn_choice c2) {
   next.seed =
       *std::bit_cast<const uint64_t *>(next.battle.bytes + Offsets::seed);
   next.options = state.options;
-  next.result = Init::update(next.battle, c1, c2, next.options);
+  next.result = h.debug_log.update(next.battle, c1, c2, next.options);
+  // next.result = Init::update(next.battle, c1, c2, next.options);
   const auto [choices1, choices2] = Init::choices(next.battle, next.result);
   if (pkmn_result_type(next.result)) {
     next.m = 0;
@@ -742,7 +761,7 @@ bool Program::update(pkmn_choice c1, pkmn_choice c2) {
 
 bool Program::rollout() {
   if (mgmt.loc.depth == 0) {
-    err("rollout: A Game must be in focus.");
+    Base::err("rollout: A Game must be in focus.");
     return false;
   }
   auto &h = history();
@@ -753,12 +772,12 @@ bool Program::rollout() {
     const auto j = device.random_int(state->n);
     const bool success = update(state->choices1[i], state->choices2[j]);
     if (!success) {
-      err("rollout: Bad update.");
+      Base::err("rollout: Bad update.");
       return false;
     }
     state = &h.states.back();
   }
-  log("rollout: ", h.states.size(), " states.");
+  Base::log("rollout: ", h.states.size(), " states.");
   return true;
 };
 
@@ -787,22 +806,22 @@ void accumulate(MCTS::Output &head, MCTS::Output &foot) {
 
 bool Program::battle_bytes() const {
   if (mgmt.loc.depth < 2) {
-    err("battle: State must be in focus.");
+    Base::err("battle: State must be in focus.");
     return false;
   }
   const auto &battle = state().battle;
-  log(buffer_to_string(battle.bytes, 384));
+  Base::log(buffer_to_string(battle.bytes, 384));
   return true;
 }
 bool Program::pokemon_bytes() const {
   if (mgmt.loc.depth < 2) {
-    err("battle: State must be in focus.");
+    Base::err("battle: State must be in focus.");
     return false;
   }
   const auto &battle = state().battle;
   for (auto s = 0; s < 2; ++s) {
     for (auto p = 0; p < 6; ++p) {
-      log(buffer_to_string(battle.bytes + (s * Offsets::side) +
+      Base::log(buffer_to_string(battle.bytes + (s * Offsets::side) +
                                (p * Offsets::pokemon),
                            Offsets::pokemon));
     }
@@ -812,15 +831,16 @@ bool Program::pokemon_bytes() const {
 
 bool Program::search(const std::span<const std::string> words) {
   if (mgmt.loc.depth < 3) {
-    err("search: Node must be in focus.");
+    Base::err("search: Node must be in focus.");
     return false;
   }
   if (words.size() != 3) {
-    err("search: Invalid Args. Expecting 'mc'/'eval', 'time'/'count', <n> ");
+    Base::err("search: Invalid Args. Expecting 'mc'/'eval', 'time'/'count', <n> ");
     return false;
   }
   if (node() == nullptr) {
-    err("search: Cannot search on loaded (archived) games. Copy this game then search on that.");
+    Base::err("search: Cannot search on loaded (archived) games. Copy this game then "
+        "search on that.");
     return false;
   }
   bool mc;
@@ -829,7 +849,7 @@ bool Program::search(const std::span<const std::string> words) {
   } else if (words[0] == "eval") {
     mc = false;
   } else {
-    err("search: Could not parse value estimatation mode e.g. mc/eval");
+    Base::err("search: Could not parse value estimatation mode e.g. mc/eval");
     return false;
   }
   bool iter;
@@ -838,14 +858,14 @@ bool Program::search(const std::span<const std::string> words) {
   } else if (words[1] == "count" || words[1] == "n") {
     iter = true;
   } else {
-    err("search: Could not parse mode e.g. time/count");
+    Base::err("search: Could not parse mode e.g. time/count");
     return false;
   }
   size_t n;
   try {
     n = std::stoi(words[2]);
   } catch (...) {
-    err("search: Could not parse Arg #3");
+    Base::err("search: Could not parse Arg #3");
     return false;
   }
 
@@ -869,24 +889,25 @@ bool Program::search(const std::span<const std::string> words) {
         output = search.run(n, *node(), input, model);
       } else {
         output = search.run(n, *node(), eval_input, eval);
-        log("searching using eval");
+        Base::log("searching using eval");
       }
     } else {
       if (mc) {
-        output = search.run(std::chrono::milliseconds{n}, *node(), input, model);
+        output =
+            search.run(std::chrono::milliseconds{n}, *node(), input, model);
       } else {
-        log("searching using eval");
+        Base::log("searching using eval");
         output =
             search.run(std::chrono::milliseconds{n}, *node(), eval_input, eval);
       }
     }
   } catch (const std::exception &e) {
-    err("search: Exception thrown during run: ", e.what());
+    Base::err("search: Exception thrown during run: ", e.what());
   }
   search_outputs().tail.push_back(output);
   accumulate(search_outputs().head, output);
   ++mgmt.bounds[2];
-  log(output.iterations, " MCTS iterations completed in ",
+  Base::log(output.iterations, " MCTS iterations completed in ",
       search_outputs().tail.back().duration.count(), " ms.");
   return true;
 }

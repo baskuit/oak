@@ -101,6 +101,8 @@ bool Program::handle_command(const std::span<const std::string> words) {
   return false;
 }
 
+bool Program::p1_select(const std::span<const std::string> words) {}
+
 bool Program::save(std::filesystem::path path) {
   constexpr bool overwrite = true;
   const auto mode =

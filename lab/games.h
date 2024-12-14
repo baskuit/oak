@@ -19,6 +19,8 @@
 #include <span>
 #include <sstream>
 
+#include <log.h>
+
 namespace Lab {
 
 namespace Games {
@@ -56,9 +58,9 @@ struct StateSearchData {
 struct History {
   std::vector<State> states;
   Eval::CachedEval eval;
+  DebugLog debug_log{};
 };
 
-// using History = std::vector<State>;
 using HistorySearchData = std::vector<StateSearchData>;
 
 struct ManagedData {
@@ -96,6 +98,9 @@ struct ManagerData {
   // thread access
   std::map<Loc, bool> locked_map;
   std::mutex mutex{};
+
+  prng device{static_cast<uint64_t>(rand())};
+  std::filesystem::path pkmn_debug_path{"./extern/engine/bin/pkmn-debug"};
 };
 
 class Program : public ProgramBase<true, true> {
@@ -132,7 +137,8 @@ private:
   bool last();
   bool trunc();
   bool cp(const std::span<const std::string> words);
-
+  bool log() const;
+  bool pkmn_debug(std::string key);
   bool battle_bytes() const;
   bool side_bytes() const;
   bool pokemon_bytes() const;

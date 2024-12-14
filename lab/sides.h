@@ -43,6 +43,9 @@ private:
   bool add(const std::string key);
   bool rm(const std::string key);
 
+  bool p1_select(const std::span<const std::string> words);
+  bool p2_select(const std::span<const std::string> words);
+
   bool cd(const std::span<const std::string> words);
   bool cp(const std::span<const std::string> words);
 

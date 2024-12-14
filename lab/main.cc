@@ -43,13 +43,15 @@ int debug(int argc, char *argv[]) {
   std::vector<std::string> lines{};
 
   lines.push_back("add abr-53; cd abr-53");
-  lines.push_back("cd 1; set tauros bodys hyperb earthq blizz; hp 48; cd .."); 
-  lines.push_back("cd 2; set jolt thunderb thunderw doublek pinm; status slp 1; cd ..");
+  lines.push_back("cd 1; set tauros bodys hyperb earthq blizz; hp 48; cd ..");
+  lines.push_back(
+      "cd 2; set jolt thunderb thunderw doublek pinm; status slp 1; cd ..");
   lines.push_back("cd 3; set chans sing softb seismic iceb; hp 82; cd ..");
   lines.push_back("cd 4; set snorlax bodys reflec rest iceb; cd ..");
   lines.push_back("cd ..; add uoc-54; cd uoc-54");
-  lines.push_back("cd 1; set snor bodys reflec rest iceb; status rest 2; cd .."); 
-  lines.push_back("cd 2; set jynx love blizz psychic rest; hp 22; cd.."); 
+  lines.push_back(
+      "cd 1; set snor bodys reflec rest iceb; status rest 2; cd ..");
+  lines.push_back("cd 2; set jynx love blizz psychic rest; hp 22; cd..");
   lines.push_back("cd 3; set rhydon earthq subs bodysl; hp 89; cd ..");
 
   lines.push_back("games");
@@ -174,6 +176,8 @@ int lab(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
+  srand(time(nullptr));
+
   // return lab(argc, argv);
   return debug(argc, argv);
 }
