@@ -57,7 +57,6 @@ int rollout_sample_teams_and_stream_debug_log(int argc, char **argv) {
       std::cout << c;
     }
   }
-  std::cout << std::endl;
 
   return 0;
 }

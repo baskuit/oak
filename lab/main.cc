@@ -51,7 +51,7 @@ int debug(int argc, char *argv[]) {
   lines.push_back("cd ..; add uoc-54; cd uoc-54");
   lines.push_back(
       "cd 1; set snor bodys reflec rest iceb; status rest 2; cd ..");
-  lines.push_back("cd 2; set jynx love blizz psychic rest; hp 22; cd..");
+  lines.push_back("cd 2; set jynx love blizz psychic rest; hp 22; cd ..");
   lines.push_back("cd 3; set rhydon earthq subs bodysl; hp 89; cd ..");
 
   lines.push_back("games");

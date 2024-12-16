@@ -107,6 +107,8 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return cp(tail);
   } else if (command == "cd") {
     return cd(tail);
+  } else if (command == "rm") {
+    return rm(tail);
   }
   Base::err("games: command '", command, "' not recognized");
   return false;
@@ -648,18 +650,24 @@ bool Program::create(const std::string key, const Init::Config p1,
   return true;
 }
 
-bool Program::rm(std::string key) {
+bool Program::rm(const std::span<const std::string> words) {
   if (mgmt.loc.depth != 0) {
     Base::err("rm: A game cannot be in focus");
     return false;
   }
-  if (!data.history_map.contains(key)) {
-    Base::err("rm: ", key, " not present.");
+  if (words.size() == 0) {
+    Base::err("rm: Missing args.");
     return false;
-  } else {
-    data.history_map.erase(key);
-    return true;
   }
+  for (const auto key : words) {
+    if (!data.history_map.contains(key)) {
+      Base::err("rm: ", key, " not present.");
+      return false;
+    } else {
+      data.history_map.erase(key);
+    }
+  }
+  return true;
 }
 
 bool Program::update(std::string str1, std::string str2) {
