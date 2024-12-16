@@ -124,8 +124,11 @@ bool Program::log() const {
     return false;
   }
   // std::system(mgmt.pkmn_debug_path)
+  const auto key = mgmt.loc.key;
   const auto &h = history();
-  h.debug_log.save_data_to_path("aa");
+  h.debug_log.save_data_to_path(key);
+  const std::string cmd = mgmt.pkmn_debug_path.string() + " ./" + key + " > index.html";
+  std::system(cmd.data());
 
   return true;
 }

@@ -100,7 +100,7 @@ struct ManagerData {
   std::mutex mutex{};
 
   prng device{static_cast<uint64_t>(rand())};
-  std::filesystem::path pkmn_debug_path{"./extern/engine/bin/pkmn-debug"};
+  std::filesystem::path pkmn_debug_path{"./extern/engine/src/bin/pkmn-debug"};
 };
 
 class Program : public ProgramBase<true, true> {
