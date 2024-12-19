@@ -153,8 +153,8 @@ bool Program::log() const {
     Base::err("log: Can't write to disk.");
     return false;
   }
-  const char aaa[8] = {1, 1, 0, 1, 0, 0, 0, 0};
-  file.write(aaa, 8);
+  const char bytes[8] = {1, 1, 0, 1, 0, 0, 0, 0};
+  file.write(bytes, 8);
   file.write(std::bit_cast<const char *>(&h.header.battle),
              PKMN_GEN1_BATTLE_SIZE);
   for (const auto &state : h.states) {

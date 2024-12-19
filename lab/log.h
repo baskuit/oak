@@ -1,10 +1,5 @@
 #pragma once
 
-#include <array>
-#include <filesystem>
-#include <string>
-#include <vector>
-
 #include <pkmn.h>
 
 namespace Lab {
