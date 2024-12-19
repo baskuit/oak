@@ -150,6 +150,8 @@ private:
               State &state);
   bool update(pkmn_choice c1, pkmn_choice c2);
   bool update(const std::span<const std::string>);
+  bool update();
+  bool choose(const std::span<const std::string> words);
   bool rm(const std::span<const std::string>);
   void print() const;
   bool cd(const std::span<const std::string>);
@@ -165,6 +167,8 @@ private:
   bool battle_bytes() const;
   bool side_bytes() const;
   bool pokemon_bytes() const;
+
+  bool sample_choice(const std::span<const std::string> words);
 
   bool search();
 

@@ -77,6 +77,41 @@ bool Program::playout() {
   return true;
 }
 
+bool Program::sample_choice(const std::span<const std::string> words) {
+  if (mgmt.loc.depth < 3) {
+    Base::err("sample: A node or search output must be in focus.");
+    return false;
+  }
+  if (words.size() < 1) {
+    Base::err("sample: Must specify player.");
+    return false;
+  }
+  const auto &player = words[0];
+  size_t p;
+  if (player == "0" || player == "p1") {
+    p = 0;
+  } else if (player == "1" || player == "p2") {
+    p = 1;
+  } else {
+    Base::err("sample: Could not parse player.");
+    return false;
+  }
+
+  auto *opt = (p == 0) ? &history().c1 : &history().c2;
+  const auto *out = (mgmt.loc.depth == 3) ? &search_outputs().head : &output();
+  const auto policy = (p == 0) ? out->p1 : out->p2;
+  const auto i = mgmt.device.sample_pdf(policy);
+  *opt = (p == 0) ? out->choices1[i] : out->choices2[i];
+  Base::log("Index: ", i, " selected.");
+  return true;
+}
+
+bool Program::choose(const std::span<const std::string> words) {
+  if (mgmt.loc.depth == 0) {
+    return false;
+  }
+}
+
 bool Program::handle_command(const std::span<const std::string> words) {
   if (words.empty()) {
     return false;
@@ -143,6 +178,8 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return cd(tail);
   } else if (command == "rm") {
     return rm(tail);
+  } else if (command == "sample") {
+    return sample_choice(tail);
   }
   Base::err("games: command '", command, "' not recognized");
   return false;
@@ -747,14 +784,21 @@ bool Program::update(const std::span<const std::string> words) {
     Base::err("update: A game must be in focus");
     return false;
   }
+  if (words.size() == 0) {
+    return update();
+  }
   if (words.size() < 2) {
     Base::err(
         "update: Please enter u8 value of c1, c2 as a decimal (e.g. 5, 17)");
     return false;
   }
+  const auto &s = history().states.back();
+  if (pkmn_result_type(s.frame.result)) {
+    Base::err("update: Battle has ended.");
+    return false;
+  }
   const auto str1 = words[0];
   const auto str2 = words[1];
-  const auto &s = history().states.back();
   uint8_t x, y;
   try {
     x = std::stoi(str1);
@@ -851,6 +895,17 @@ bool Program::update(const pkmn_gen1_battle &battle, pkmn_choice c1,
     o.choices2 = choices.p2;
   }
   return true;
+}
+
+bool Program::update() {
+  if (mgmt.loc.depth == 0) {
+    return false;
+  }
+  auto &h = history();
+  if (!h.c1.has_value() || !h.c2.has_value()) {
+    return false;
+  }
+  return update(h.c1.value(), h.c2.value());
 }
 
 bool Program::rollout() {
