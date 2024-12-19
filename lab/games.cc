@@ -51,8 +51,22 @@ bool Program::playout() {
   const auto *state = &h.states.back();
   prng device{mgmt.device.uniform_64()};
   while ((state->choices.m * state->choices.n) > 0) {
-    const auto i = device.random_int(state->choices.m);
-    const auto j = device.random_int(state->choices.n);
+
+    MCTS search{};
+    MonteCarlo::Input input;
+    input.battle = state->frame.battle;
+    input.durations =
+        *pkmn_gen1_battle_options_chance_durations(&state->frame.options);
+    input.result = state->frame.result;
+    MonteCarlo::Model model{mgmt.device.uniform_64()};
+    Node node{};
+    const auto output = search.run(1000000, node, input, model);
+
+    const auto i = device.sample_pdf(output.p1);
+    const auto j = device.sample_pdf(output.p2);
+
+    // const auto i = device.random_int(state->choices.m);
+    // const auto j = device.random_int(state->choices.n);
     const bool success = update(state->choices.p1[i], state->choices.p2[j]);
     if (!success) {
       Base::err("rollout: Bad update.");
@@ -60,7 +74,6 @@ bool Program::playout() {
     }
     state = &h.states.back();
   }
-  Base::log("rollout: ", h.states.size(), " states.");
   return true;
 }
 
@@ -98,6 +111,8 @@ bool Program::handle_command(const std::span<const std::string> words) {
     return true;
   } else if (command == "rollout") {
     return rollout();
+  } else if (command == "playout") {
+    return playout();
   } else if (command == "prev") {
     return prev();
   } else if (command == "next") {
@@ -959,12 +974,12 @@ bool Program::search(const std::span<const std::string> words) {
   input.result = s.frame.result;
   const auto &d = View::ref(input.durations);
   MCTS::Output output;
-  MonteCarlo::Model model{9823457230948};
+  MonteCarlo::Model model{mgmt.device.uniform_64()};
   Eval::Input eval_input{};
   eval_input.battle = input.battle;
   eval_input.durations = input.durations;
   eval_input.result = input.result;
-  Eval::Model eval{240923840923, history().eval};
+  Eval::Model eval{mgmt.device.uniform_64(), history().eval};
   try {
     if (iter) {
       if (mc) {
