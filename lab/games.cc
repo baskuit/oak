@@ -42,6 +42,28 @@ void Program::loc() const {
   Base::log(p.str());
 }
 
+bool Program::playout() {
+  if (mgmt.loc.depth == 0) {
+    Base::err("playout: A game must be in focus.");
+    return false;
+  }
+  auto &h = history();
+  const auto *state = &h.states.back();
+  prng device{mgmt.device.uniform_64()};
+  while ((state->choices.m * state->choices.n) > 0) {
+    const auto i = device.random_int(state->choices.m);
+    const auto j = device.random_int(state->choices.n);
+    const bool success = update(state->choices.p1[i], state->choices.p2[j]);
+    if (!success) {
+      Base::err("rollout: Bad update.");
+      return false;
+    }
+    state = &h.states.back();
+  }
+  Base::log("rollout: ", h.states.size(), " states.");
+  return true;
+}
+
 bool Program::handle_command(const std::span<const std::string> words) {
   if (words.empty()) {
     return false;
@@ -64,7 +86,8 @@ bool Program::handle_command(const std::span<const std::string> words) {
     if (!success) {
       Base::err(command, ": Failed.");
     } else {
-      Base::log(command, ": Operation at path: '", path.string(), "' succeeded.");
+      Base::log(command, ": Operation at path: '", path.string(),
+                "' succeeded.");
     }
     return success;
   } else if (command == "ls") {
@@ -92,15 +115,11 @@ bool Program::handle_command(const std::span<const std::string> words) {
   } else if (command == "log") {
     return log();
   }
-  
+
   const std::span<const std::string> tail{words.begin() + 1, words.size() - 1};
 
   if (command == "update") {
-    if (words.size() < 3) {
-      Base::err("update: Please enter u8 value of c1, c2 as a decimal (e.g. 5, 17)");
-      return false;
-    }
-    return update(words[1], words[2]);
+    return update(tail);
   } else if (command == "search") {
     return search(tail);
   } else if (command == "cp") {
@@ -121,16 +140,39 @@ bool Program::pkmn_debug(std::string word) {
 
 bool Program::log() const {
   if (mgmt.loc.depth < 1) {
+    Base::err("log: A game is not in focus.");
     return false;
   }
   // std::system(mgmt.pkmn_debug_path)
   const auto key = mgmt.loc.key;
   const auto &h = history();
-  h.debug_log.save_data_to_path(key);
-  const std::string cmd = mgmt.pkmn_debug_path.string() + " ./" + key + " > index.html";
-  std::system(cmd.data());
+  std::filesystem::path path{key};
+  std::fstream file;
+  file.open(path, std::ios::binary | std::ios::app);
+  if (!file.is_open()) {
+    Base::err("log: Can't write to disk.");
+    return false;
+  }
+  const char aaa[8] = {1, 1, 0, 1, 0, 0, 0, 0};
+  file.write(aaa, 8);
+  file.write(std::bit_cast<const char *>(&h.header.battle),
+             PKMN_GEN1_BATTLE_SIZE);
+  for (const auto &state : h.states) {
+    file.write(std::bit_cast<const char *>(state.frame.log.data()), 256);
+    file.write(std::bit_cast<const char *>(&state.frame.battle),
+               PKMN_GEN1_BATTLE_SIZE);
+    file.write(std::bit_cast<const char *>(&state.frame.result), 1);
+    file.write(std::bit_cast<const char *>(&state.frame.c1), 1);
+    file.write(std::bit_cast<const char *>(&state.frame.c2), 1);
+  }
+  file.close();
+  const std::string cmd =
+      mgmt.pkmn_debug_path.string() + " ./" + key + " > index.html";
+  // const std::string cmd = mgmt.pkmn_debug_path.string() + " ./" + key + " > "
+  // + key + ".html";
+  const int r = std::system(cmd.data());
 
-  return true;
+  return (r == 0);
 }
 
 bool Program::trunc() {
@@ -205,27 +247,30 @@ bool Program::save(std::filesystem::path path) {
     file.write(std::bit_cast<const char *>(&n_states), sizeof(size_t));
 
     for (const auto &state : history.states) {
-
-      file.write(std::bit_cast<const char *>(&state.battle),
+      const auto &frame = state.frame;
+      const auto &choices = state.choices;
+      file.write(std::bit_cast<const char *>(&frame.battle),
                  PKMN_GEN1_BATTLE_SIZE);
-      file.write(std::bit_cast<const char *>(&state.options),
+      file.write(std::bit_cast<const char *>(&frame.options),
                  PKMN_GEN1_BATTLE_OPTIONS_SIZE);
-      file.write(std::bit_cast<const char *>(&state.result), 1);
-      file.write(std::bit_cast<const char *>(&state.seed), 8);
-      file.write(std::bit_cast<const char *>(&state.c1), 1);
-      file.write(std::bit_cast<const char *>(&state.c2), 1);
-      file.write(std::bit_cast<const char *>(&state.m), sizeof(size_t));
-      file.write(std::bit_cast<const char *>(&state.n), sizeof(size_t));
-      file.write(std::bit_cast<const char *>(&state.choices1), 9);
-      file.write(std::bit_cast<const char *>(&state.choices2), 9);
+      file.write(std::bit_cast<const char *>(&frame.result), 1);
+      file.write(std::bit_cast<const char *>(&frame.seed), 8);
+      file.write(std::bit_cast<const char *>(&frame.c1), 1);
+      file.write(std::bit_cast<const char *>(&frame.c2), 1);
+      file.write(std::bit_cast<const char *>(&choices.m),
+                 sizeof(decltype(choices.m)));
+      file.write(std::bit_cast<const char *>(&choices.n),
+                 sizeof(decltype(choices.n)));
+      file.write(std::bit_cast<const char *>(&choices.p1), 9);
+      file.write(std::bit_cast<const char *>(&choices.p2), 9);
 
-      size_t n_nodes = state.outputs.size();
+      const size_t n_nodes = state.outputs.size();
       file.write(std::bit_cast<const char *>(&n_nodes), sizeof(size_t));
       for (int i = 0; i < n_nodes; ++i) {
         const auto &o = state.outputs[i];
         file.write(std::bit_cast<const char *>(&o.head), sizeof(MCTS::Output));
 
-        size_t n_searches = state.outputs[i].tail.size();
+        const size_t n_searches = state.outputs[i].tail.size();
         file.write(std::bit_cast<const char *>(&n_searches), sizeof(size_t));
 
         for (int j = 0; j < n_searches; ++j) {
@@ -272,34 +317,36 @@ bool Program::load(std::filesystem::path path) {
     for (auto i = 0; i < n_states; ++i) {
       history.states.emplace_back();
       State &s = history.states.back();
-      if (!FS::try_read<pkmn_gen1_battle>(file, s.battle)) {
+      auto &frame = s.frame;
+      auto &choices = s.choices;
+      if (!FS::try_read<pkmn_gen1_battle>(file, frame.battle)) {
         return false;
       }
-      if (!FS::try_read<pkmn_gen1_battle_options>(file, s.options)) {
+      if (!FS::try_read<pkmn_gen1_battle_options>(file, frame.options)) {
         return false;
       }
-      if (!FS::try_read<pkmn_result>(file, s.result)) {
+      if (!FS::try_read<pkmn_result>(file, frame.result)) {
         return false;
       }
-      if (!FS::try_read<uint64_t>(file, s.seed)) {
+      if (!FS::try_read<uint64_t>(file, frame.seed)) {
         return false;
       }
-      if (!FS::try_read<pkmn_choice>(file, s.c1)) {
+      if (!FS::try_read<pkmn_choice>(file, frame.c1)) {
         return false;
       }
-      if (!FS::try_read<pkmn_choice>(file, s.c2)) {
+      if (!FS::try_read<pkmn_choice>(file, frame.c2)) {
         return false;
       }
-      if (!FS::try_read<size_t>(file, s.m)) {
+      if (!FS::try_read<decltype(choices.m)>(file, choices.m)) {
         return false;
       }
-      if (!FS::try_read<size_t>(file, s.n)) {
+      if (!FS::try_read<decltype(choices.n)>(file, choices.n)) {
         return false;
       }
-      if (!FS::try_read<std::array<pkmn_choice, 9>>(file, s.choices1)) {
+      if (!FS::try_read<std::array<pkmn_choice, 9>>(file, choices.p1)) {
         return false;
       }
-      if (!FS::try_read<std::array<pkmn_choice, 9>>(file, s.choices2)) {
+      if (!FS::try_read<std::array<pkmn_choice, 9>>(file, choices.p2)) {
         return false;
       }
 
@@ -341,26 +388,9 @@ bool Program::load(std::filesystem::path path) {
   }
 
   file.close();
+  Base::log("load: Successful.");
   return true;
 }
-
-// struct StateSearchData {
-//   std::vector<std::unique_ptr<Node>> nodes;
-// };
-
-// struct History {
-//   std::vector<State> states;
-//   Eval::CachedEval eval;
-// };
-
-// // using History = std::vector<State>;
-// using HistorySearchData = std::vector<StateSearchData>;
-
-// struct ManagedData {
-//   std::map<std::string, History> history_map;
-//   std::map<std::string, std::vector<StateSearchData>> search_data_map;
-//   Eval::OVODict ovo_dict;
-// };
 
 void Program::print() const {
   const auto print_output = [this](const MCTS::Output &o) {
@@ -376,15 +406,16 @@ void Program::print() const {
       }
       Base::log("");
     }
-    const auto &battle = state().battle;
+    const auto &battle = state().frame.battle;
     for (auto i = 0; i < o.m; ++i) {
       Base::log_(side_choice_string(battle.bytes, o.choices1[i]),
-           std::format("{:>5.3f}", o.p1[i]), ' ');
+                 std::format("{:>5.3f}", o.p1[i]), ' ');
     }
     Base::log("");
     for (auto i = 0; i < o.n; ++i) {
-      Base::log_(side_choice_string(battle.bytes + Offsets::side, o.choices2[i]),
-           std::format("{:>5.3f}", o.p2[i]), ' ');
+      Base::log_(
+          side_choice_string(battle.bytes + Offsets::side, o.choices2[i]),
+          std::format("{:>5.3f}", o.p2[i]), ' ');
     }
     Base::log("");
   };
@@ -400,19 +431,21 @@ void Program::print() const {
   }
   case 1: {
     Base::log(history().states.size(), " states.");
+    Base::log("Eval enabled: ", history().header.eval_enabled);
     return;
   }
   case 2: {
     const auto &s = state();
-    Base::log(Strings::battle_to_string(s.battle));
-    for (auto i = 0; i < s.m; ++i) {
-      const auto c = s.choices1[i];
-      Base::log_(side_choice_string(s.battle.bytes, c), ' ');
+    Base::log(Strings::battle_to_string(s.frame.battle));
+    for (auto i = 0; i < s.choices.m; ++i) {
+      const auto c = s.choices.p1[i];
+      Base::log_(side_choice_string(s.frame.battle.bytes, c), ' ');
     }
     Base::log("");
-    for (auto i = 0; i < s.n; ++i) {
-      const auto c = s.choices2[i];
-      Base::log_(side_choice_string(s.battle.bytes + Offsets::side, c), ' ');
+    for (auto i = 0; i < s.choices.n; ++i) {
+      const auto c = s.choices.p2[i];
+      Base::log_(side_choice_string(s.frame.battle.bytes + Offsets::side, c),
+                 ' ');
     }
     Base::log("");
     return;
@@ -485,7 +518,7 @@ bool Program::cd(const std::span<const std::string> words) {
 
     if (mgmt.bounds[mgmt.loc.depth - 1] <= index) {
       Base::err("cd: {depth: ", mgmt.loc.depth, " index: ", index,
-          " bound: ", mgmt.bounds[mgmt.loc.depth - 1]);
+                " bound: ", mgmt.bounds[mgmt.loc.depth - 1]);
       return false;
     }
 
@@ -569,7 +602,7 @@ bool Program::last() {
 
 History &Program::history() { return data.history_map.at(mgmt.loc.key); }
 State &Program::state() { return history().states.at(mgmt.loc.current[0]); }
-SearchOutputs &Program::search_outputs() {
+NodeData &Program::search_outputs() {
   return data.history_map.at(mgmt.loc.key)
       .states.at(mgmt.loc.current[0])
       .outputs.at(mgmt.loc.current[1]);
@@ -593,7 +626,7 @@ const History &Program::history() const {
 const State &Program::state() const {
   return history().states.at(mgmt.loc.current[0]);
 }
-const SearchOutputs &Program::search_outputs() const {
+const NodeData &Program::search_outputs() const {
   return data.history_map.at(mgmt.loc.key)
       .states.at(mgmt.loc.current[0])
       .outputs.at(mgmt.loc.current[1]);
@@ -620,36 +653,57 @@ bool Program::create(const std::string key, const Init::Config p1,
     return false;
   }
 
-  const auto battle = Init::battle(p1, p2);
-  data.history_map[key] = {};
-  auto &history = data.history_map[key];
-  history.states.emplace_back();
-  // history.eval = Eval::CachedEval{p1.pokemon, p2.pokemon, data.ovo_dict};
-  auto &state = history.states.front();
-  state.battle = battle;
-  state.options = {};
-  state.m = 1;
-  state.n = 1;
-  state.outputs.resize(2);
+  Header header;
+  header.p1 = p1;
+  header.p2 = p2;
+  header.battle = Init::battle(p1, p2);
 
-  auto *durations = pkmn_gen1_battle_options_chance_durations(&state.options);
+  Frame frame{};
+  frame.battle = header.battle;
+  auto *durations = pkmn_gen1_battle_options_chance_durations(&frame.options);
   auto &d = View::ref(*durations);
   for (auto s = 0; s < 2; ++s) {
     for (auto i = 0; i < 6; ++i) {
       const auto &set = s == 0 ? p1.pokemon[i] : p2.pokemon[i];
       if (Data::is_sleep(set.status)) {
-        d.duration(s).set_sleep(i, set.sleep); // TODO null mons will break this
+        d.duration(s).set_sleep(i,
+                                set.sleep); // TODO null mons will break this?
       }
     }
   }
 
-  auto &search_data = data.search_data_map[key];
-  search_data.emplace_back();
-  search_data.front().nodes.emplace_back(std::make_unique<Node>());
-  search_data.front().nodes.emplace_back(std::make_unique<Node>());
+  State first{};
+  const bool success = update(header.battle, 0, 0, first);
+  if (!success) {
+    Base::err(
+        "create: Initial 0, 0 update returned non null result. Bad sides.");
+    return false;
+  }
 
-  history.debug_log.set_header(battle);
+  auto &history = data.history_map[key];
+  history.header = header;
+  auto &dict = data.ovo_dict;
+  if ([&history, p1, p2, &dict]() {
+        for (const auto &set1 : p1.pokemon) {
+          for (const auto &set2 : p2.pokemon) {
+            if (!dict.contains(set1, set2)) {
+              return false;
+            }
+          }
+        }
+        return true;
+      }()) {
+    history.header.eval_enabled = true;
+    history.eval = Eval::CachedEval{p1.pokemon, p2.pokemon, data.ovo_dict};
+  }
 
+  history.states.emplace_back(first);
+  auto &search_data_history = data.search_data_map[key];
+  search_data_history.emplace_back();
+  auto &search_data = search_data_history.back();
+  search_data.nodes.emplace_back(std::make_unique<Node>());
+  search_data.nodes.emplace_back(std::make_unique<Node>());
+  ++mgmt.bounds[0];
   return true;
 }
 
@@ -673,37 +727,44 @@ bool Program::rm(const std::span<const std::string> words) {
   return true;
 }
 
-bool Program::update(std::string str1, std::string str2) {
+bool Program::update(const std::span<const std::string> words) {
   if (mgmt.loc.depth == 0) {
     Base::err("update: A game must be in focus");
     return false;
   }
-
+  if (words.size() < 2) {
+    Base::err(
+        "update: Please enter u8 value of c1, c2 as a decimal (e.g. 5, 17)");
+    return false;
+  }
+  const auto str1 = words[0];
+  const auto str2 = words[1];
   const auto &s = history().states.back();
   uint8_t x, y;
   try {
     x = std::stoi(str1);
   } catch (...) {
     std::array<std::string, 9> str_choices{};
-    std::transform(
-        s.choices1.begin(), s.choices1.begin() + s.m, str_choices.begin(),
-        [&s](const auto c) { return side_choice_string(s.battle.bytes, c); });
+    std::transform(s.choices.p1.begin(), s.choices.p1.begin() + s.choices.m,
+                   str_choices.begin(), [&s](const auto c) {
+                     return side_choice_string(s.frame.battle.bytes, c);
+                   });
     int i = Strings::unique_index(str_choices, str1);
     Base::log("update: str1: ", str1, " i: ", i);
     if (i == -1) {
       Base::err("update: Could not parse c1: ", str1);
       return false;
     }
-    x = static_cast<size_t>(s.choices1[i]);
+    x = static_cast<size_t>(s.choices.p1[i]);
   }
   try {
     y = std::stoi(str2);
   } catch (...) {
     std::array<std::string, 9> str_choices{};
-    std::transform(s.choices2.begin(), s.choices2.begin() + s.n,
+    std::transform(s.choices.p2.begin(), s.choices.p2.begin() + s.choices.n,
                    str_choices.begin(), [&s](const auto c) {
-                     return side_choice_string(s.battle.bytes + Offsets::side,
-                                               c);
+                     return side_choice_string(
+                         s.frame.battle.bytes + Offsets::side, c);
                    });
     int i = Strings::unique_index(str_choices, str2);
     Base::log("update: str2: ", str2, " i: ", i);
@@ -711,77 +772,84 @@ bool Program::update(std::string str1, std::string str2) {
       Base::err("update: Could not parse c2: ", str2);
       return false;
     }
-    y = static_cast<size_t>(s.choices2[i]);
+    y = static_cast<size_t>(s.choices.p2[i]);
   }
 
   return update(x, y);
 }
 
 bool Program::update(pkmn_choice c1, pkmn_choice c2) {
-  if (mgmt.loc.depth == 0) {
-    Base::err("update: A game must be in focus");
+  const auto &s = history().states.back();
+  State next{};
+  const bool success = update(s.frame.battle, c1, c2, next);
+  if (success) {
+    history().states.emplace_back(next);
+    auto &search_data_history = data.search_data_map.at(mgmt.loc.key);
+    search_data_history.emplace_back();
+    auto &s = search_data_history.back();
+    s.nodes.emplace_back(std::make_unique<Node>());
+    s.nodes.emplace_back(std::make_unique<Node>());
+    ++mgmt.bounds[0];
+  }
+  return success;
+}
+
+bool Program::update(const pkmn_gen1_battle &battle, pkmn_choice c1,
+                     pkmn_choice c2, State &state) {
+  auto &frame = state.frame;
+  frame.c1 = c1;
+  frame.c2 = c2;
+  frame.battle = battle;
+  frame.seed =
+      *std::bit_cast<const uint64_t *>(frame.battle.bytes + Offsets::seed);
+  frame.options = state.frame.options;
+  pkmn_gen1_log_options log_options{state.frame.log.data(), 256};
+  Log::set(frame.options, &log_options, nullptr, nullptr);
+  frame.result = Log::update(frame.battle, c1, c2, frame.options);
+  const auto [choices1, choices2] = Init::choices(frame.battle, frame.result);
+
+  if (pkmn_result_type(frame.result) == PKMN_RESULT_ERROR) {
+    Base::err("update: Error during update call");
     return false;
   }
-  auto &h = history();
-  auto &state = h.states.back();
 
-  state.c1 = c1;
-  state.c2 = c2;
-
-  State next{};
-  next.battle = state.battle;
-  next.seed =
-      *std::bit_cast<const uint64_t *>(next.battle.bytes + Offsets::seed);
-  next.options = state.options;
-  next.result = h.debug_log.update(next.battle, c1, c2, next.options);
-  // next.result = Init::update(next.battle, c1, c2, next.options);
-  const auto [choices1, choices2] = Init::choices(next.battle, next.result);
-  if (pkmn_result_type(next.result)) {
-    next.m = 0;
-    next.n = 0;
+  auto &choices = state.choices;
+  if (pkmn_result_type(state.frame.result)) {
+    choices.m = 0;
+    choices.n = 0;
   } else {
-    next.m = choices1.size();
-    next.n = choices2.size();
+    const auto [choices1, choices2] =
+        Init::choices(state.frame.battle, state.frame.result);
+    choices.m = choices1.size();
+    choices.n = choices2.size();
+    std::copy(choices1.begin(), choices1.end(), choices.p1.begin());
+    std::copy(choices2.begin(), choices2.end(), choices.p2.begin());
   }
-  std::copy(choices1.begin(), choices1.end(), next.choices1.begin());
-  std::copy(choices2.begin(), choices2.end(), next.choices2.begin());
 
-  // set up head of search outputs
-  next.outputs.emplace_back();
-  next.outputs.emplace_back();
-  for (auto &so : next.outputs) {
+  auto &outputs = state.outputs;
+  outputs.resize(2);
+  for (auto &so : outputs) {
     auto &o = so.head;
-    o.m = next.m;
-    o.n = next.n;
-    o.choices1 = next.choices1;
-    o.choices2 = next.choices2;
+    o.m = choices.m;
+    o.n = choices.n;
+    o.choices1 = choices.p1;
+    o.choices2 = choices.p2;
   }
-
-  h.states.emplace_back(next);
-
-  auto &search_data_history = data.search_data_map.at(mgmt.loc.key);
-  search_data_history.emplace_back();
-  auto &s = search_data_history.at(h.states.size() - 1);
-  s.nodes.emplace_back(std::make_unique<Node>());
-  s.nodes.emplace_back(std::make_unique<Node>());
-
-  ++mgmt.bounds[0];
-
   return true;
 }
 
 bool Program::rollout() {
   if (mgmt.loc.depth == 0) {
-    Base::err("rollout: A Game must be in focus.");
+    Base::err("rollout: A game must be in focus.");
     return false;
   }
   auto &h = history();
   const auto *state = &h.states.back();
-  prng device{123123};
-  while ((state->m * state->n) > 0) {
-    const auto i = device.random_int(state->m);
-    const auto j = device.random_int(state->n);
-    const bool success = update(state->choices1[i], state->choices2[j]);
+  prng device{mgmt.device.uniform_64()};
+  while ((state->choices.m * state->choices.n) > 0) {
+    const auto i = device.random_int(state->choices.m);
+    const auto j = device.random_int(state->choices.n);
+    const bool success = update(state->choices.p1[i], state->choices.p2[j]);
     if (!success) {
       Base::err("rollout: Bad update.");
       return false;
@@ -820,7 +888,7 @@ bool Program::battle_bytes() const {
     Base::err("battle: State must be in focus.");
     return false;
   }
-  const auto &battle = state().battle;
+  const auto &battle = state().frame.battle;
   Base::log(buffer_to_string(battle.bytes, 384));
   return true;
 }
@@ -829,12 +897,12 @@ bool Program::pokemon_bytes() const {
     Base::err("battle: State must be in focus.");
     return false;
   }
-  const auto &battle = state().battle;
+  const auto &battle = state().frame.battle;
   for (auto s = 0; s < 2; ++s) {
     for (auto p = 0; p < 6; ++p) {
       Base::log(buffer_to_string(battle.bytes + (s * Offsets::side) +
-                               (p * Offsets::pokemon),
-                           Offsets::pokemon));
+                                     (p * Offsets::pokemon),
+                                 Offsets::pokemon));
     }
   }
   return true;
@@ -846,11 +914,13 @@ bool Program::search(const std::span<const std::string> words) {
     return false;
   }
   if (words.size() != 3) {
-    Base::err("search: Invalid Args. Expecting 'mc'/'eval', 'time'/'count', <n> ");
+    Base::err(
+        "search: Invalid Args. Expecting 'mc'/'eval', 'time'/'count', <n> ");
     return false;
   }
   if (node() == nullptr) {
-    Base::err("search: Cannot search on loaded (archived) games. Copy this game then "
+    Base::err(
+        "search: Cannot search on loaded (archived) games. Copy this game then "
         "search on that.");
     return false;
   }
@@ -883,9 +953,10 @@ bool Program::search(const std::span<const std::string> words) {
   const auto &s = state();
   MCTS search{};
   MonteCarlo::Input input;
-  input.battle = s.battle;
-  input.durations = *pkmn_gen1_battle_options_chance_durations(&s.options);
-  input.result = s.result;
+  input.battle = s.frame.battle;
+  input.durations =
+      *pkmn_gen1_battle_options_chance_durations(&s.frame.options);
+  input.result = s.frame.result;
   const auto &d = View::ref(input.durations);
   MCTS::Output output;
   MonteCarlo::Model model{9823457230948};
@@ -919,7 +990,7 @@ bool Program::search(const std::span<const std::string> words) {
   accumulate(search_outputs().head, output);
   ++mgmt.bounds[2];
   Base::log(output.iterations, " MCTS iterations completed in ",
-      search_outputs().tail.back().duration.count(), " ms.");
+            search_outputs().tail.back().duration.count(), " ms.");
   return true;
 }
 

@@ -163,6 +163,19 @@ public:
     }
   }
 
+  bool contains(const auto &p1_set, const auto &p2_set) const {
+    SetID id1 = toID(p1_set);
+    SetID id2 = toID(p2_set);
+
+    if (OVOData.contains({id1, id2})) {
+      return true;
+    } else if (OVOData.contains({id2, id1})) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   bool save(const std::filesystem::path path) {
     std::unique_lock lock{mutex};
     std::ofstream file(path, std::ios::binary | std::ios::trunc);

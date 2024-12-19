@@ -25,7 +25,11 @@ namespace Lab {
 
 namespace Games {
 
-struct SearchOutputs {
+using u8 = uint8_t;
+using u64 = uint64_t;
+using BattleLog = std::array<uint8_t, 256>;
+
+struct NodeData {
   MCTS::Output head;
   std::vector<MCTS::Output> tail;
 };
@@ -33,22 +37,35 @@ struct SearchOutputs {
 using Node =
     Tree::Node<Exp3::JointBanditData<.03f, false>, std::array<uint8_t, 16>>;
 
-struct State {
+struct Header {
   pkmn_gen1_battle battle;
-  pkmn_gen1_battle_options options;
-  pkmn_result result;
+  Init::Config p1;
+  Init::Config p2;
+  bool eval_enabled{false};
+};
 
-  // interim info
-  uint64_t seed;
+struct Frame {
+  BattleLog log;
+  pkmn_gen1_battle battle;
+  pkmn_result result;
   pkmn_choice c1;
   pkmn_choice c2;
 
-  size_t m;
-  size_t n;
-  std::array<pkmn_choice, 9> choices1;
-  std::array<pkmn_choice, 9> choices2;
+  pkmn_gen1_battle_options options;
+  u64 seed;
+};
 
-  std::vector<SearchOutputs> outputs;
+struct Choices {
+  u8 m;
+  u8 n;
+  std::array<pkmn_choice, 9> p1;
+  std::array<pkmn_choice, 9> p2;
+};
+
+struct State {
+  Frame frame;
+  Choices choices;
+  std::vector<NodeData> outputs;
 };
 
 struct StateSearchData {
@@ -56,9 +73,12 @@ struct StateSearchData {
 };
 
 struct History {
+  Header header;
   std::vector<State> states;
+
   Eval::CachedEval eval;
-  DebugLog debug_log{};
+  std::optional<pkmn_choice> c1;
+  std::optional<pkmn_choice> c2;
 };
 
 using HistorySearchData = std::vector<StateSearchData>;
@@ -125,8 +145,11 @@ private:
   bool search(const std::span<const std::string> words);
   void loc() const;
   bool rollout();
+  bool playout();
+  bool update(const pkmn_gen1_battle &battle, pkmn_choice c1, pkmn_choice c2,
+              State &state);
   bool update(pkmn_choice c1, pkmn_choice c2);
-  bool update(std::string c1, std::string c2);
+  bool update(const std::span<const std::string>);
   bool rm(const std::span<const std::string>);
   void print() const;
   bool cd(const std::span<const std::string>);
@@ -149,14 +172,14 @@ private:
   State &state();
   StateSearchData &search_data();
   Node *node();
-  SearchOutputs &search_outputs();
+  NodeData &search_outputs();
   MCTS::Output &output();
 
   const History &history() const;
   const State &state() const;
   const StateSearchData &search_data() const;
   const Node *node() const;
-  const SearchOutputs &search_outputs() const;
+  const NodeData &search_outputs() const;
   const MCTS::Output &output() const;
 
   bool lock_location(const ManagerData::Loc &loc) {
