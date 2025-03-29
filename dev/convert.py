@@ -129,20 +129,18 @@ def main():
     header = """
 #pragma once
 
-#include <battle/data/species.h>
-#include <battle/data/moves.h>
-
 #include <array>
+
+#include <data/moves.h>
+#include <data/species.h>
+
+#include <battle/init.h>
 
 namespace SampleTeams {
 using Data::Moves;
 using Data::Species;
 using enum Moves;
-
-struct Set {
-  Species species;
-  std::array<Moves, 4> moves;
-};
+using Set = Init::Set;
 """
     print(header)
 
