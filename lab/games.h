@@ -5,7 +5,7 @@
 
 #include <battle/init.h>
 
-#include <pi/eval.h>
+#include <pi/ovo-eval.h>
 #include <pi/exp3.h>
 #include <pi/mcts.h>
 #include <pi/tree.h>

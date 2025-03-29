@@ -48,7 +48,7 @@ struct MCTS {
     static constexpr size_t min_mon = _min_mon;
 
     static constexpr size_t rolls_same = (root_rolls == other_rolls);
-    static constexpr size_t can_defer = (_min_mon > 1);
+    static constexpr bool can_defer_to_rollout = (min_mon > 1);
     static constexpr bool clamping = (root_rolls != 39) || (other_rolls != 39);
   };
 
@@ -198,7 +198,7 @@ struct MCTS {
     auto &result = input.result;
     auto &device = model.device;
 
-    const auto print = [depth](const auto &data, bool endl = true) -> void {
+    const auto print = [depth](const auto &data, bool new_line = true) -> void {
       if constexpr (!Options::debug_print) {
         return;
       }
@@ -206,8 +206,8 @@ struct MCTS {
         std::cout << "  ";
       }
       std::cout << data;
-      if (endl) {
-        std::cout << std::endl;
+      if (new_line) {
+        std::cout << '\n';
       }
     };
 
@@ -297,7 +297,7 @@ struct MCTS {
           init_stats(node->stats(), battle, result);
           decltype(input.abstract) abstract{input.battle,
                                             model.eval.ovo_matrix};
-          if constexpr (Options::can_defer) {
+          if constexpr (Options::can_defer_to_rollout) {
             if (abstract.m < Options::min_mon ||
                 abstract.n < Options::min_mon) {
               return rollout(node->stats(), device, battle, result);

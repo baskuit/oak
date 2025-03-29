@@ -7,7 +7,7 @@
 #include <battle/sample-teams.h>
 #include <battle/strings.h>
 
-#include <pi/eval.h>
+#include <pi/ovo-eval.h>
 
 #include <sides.h>
 // #include <log.h>

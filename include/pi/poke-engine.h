@@ -1,7 +1,5 @@
 #pragma once
 
-// #include <pi/eval.h>
-
 namespace PokeEngine {
 constexpr float POKEMON_ALIVE = 30.0;
 constexpr float POKEMON_HP = 100.0;

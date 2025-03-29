@@ -32,6 +32,8 @@ namespace Eval {
 
 constexpr size_t n_hp = 3;
 constexpr size_t n_status = 5;
+std::array<uint8_t, 6> STATUS{0b00000000, 0b00000100, 0b00001000, 0b00010000,
+  0b01000000};
 
 float get_value(const auto &set1, const auto &set2, size_t iterations,
                 auto seed) {
@@ -46,7 +48,8 @@ float get_value(const auto &set1, const auto &set2, size_t iterations,
   Node node{};
   MCTS search;
   input.result = Init::update(input.battle, 0, 0, search.options);
-  // This rolls for sleep turns at the start of each MCTS iteration
+  // run() in mcts.h will sample all sleep values at the start of each iteration
+  // if the duration byte is set to 1
   if (set1.status & 7) {
     input.durations.bytes[0] = 1;
   }
@@ -60,25 +63,10 @@ float get_value(const auto &set1, const auto &set2, size_t iterations,
 using OVO = std::array<
     std::array<std::array<std::array<float, n_status>, n_hp>, n_status>, n_hp>;
 
-struct OVO2 {
-  std::array<
-      std::array<std::array<std::array<float, n_status>, n_hp>, n_status>, n_hp>
-      data;
-
-  const float &operator()(auto h1, auto s1, auto h2, auto s2) const {
-    return data[0][0][0][0];
-  }
-  float &operator()(auto h1, auto s1, auto h2, auto s2) {
-    return data[0][0][0][0];
-  }
-};
-
 OVO compute_table(auto set1, auto set2, const auto iterations,
                   const auto seed) {
   OVO result;
   // clr, slp, psn, brn, par
-  std::array<uint8_t, 6> STATUS{0b00000000, 0b00000100, 0b00001000, 0b00010000,
-                                0b01000000};
   for (int h1 = 0; h1 < n_hp; ++h1) {
     for (int s1 = 0; s1 < n_status; ++s1) {
       for (int h2 = 0; h2 < n_hp; ++h2) {

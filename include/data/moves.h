@@ -1806,7 +1806,6 @@ public:
 
   bool insert(const T &val) noexcept {
     auto free_index = -1;
-    bool is_in = false;
     for (auto i = 0; i < n; ++i) {
       if (_data[i] == val) {
         return false;

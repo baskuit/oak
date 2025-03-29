@@ -40,7 +40,7 @@ Basic Monte Carlo tree search with actions clamping and duration sampling (TODO)
 
 This structure stores all the search stats in a way that guarantees no "collisions". No two different histories will access the same stats.
 
-* eval.h
+* ovo-eval.h
 
 The previous `/pi` headers create a bootstrap for our HCE. We can take the average MCTS root value as an estimate for the value of a 1v1
 
