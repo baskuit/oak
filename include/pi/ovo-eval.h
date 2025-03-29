@@ -32,7 +32,7 @@ namespace Eval {
 
 constexpr size_t n_hp = 3;
 constexpr size_t n_status = 5;
-std::array<uint8_t, 6> STATUS{0b00000000, 0b00000100, 0b00001000, 0b00010000,
+constexpr static std::array<uint8_t, 6> STATUS{0b00000000, 0b00000100, 0b00001000, 0b00010000,
   0b01000000};
 
 float get_value(const auto &set1, const auto &set2, size_t iterations,
