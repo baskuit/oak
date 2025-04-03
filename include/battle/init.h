@@ -193,7 +193,7 @@ constexpr auto battle(const auto &p1, const auto &p2,
 
 constexpr pkmn_gen1_battle_options options() { return {}; }
 
-pkmn_result update(pkmn_gen1_battle &battle, const auto c1, const auto c2,
+[[nodiscard]] pkmn_result update(pkmn_gen1_battle &battle, const auto c1, const auto c2,
                    pkmn_gen1_battle_options &options) {
   const auto get_choice = [](const auto c, const uint8_t *side) -> pkmn_choice {
     using Choice = decltype(c);
