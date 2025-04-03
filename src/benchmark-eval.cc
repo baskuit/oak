@@ -1,8 +1,8 @@
 #include <battle/sample-teams.h>
 
-#include <pi/ovo-eval.h>
 #include <pi/exp3.h>
 #include <pi/mcts.h>
+#include <pi/ovo-eval.h>
 #include <pi/tree.h>
 
 #include <util/random.h>

@@ -5,9 +5,9 @@
 
 #include <battle/sample-teams.h>
 
-#include <pi/ovo-eval.h>
 #include <pi/exp3.h>
 #include <pi/mcts.h>
+#include <pi/ovo-eval.h>
 #include <pi/tree.h>
 
 #include <atomic>
@@ -92,8 +92,9 @@ int generate(int argc, char **argv) {
     exp = std::atoi(argv[2]);
   }
 
-  std::cout << "Usage: './generate n exp'\n Generate OVODict using n threads and 2^exp search iterations" <<
-  std::endl;
+  std::cout << "Usage: './generate n exp'\n Generate OVODict using n threads "
+               "and 2^exp search iterations"
+            << std::endl;
 
   const auto sorted_set_array = Sets::get_sorted_set_array();
   std::vector<Init::Set> sets{};
@@ -101,7 +102,7 @@ int generate(int argc, char **argv) {
     const auto &set = pair.first;
     sets.emplace_back(set);
   }
-  
+
   std::cout << "Number of sets:" << sets.size() << std::endl;
 
   std::atomic<int> index{};

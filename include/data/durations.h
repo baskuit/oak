@@ -7,6 +7,8 @@
 
 namespace Durations {
 
+// gets the observed number of turns slept, as opposed to the de facto sleep
+// roll
 static uint8_t sleep(const pkmn_gen1_chance_durations &durations, auto side,
                      auto slot) {
   auto duration = std::bit_cast<const uint32_t *>(&durations) + side;

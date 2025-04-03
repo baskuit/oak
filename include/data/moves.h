@@ -1797,7 +1797,6 @@ public:
     std::sort(_data.begin(), _data.end(), std::greater<T>());
   }
 
-  // OrderedArrayBasedSet& operator=(const OrderedArrayBasedSet&) = default;
   bool operator==(const OrderedArrayBasedSet &) const noexcept = default;
 
   bool operator<(const OrderedArrayBasedSet &other) const noexcept {
@@ -1823,27 +1822,24 @@ public:
 
   bool contains(const OrderedArrayBasedSet &other) const noexcept {
     int i = 0;
-    for (int other_i = 0; other_i < 4; ++other_i) {
+    for (int other_i = 0; other_i < n; ++other_i) {
       const auto other_move = other._data[other_i];
       if (other_move == T{0}) {
-        break;
+        return true;
       }
       while (true) {
         if (other_move == _data[i]) {
           ++i;
-          break;
+          return true;
         } else {
         }
-        if ((i >= 4) || (other_move > _data[i])) {
+        if ((i >= n) || (other_move > _data[i])) {
           return false;
         }
         ++i;
       }
     }
-    return true;
   }
-
-  auto size() const { return _data.size(); } // TODO rm
 };
 }; // namespace Detail
 
