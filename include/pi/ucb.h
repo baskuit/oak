@@ -23,17 +23,146 @@ static constexpr std::array<std::array<uint8_t, 2>, 81 * 2> row_col_map{
 
 }; // namespace Precomputed
 
-#pragma pack(1)
-struct UCBEntry {
-  uint16_t visits;
-  uint8_t value;
+struct FatUCBEntry {
+  uint32_t visits;
+  float value;
 };
-#pragma pop()
 
-struct RootUCBEntry {
-  uint64_t visits;
-  double value;
+#pragma pack(push, 1)
+template <float gamma = .1f, bool enable_visits = false>
+class JointBanditData : public JointBanditDataBase<enable_visits> {
+public:
+
+  std::array<FatUCBEntry, 9> p1_ucb;
+  std::array<FatUCBEntry, 9> p2_ucb;
+  
+
+  using JointBanditDataBase<enable_visits>::p1_gains;
+  using JointBanditDataBase<enable_visits>::p2_gains;
+  using JointBanditDataBase<enable_visits>::_rows;
+  using JointBanditDataBase<enable_visits>::_cols;
+
+  struct Outcome {
+    float value;
+    float p1_mu;
+    float p2_mu;
+    uint8_t p1_index;
+    uint8_t p2_index;
+  };
+
+  void init(auto rows, auto cols) noexcept {
+    _rows = rows;
+    _cols = cols;
+    std::fill(p1_gains.begin(), p1_gains.begin() + rows, 0);
+    std::fill(p2_gains.begin(), p2_gains.begin() + cols, 0);
+    if constexpr (enable_visits) {
+      std::fill(this->p1_visits.begin(), this->p1_visits.begin() + rows,
+                uint24_t{});
+      std::fill(this->p2_visits.begin(), this->p2_visits.begin() + cols,
+                uint24_t{});
+    }
+  }
+
+  bool is_init() const noexcept { return this->_rows != 0; }
+
+  template <typename Outcome> void update(const Outcome &outcome) noexcept {
+    if constexpr (enable_visits) {
+      ++this->p1_visits[outcome.p1_index];
+      ++this->p2_visits[outcome.p2_index];
+    }
+
+    if ((p1_gains[outcome.p1_index] += outcome.value / outcome.p1_mu) >= 0) {
+      const auto max = p1_gains[outcome.p1_index];
+      for (auto &v : p1_gains) {
+        v -= max;
+      }
+    }
+    if ((p2_gains[outcome.p2_index] += (1 - outcome.value) / outcome.p2_mu) >=
+        0) {
+      const auto max = p2_gains[outcome.p2_index];
+      for (auto &v : p2_gains) {
+        v -= max;
+      }
+    }
+  }
+
+  template <typename PRNG, typename Outcome>
+  void select(PRNG &device, Outcome &outcome) const noexcept {
+    constexpr float one_minus_gamma = 1 - gamma;
+    std::array<float, 9> forecast{};
+    if (_rows == 1) {
+      outcome.p1_index = 0;
+      outcome.p1_mu = 1;
+    } else {
+      const float eta{gamma / _rows};
+      softmax(forecast, p1_gains, _rows, eta);
+      std::transform(
+          forecast.begin(), forecast.begin() + _rows, forecast.begin(),
+          [eta](const float value) { return one_minus_gamma * value + eta; });
+      outcome.p1_index = device.sample_pdf(forecast);
+      outcome.p1_mu = forecast[outcome.p1_index];
+    }
+    if (_cols == 1) {
+      outcome.p2_index = 0;
+      outcome.p2_mu = 1;
+    } else {
+      const float eta{gamma / _cols};
+      softmax(forecast, p2_gains, _cols, eta);
+      std::transform(
+          forecast.begin(), forecast.begin() + _cols, forecast.begin(),
+          [eta](const float value) { return one_minus_gamma * value + eta; });
+      outcome.p2_index = device.sample_pdf(forecast);
+      outcome.p2_mu = forecast[outcome.p2_index];
+    }
+
+    // TODO
+    outcome.p1_index =
+        std::min(outcome.p1_index, static_cast<uint8_t>(_rows - 1));
+    outcome.p2_index =
+        std::min(outcome.p2_index, static_cast<uint8_t>(_cols - 1));
+
+    assert(outcome.p1_index < _rows);
+    assert(outcome.p2_index < _cols);
+  }
+
+  std::string visit_string() const {
+    std::stringstream sstream{};
+    if constexpr (enable_visits) {
+      sstream << "V1: ";
+      for (auto i = 0; i < _rows; ++i) {
+        sstream << std::to_string(this->p1_visits[i]) << " ";
+      }
+      sstream << "V2: ";
+      for (auto i = 0; i < _cols; ++i) {
+        sstream << std::to_string(this->p2_visits[i]) << " ";
+      }
+      sstream.flush();
+    }
+    return sstream.str();
+  }
+
+  std::pair<std::vector<float>, std::vector<float>>
+  policies(float iterations) const {
+
+    std::vector<float> p1{};
+    std::vector<float> p2{};
+
+    p1.resize(_rows);
+    p2.resize(_cols);
+
+    if constexpr (enable_visits) {
+      for (auto i = 0; i < _rows; ++i) {
+        p1[i] = this->p1_visits[i].value() / (iterations - 1);
+      }
+      for (auto i = 0; i < _cols; ++i) {
+        p2[i] = this->p2_visits[i].value() / (iterations - 1);
+      }
+    }
+    return {p1, p2};
+  }
 };
+#pragma pack(pop)
+
 
 struct UCBEntryTest {
   static_assert(sizeof(UCBEntry) == 3);

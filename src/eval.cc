@@ -6,7 +6,7 @@
 #include <battle/view.h>
 
 #include <pi/ovo-eval.h>
-#include <pi/poke-engine.h>
+#include <pi/poke-engine-eval.h>
 
 #include <util/print.h>
 #include <util/random.h>
