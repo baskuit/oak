@@ -9,6 +9,20 @@ int main (int argc, char **argv) {
 
     Stockfish::Eval::NNUE::NetworkArchitecture nn{};
 
+    uint8_t ones[32];
+    int32_t output[1];
+
+    Stockfish::Eval::NNUE::Layers::AffineTransform<32, 1> layer{};
+    for (auto i = 0; i < 32; ++i) {
+        ones[i] = 127;
+        layer.weights[i] = 64; // aka 64 = 1.0
+    }
+    layer.propagate(ones, output);
+    std::cout << output[0] << std::endl;
+    return 0;
+
+    // layer.write_parameters()
+
     uint64_t seed;
 
     seed = std::atoi(argv[1]);
