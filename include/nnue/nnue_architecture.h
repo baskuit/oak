@@ -25,17 +25,17 @@
 #include <cstring>
 #include <iosfwd>
 
-#include "features/half_ka_v2_hm.h"
-#include "layers/affine_transform.h"
-#include "layers/affine_transform_sparse_input.h"
-#include "layers/clipped_relu.h"
-#include "layers/sqr_clipped_relu.h"
+// #include "features/half_ka_v2_hm.h"
+#include "affine_transform.h"
+// #include "layers/affine_transform_sparse_input.h"
+#include "clipped_relu.h"
+// #include "layers/sqr_clipped_relu.h"
 #include "nnue_common.h"
 
 namespace Stockfish::Eval::NNUE {
 
 // Input features used in evaluation function
-using FeatureSet = Features::HalfKAv2_hm;
+// using FeatureSet = Features::HalfKAv2_hm;
 
 // Number of input feature dimensions after conversion
 constexpr IndexType TransformedFeatureDimensionsBig = 3072;
@@ -55,8 +55,8 @@ struct NetworkArchitecture {
     static constexpr int       FC_0_OUTPUTS                 = L2;
     static constexpr int       FC_1_OUTPUTS                 = L3;
 
-    Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
-    Layers::SqrClippedReLU<FC_0_OUTPUTS + 1>                                           ac_sqr_0;
+    Layers::AffineTransform<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
+    Layers::ClippedReLU<FC_0_OUTPUTS + 1>                                           ac_sqr_0;
     Layers::ClippedReLU<FC_0_OUTPUTS + 1>                                              ac_0;
     Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS>                            fc_1;
     Layers::ClippedReLU<FC_1_OUTPUTS>                                                  ac_1;

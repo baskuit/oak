@@ -31,6 +31,10 @@
 
 // #include "../misc.h"
 
+// True if and only if the binary is compiled on a little-endian machine
+static inline const std::uint16_t Le             = 1;
+static inline const bool          IsLittleEndian = *reinterpret_cast<const char*>(&Le) == 1;
+
 #include <immintrin.h>
 
 namespace Stockfish::Eval::NNUE {
