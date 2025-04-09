@@ -24,7 +24,7 @@
 #include <cstdint>
 #include <iostream>
 
-#include "../nnue_common.h"
+#include "nnue_common.h"
 #include "simd.h"
 
 /*
@@ -38,90 +38,6 @@
 */
 
 namespace Stockfish::Eval::NNUE::Layers {
-
-#if defined(USE_SSSE3) || defined(USE_NEON_DOTPROD)
-    #define ENABLE_SEQ_OPT
-#endif
-
-// Fallback implementation for older/other architectures.
-// Requires the input to be padded to at least 16 values.
-#ifndef ENABLE_SEQ_OPT
-
-template<IndexType InputDimensions, IndexType PaddedInputDimensions, IndexType OutputDimensions>
-static void affine_transform_non_ssse3(std::int32_t*       output,
-                                       const std::int8_t*  weights,
-                                       const std::int32_t* biases,
-                                       const std::uint8_t* input) {
-    #if defined(USE_SSE2) || defined(USE_NEON)
-        #if defined(USE_SSE2)
-    // At least a multiple of 16, with SSE2.
-    constexpr IndexType NumChunks   = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
-    const __m128i       Zeros       = _mm_setzero_si128();
-    const auto          inputVector = reinterpret_cast<const __m128i*>(input);
-
-        #elif defined(USE_NEON)
-    constexpr IndexType NumChunks   = ceil_to_multiple<IndexType>(InputDimensions, 16) / 16;
-    const auto          inputVector = reinterpret_cast<const int8x8_t*>(input);
-        #endif
-
-    for (IndexType i = 0; i < OutputDimensions; ++i)
-    {
-        const IndexType offset = i * PaddedInputDimensions;
-
-        #if defined(USE_SSE2)
-        __m128i    sumLo = _mm_cvtsi32_si128(biases[i]);
-        __m128i    sumHi = Zeros;
-        const auto row   = reinterpret_cast<const __m128i*>(&weights[offset]);
-        for (IndexType j = 0; j < NumChunks; ++j)
-        {
-            __m128i row_j           = _mm_load_si128(&row[j]);
-            __m128i input_j         = _mm_load_si128(&inputVector[j]);
-            __m128i extendedRowLo   = _mm_srai_epi16(_mm_unpacklo_epi8(row_j, row_j), 8);
-            __m128i extendedRowHi   = _mm_srai_epi16(_mm_unpackhi_epi8(row_j, row_j), 8);
-            __m128i extendedInputLo = _mm_unpacklo_epi8(input_j, Zeros);
-            __m128i extendedInputHi = _mm_unpackhi_epi8(input_j, Zeros);
-            __m128i productLo       = _mm_madd_epi16(extendedRowLo, extendedInputLo);
-            __m128i productHi       = _mm_madd_epi16(extendedRowHi, extendedInputHi);
-            sumLo                   = _mm_add_epi32(sumLo, productLo);
-            sumHi                   = _mm_add_epi32(sumHi, productHi);
-        }
-        __m128i sum           = _mm_add_epi32(sumLo, sumHi);
-        __m128i sumHigh_64    = _mm_shuffle_epi32(sum, _MM_SHUFFLE(1, 0, 3, 2));
-        sum                   = _mm_add_epi32(sum, sumHigh_64);
-        __m128i sum_second_32 = _mm_shufflelo_epi16(sum, _MM_SHUFFLE(1, 0, 3, 2));
-        sum                   = _mm_add_epi32(sum, sum_second_32);
-        output[i]             = _mm_cvtsi128_si32(sum);
-
-        #elif defined(USE_NEON)
-
-        int32x4_t  sum = {biases[i]};
-        const auto row = reinterpret_cast<const int8x8_t*>(&weights[offset]);
-        for (IndexType j = 0; j < NumChunks; ++j)
-        {
-            int16x8_t product = vmull_s8(inputVector[j * 2], row[j * 2]);
-            product           = vmlal_s8(product, inputVector[j * 2 + 1], row[j * 2 + 1]);
-            sum               = vpadalq_s16(sum, product);
-        }
-        output[i] = Simd::neon_m128_reduce_add_epi32(sum);
-
-        #endif
-    }
-    #else
-    std::memcpy(output, biases, sizeof(std::int32_t) * OutputDimensions);
-
-    // Traverse weights in transpose order to take advantage of input sparsity
-    for (IndexType i = 0; i < InputDimensions; ++i)
-        if (input[i])
-        {
-            const std::int8_t* w  = &weights[i];
-            const int          in = input[i];
-            for (IndexType j = 0; j < OutputDimensions; ++j)
-                output[j] += w[j * PaddedInputDimensions] * in;
-        }
-    #endif
-}
-
-#endif  // !ENABLE_SEQ_OPT
 
 template<IndexType InDims, IndexType OutDims>
 class AffineTransform {
@@ -156,11 +72,7 @@ class AffineTransform {
     }
 
     static constexpr IndexType get_weight_index(IndexType i) {
-#ifdef ENABLE_SEQ_OPT
         return get_weight_index_scrambled(i);
-#else
-        return i;
-#endif
     }
 
     // Read network parameters
@@ -184,29 +96,13 @@ class AffineTransform {
     // Forward propagation
     void propagate(const InputType* input, OutputType* output) const {
 
-#ifdef ENABLE_SEQ_OPT
-
         if constexpr (OutputDimensions > 1)
         {
-    #if defined(USE_AVX512)
-            using vec_t = __m512i;
-        #define vec_set_32 _mm512_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
-    #elif defined(USE_AVX2)
+
             using vec_t = __m256i;
         #define vec_set_32 _mm256_set1_epi32
         #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
-    #elif defined(USE_SSSE3)
-            using vec_t = __m128i;
-        #define vec_set_32 _mm_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
-    #elif defined(USE_NEON_DOTPROD)
-            using vec_t = int32x4_t;
-        #define vec_set_32 vdupq_n_s32
-        #define vec_add_dpbusd_32(acc, a, b) \
-            Simd::dotprod_m128_add_dpbusd_epi32(acc, vreinterpretq_s8_s32(a), \
-                                                vreinterpretq_s8_s32(b))
-    #endif
+
 
             static constexpr IndexType OutputSimdWidth = sizeof(vec_t) / sizeof(OutputType);
 
@@ -242,27 +138,12 @@ class AffineTransform {
         {
     // We cannot use AVX512 for the last layer because there are only 32 inputs
     // and the buffer is not padded to 64 elements.
-    #if defined(USE_AVX2)
             using vec_t = __m256i;
         #define vec_setzero() _mm256_setzero_si256()
         #define vec_set_32 _mm256_set1_epi32
         #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
         #define vec_hadd Simd::m256_hadd
-    #elif defined(USE_SSSE3)
-            using vec_t = __m128i;
-        #define vec_setzero() _mm_setzero_si128()
-        #define vec_set_32 _mm_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
-        #define vec_hadd Simd::m128_hadd
-    #elif defined(USE_NEON_DOTPROD)
-            using vec_t = int32x4_t;
-        #define vec_setzero() vdupq_n_s32(0)
-        #define vec_set_32 vdupq_n_s32
-        #define vec_add_dpbusd_32(acc, a, b) \
-            Simd::dotprod_m128_add_dpbusd_epi32(acc, vreinterpretq_s8_s32(a), \
-                                                vreinterpretq_s8_s32(b))
-        #define vec_hadd Simd::neon_m128_hadd
-    #endif
+
 
             const auto inputVector = reinterpret_cast<const vec_t*>(input);
 
@@ -286,11 +167,6 @@ class AffineTransform {
     #undef vec_add_dpbusd_32
     #undef vec_hadd
         }
-#else
-        // Use old implementation for the other architectures.
-        affine_transform_non_ssse3<InputDimensions, PaddedInputDimensions, OutputDimensions>(
-          output, weights, biases, input);
-#endif
     }
 
    private:
