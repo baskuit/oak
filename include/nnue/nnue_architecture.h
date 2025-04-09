@@ -34,31 +34,14 @@
 
 namespace Stockfish::Eval::NNUE {
 
-// Input features used in evaluation function
-// using FeatureSet = Features::HalfKAv2_hm;
-
-// Number of input feature dimensions after conversion
-constexpr IndexType TransformedFeatureDimensionsBig = 3072;
-constexpr int       L2Big                           = 15;
-constexpr int       L3Big                           = 32;
-
-constexpr IndexType TransformedFeatureDimensionsSmall = 128;
-constexpr int       L2Small                           = 15;
-constexpr int       L3Small                           = 32;
-
-constexpr IndexType PSQTBuckets = 8;
-constexpr IndexType LayerStacks = 8;
-
-template<IndexType L1, int L2, int L3>
 struct NetworkArchitecture {
-    static constexpr IndexType TransformedFeatureDimensions = L1;
-    static constexpr int       FC_0_OUTPUTS                 = L2;
-    static constexpr int       FC_1_OUTPUTS                 = L3;
+    static constexpr IndexType ConcatenatedSidesDims = 512;
+    static constexpr int       FC_0_OUTPUTS                 = 32;
+    static constexpr int       FC_1_OUTPUTS                 = 32;
 
-    Layers::AffineTransform<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
-    Layers::ClippedReLU<FC_0_OUTPUTS + 1>                                           ac_sqr_0;
-    Layers::ClippedReLU<FC_0_OUTPUTS + 1>                                              ac_0;
-    Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS>                            fc_1;
+    Layers::AffineTransform<ConcatenatedSidesDims, FC_0_OUTPUTS> fc_0;
+    Layers::ClippedReLU<FC_0_OUTPUTS>                                              ac_0;
+    Layers::AffineTransform<FC_0_OUTPUTS, FC_1_OUTPUTS>                            fc_1;
     Layers::ClippedReLU<FC_1_OUTPUTS>                                                  ac_1;
     Layers::AffineTransform<FC_1_OUTPUTS, 1>                                           fc_2;
 
@@ -66,7 +49,7 @@ struct NetworkArchitecture {
     static constexpr std::uint32_t get_hash_value() {
         // input slice hash
         std::uint32_t hashValue = 0xEC42E90Du;
-        hashValue ^= TransformedFeatureDimensions * 2;
+        hashValue ^= ConcatenatedSidesDims * 2;
 
         hashValue = decltype(fc_0)::get_hash_value(hashValue);
         hashValue = decltype(ac_0)::get_hash_value(hashValue);
@@ -94,8 +77,6 @@ struct NetworkArchitecture {
     std::int32_t propagate(const TransformedFeatureType* transformedFeatures) {
         struct alignas(CacheLineSize) Buffer {
             alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
-            alignas(CacheLineSize) typename decltype(ac_sqr_0)::OutputType
-              ac_sqr_0_out[ceil_to_multiple<IndexType>(FC_0_OUTPUTS * 2, 32)];
             alignas(CacheLineSize) typename decltype(ac_0)::OutputBuffer ac_0_out;
             alignas(CacheLineSize) typename decltype(fc_1)::OutputBuffer fc_1_out;
             alignas(CacheLineSize) typename decltype(ac_1)::OutputBuffer ac_1_out;
@@ -114,19 +95,14 @@ struct NetworkArchitecture {
 #endif
 
         fc_0.propagate(transformedFeatures, buffer.fc_0_out);
-        ac_sqr_0.propagate(buffer.fc_0_out, buffer.ac_sqr_0_out);
         ac_0.propagate(buffer.fc_0_out, buffer.ac_0_out);
-        std::memcpy(buffer.ac_sqr_0_out + FC_0_OUTPUTS, buffer.ac_0_out,
-                    FC_0_OUTPUTS * sizeof(typename decltype(ac_0)::OutputType));
-        fc_1.propagate(buffer.ac_sqr_0_out, buffer.fc_1_out);
+        fc_1.propagate(buffer.ac_0_out, buffer.fc_1_out);
         ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
         fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
 
         // buffer.fc_0_out[FC_0_OUTPUTS] is such that 1.0 is equal to 127*(1<<WeightScaleBits) in
         // quantized form, but we want 1.0 to be equal to 600*OutputScale
-        std::int32_t fwdOut =
-          (buffer.fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
-        std::int32_t outputValue = buffer.fc_2_out[0] + fwdOut;
+        std::int32_t outputValue = buffer.fc_2_out[0];
 
         return outputValue;
     }

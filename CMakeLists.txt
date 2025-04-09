@@ -65,6 +65,12 @@ add_dependencies(eval build_chance_release)
 target_include_directories(eval PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(eval PRIVATE libpkmn_chance)
 
+add_executable(nnue src/nnue.cc)
+add_dependencies(nnue build_chance_release)
+target_include_directories(nnue PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(nnue PRIVATE libpkmn_chance)
+target_compile_options(nnue PRIVATE -mavx2)
+
 add_executable(generate src/generate.cc)
 add_dependencies(generate build_chance_release)
 target_include_directories(generate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
