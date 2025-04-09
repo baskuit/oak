@@ -1,4 +1,4 @@
-#include <torch/extension.h>
+// #include <torch/extension.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 
@@ -28,19 +28,23 @@ __global__ void process_chunks_kernel(const uint8_t* __restrict__ input,
     convert_chunk(chunk, out);
 }
 
-void process_chunks(torch::Tensor input, torch::Tensor output) {
-    const int num_chunks = input.size(0) / CHUNK_SIZE;
+// void process_chunks(torch::Tensor input, torch::Tensor output) {
+//     const int num_chunks = input.size(0) / CHUNK_SIZE;
 
-    const int threads = 256;
-    const int blocks    = (num_chunks + threads - 1) / threads;
+//     const int threads = 256;
+//     const int blocks    = (num_chunks + threads - 1) / threads;
 
-    process_chunks_kernel<<<blocks, threads>>>(
-        input.data_ptr<uint8_t>(),
-        output.data_ptr<float>(),
-        num_chunks
-    );
-}
+//     process_chunks_kernel<<<blocks, threads>>>(
+//         input.data_ptr<uint8_t>(),
+//         output.data_ptr<float>(),
+//         num_chunks
+//     );
+// }
     
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("process_chunks", &process_chunks, "Process Chunks (CUDA)");
+// PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+//     m.def("process_chunks", &process_chunks, "Process Chunks (CUDA)");
+// }
+
+int main () {
+    return 0;
 }
