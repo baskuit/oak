@@ -47,8 +47,11 @@ This repo is far from completion. The following is completed
 
 * Implement perfect-info MCTS for accurate 1v1 estimation
 
+* Create adequately strong HCE using 1v1 values
+
 Remaining items:
 
-* Create adequately strong HCE using 1v1 values
+* Train NNUE using HCE/Monte-Carlo data
+
 
 TODO
