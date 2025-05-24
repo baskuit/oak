@@ -17,3 +17,7 @@ constexpr size_t moves{10};
 constexpr size_t status{20};
 
 } // namespace Offsets
+
+namespace Sizes {
+constexpr size_t battle{384};
+}; // namespace Sizes

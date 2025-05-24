@@ -32,10 +32,8 @@ struct FatUCBEntry {
 template <float gamma = .1f, bool enable_visits = false>
 class JointBanditData : public JointBanditDataBase<enable_visits> {
 public:
-
   std::array<FatUCBEntry, 9> p1_ucb;
   std::array<FatUCBEntry, 9> p2_ucb;
-  
 
   using JointBanditDataBase<enable_visits>::p1_gains;
   using JointBanditDataBase<enable_visits>::p2_gains;
@@ -162,7 +160,6 @@ public:
   }
 };
 #pragma pack(pop)
-
 
 struct UCBEntryTest {
   static_assert(sizeof(UCBEntry) == 3);
