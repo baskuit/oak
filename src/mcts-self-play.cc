@@ -5,11 +5,14 @@
 #include <battle/strings.h>
 #include <battle/view.h>
 
+#include <pi/mcts.h>
+
 #include <util/print.h>
 #include <util/random.h>
 
 #include <atomic>
 #include <iostream>
+#include <mutex>
 #include <thread>
 
 static_assert(Options::calc && Options::chance && !Options::log);
@@ -24,7 +27,7 @@ struct Frame {
   float score;
 
   Frame() = default;
-  Frame(const pkmn_gen1_battle const *battle, pkmn_result result, float eval)
+  Frame(const pkmn_gen1_battle *const battle, pkmn_result result, float eval)
       : result{result}, eval{eval} {
     std::memcpy(this->battle, battle, Sizes::battle);
   }
@@ -61,14 +64,17 @@ void generate(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
               size_t *n, size_t *score) {
 
   GameBuffer game_buffer{};
+  prng device{seed};
 
   const auto exit = []() { return; };
 
   while (true) {
 
-    auto current_index = index.load();
+    auto current_index = index->load();
 
-    auto battle = Init::battle(x, y);
+    const auto p1 = SampleTeams::teams[device.random_int(100)];
+    const auto p2 = SampleTeams::teams[device.random_int(100)];
+    auto battle = Init::battle(p1, p2);
     pkmn_gen1_chance_durations durations{};
     pkmn_gen1_battle_options options{};
     auto result = Init::update(battle, 0, 0, options);
@@ -86,55 +92,6 @@ void generate(std::atomic<int> *index, size_t max, Dur dur, uint64_t seed,
         return;
       }
     }
-  }
-
-  while (index->fetch_add(1) < max) {
-
-    const auto half = [dur](auto x, auto y, auto seed) -> float {
-      auto battle = Init::battle(x, y);
-      pkmn_gen1_chance_durations durations{};
-      pkmn_gen1_battle_options options{};
-      auto result = Init::update(battle, 0, 0, options);
-
-      MCTS search{};
-      MonteCarlo::Model mcm{seed};
-
-      std::vector<float> eval_values{};
-
-      while (!pkmn_result_type(result)) {
-
-        const auto [choices1, choices2] = Init::choices(battle, result);
-
-        auto i = 0;
-        if (choices1.size() * choices2.size() > 1) {
-          using Node = Tree::Node<Exp3::JointBanditData<.03f, false>,
-                                  std::array<uint8_t, 16>>;
-          Node node{};
-          MonteCarlo::Input input1{battle, durations, result};
-          auto output1 =
-              search.run<MCTS::Options<true, 3, 3, 1>>(dur, node, input1, mcm);
-          i = mcm.device.sample_pdf(output1.p1);
-          eval_values.push_back(1 - output1.average_value);
-        }
-
-        result = Init::update(battle, choices1[i], choices2[j], options);
-        durations = *pkmn_gen1_battle_options_chance_durations(&options);
-      }
-      const auto v = eval_values.size();
-      for (auto vi = 0; vi < v; ++vi) {
-        std::cout << mcts_value_for_eval_side[vi] << " ~ " << eval_values[vi]
-                  << '\t';
-      }
-      const auto score = Init::score(result);
-      std::cout << "~ " << 1 - score << std::endl;
-
-      return score;
-    };
-
-    prng device{seed};
-
-    const auto p1 = SampleTeams::teams[device.random_int(100)];
-    const auto p2 = SampleTeams::teams[device.random_int(100)];
   }
 }
 
