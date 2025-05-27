@@ -21,8 +21,6 @@ static_assert(Options::calc && Options::chance && !Options::log);
 bool terminated = false;
 bool suspended = false;
 constexpr size_t max_teams = 500;
-// TODO some way of fat tail sampling the teams
-// Also probably a way to adjust think time
 
 struct Frame {
   uint8_t battle[Sizes::battle];
@@ -30,6 +28,7 @@ struct Frame {
   pkmn_result result;
   float eval;
   float score;
+  // float ms;
 
   Frame() = default;
   Frame(const pkmn_gen1_battle *const battle,
@@ -42,25 +41,26 @@ struct Frame {
 
 struct GameBuffer {
 
-  Frame frames[1012]; // probably an upper bound
-  size_t index;
+  std::vector<Frame> frames{};
 
-  bool add(const Frame &frame) {
-    if (index >= 1012) {
-      return false;
-    }
-    frames[index] = frame;
-    ++index;
-    return true;
-  }
+  void add(const Frame &frame) { frames.emplace_back(frame); }
 
   void score(float score) {
-    for (auto i = 0; i < index; ++i) {
-      frames[i].score = score;
+    for (auto &frame : frames) {
+      frame.score = score;
     }
   }
 
-  void clear() { index = 0; }
+  void clear() { frames = {}; }
+
+  void fill(auto &containter, auto &counter, auto max_size) {
+    for (const auto &frame : frames) {
+      container[counter++] = frame;
+      if (counter >= max_size) {
+        return;
+      }
+    }
+  }
 };
 
 // worker local thread buffer that is filled before writing to disk
@@ -69,7 +69,7 @@ using ThreadFrameBuffer = std::array<Frame, max_buffer_size>;
 using Node =
     Tree::Node<Exp3::JointBanditData<.03f, false>, std::array<uint8_t, 16>>;
 
-void generate(std::atomic<int> *frame_counter, std::mutex *write_mutex,
+void generate(int fd, std::atomic<int> *frame_counter, std::mutex *write_mutex,
               size_t max_frames, std::chrono::milliseconds dur, uint64_t seed) {
 
   ThreadFrameBuffer buffer{};
@@ -80,6 +80,7 @@ void generate(std::atomic<int> *frame_counter, std::mutex *write_mutex,
   const auto write_buffer_to_disk = [&]() {
     std::unique_lock lock{*write_mutex};
     buffer_size = 0;
+    pwrite();
     return;
   };
 
@@ -93,21 +94,22 @@ void generate(std::atomic<int> *frame_counter, std::mutex *write_mutex,
   const auto keep_node = [](const auto node, const auto battle,
                             const auto obs) { return Node{}; };
 
+  // think longer when more mons? Then frames need metadata
   const auto think_time = [&]() { return dur; };
 
   while (true) {
 
-    try {
-      const auto p1 = SampleTeams::teams[random_index(max_teams)];
-      const auto p2 = SampleTeams::teams[random_index(max_teams)];
-      auto battle = Init::battle(p1, p2);
-      pkmn_gen1_chance_durations durations{};
-      pkmn_gen1_battle_options options{};
-      auto result = Init::update(battle, 0, 0, options);
-      bool valid = true;
+    const auto p1 = SampleTeams::teams[random_index(max_teams)];
+    const auto p2 = SampleTeams::teams[random_index(max_teams)];
+    auto battle = Init::battle(p1, p2);
+    pkmn_gen1_chance_durations durations{};
+    pkmn_gen1_battle_options options{};
+    auto result = Init::update(battle, 0, 0, options);
 
-      MCTS search{};
-      MonteCarlo::Model mcm{device.uniform_64()};
+    MCTS search{};
+    MonteCarlo::Model mcm{device.uniform_64()};
+
+    try {
 
       while (!pkmn_result_type(result)) {
 
@@ -131,39 +133,38 @@ void generate(std::atomic<int> *frame_counter, std::mutex *write_mutex,
           MonteCarlo::Input input{};
           auto output = search.run(think_time(), node, input, mcm);
           Frame frame{&battle, &durations, result, output.average_value};
-          if (game_buffer.add(frame) == false) {
-            valid = false;
-            break;
-          }
+          game_buffer.add(frame);
 
           const auto c1 = device.sample_pdf(output.p1);
           const auto c2 = device.sample_pdf(output.p2);
           result = Init::update(battle, c1, c2, options);
         }
-      } // game loop
-
-      if (valid) {
-
-        game_buffer.score(Init::score(result));
-
-        const auto current_frames = frame_counter->fetch_add(game_buffer.index);
-        if (current_frames >= max_frames) {
-          write_buffer_to_disk();
-          return;
-        } else {
-          for (auto i = 0; i < game_buffer.index; ++i) {
-            buffer[buffer_size++] = game_buffer.frames[i];
-            if (buffer_size >= max_buffer_size) {
-              write_buffer_to_disk();
-              break;
-            }
-          }
-        }
       }
 
-      game_buffer.clear();
     } catch (...) {
+      std::cerr << std::endl;
+      game_buffer.clear();
     }
+
+    game_buffer.score(Init::score(result));
+
+    const auto current_frames =
+        frame_counter->fetch_add(game_buffer.frames.size());
+    if (current_frames >= max_frames) {
+      write_buffer_to_disk();
+      return;
+    } else {
+      for (auto i = 0; i < game_buffer.frames.size(); ++i) {
+        buffer[buffer_size++] = game_buffer.frames[i];
+        if (buffer_size >= max_buffer_size) {
+          write_buffer_to_disk();
+          break;
+        }
+      }
+    }
+
+    game_buffer.clear();
+
   } // main while
 }
 
@@ -193,6 +194,7 @@ int main(int argc, char **argv) {
   if (argc != 5) {
     std::cerr << "desc.: Generates MCTS training games and saves to a buffer."
               << std::endl;
+
     std::cerr << "input: threads, search time (ms), max frames, seed"
               << std::endl;
     return 1;
@@ -209,6 +211,18 @@ int main(int argc, char **argv) {
   std::cout << "Input: " << ms << ' ' << threads << ' ' << max_frames << ' '
             << seed << std::endl;
 
+  const size_t file_size = max_frames * sizeof(Frame);
+  int fd;
+  try {
+    // auto x = open("hi");
+    fd = std::ofstream("buffer", "w");
+    // ftruncate(fd, file_size);
+  } catch (...) {
+    std::cerr << "Cound not allocate " << file_size << " bytes on disk"
+              << std::endl;
+    return 1;
+  }
+
   std::atomic<int> frame_counter{};
   std::mutex write_mutex{};
   prng device{seed};
@@ -216,6 +230,7 @@ int main(int argc, char **argv) {
   std::thread thread_pool[threads];
   for (auto t = 0; t < threads; ++t) {
     thread_pool[t] = std::thread{&generate,
+                                  fd,
                                  &frame_counter,
                                  &write_mutex,
                                  max_frames,
