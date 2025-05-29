@@ -117,7 +117,6 @@ void generate(int fd, std::atomic<size_t> *write_index,
   // fat tail favoring smaller index (better teams)
   const auto random_index = [&device](size_t n) {
     size_t index = sqrt(device.random_int(n * n));
-    std::cout << "index: " << n - index << std::endl;
     return n - index;
   };
 
@@ -303,10 +302,11 @@ int main(int argc, char **argv) {
   }
   print_thread.join();
 
-  std::cout << "Generated " << write_index.load() << " training frames."
-            << std::endl;
+
   const size_t frames_generated =
       std::min(write_index.load(), global_buffer_size);
+      std::cout << "Generated " << frames_generated << " training frames."
+      << std::endl;
   if (ftruncate(buffer_fd, frames_generated * sizeof(Frame)) != 0) {
     std::cerr << "Failed to truncate final buffer." << std::endl;
   }
