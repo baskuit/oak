@@ -106,8 +106,12 @@ void generate(int fd, std::atomic<size_t> *write_index,
         std::min(start_index + buffer_size, global_buffer_size);
     std::cout << "writing to [" << start_index << ", " << end_index << ")."
               << std::endl;
-    pwrite(fd, buffer.data(), (end_index - start_index) * sizeof(Frame),
-           start_index * sizeof(Frame));
+    const auto p =
+        pwrite(fd, buffer.data(), (end_index - start_index) * sizeof(Frame),
+               start_index * sizeof(Frame));
+    if (p != ((end_index - start_index) * sizeof(Frame))) {
+      std::cerr << "Failed to write all of thread buffer." << std::endl;
+    }
     buffer_size = 0;
     if (end_index >= global_buffer_size) {
       std::cout << "Terminating because global buffer size reached after write"
@@ -231,6 +235,7 @@ void handle_suspend(int signal) {
 
 void handle_terminate(int signal) {
   std::cout << "TERMINATED" << std::endl;
+  suspended = false;
   terminated = true;
 }
 
@@ -269,8 +274,6 @@ int main(int argc, char **argv) {
               << std::endl;
     return 1;
   }
-
-  std::cout << "frame size: " << sizeof(Frame) << std::endl;
 
   std::signal(SIGINT, handle_terminate);
   std::signal(SIGTSTP, handle_suspend);
