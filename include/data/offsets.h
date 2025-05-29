@@ -20,4 +20,5 @@ constexpr size_t status{20};
 
 namespace Sizes {
 constexpr size_t battle{384};
+constexpr size_t durations{8};
 }; // namespace Sizes
