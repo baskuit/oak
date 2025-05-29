@@ -58,14 +58,11 @@ int main(int argc, char **argv) {
   std::cout << fn << std::endl;
 
   int fd = open(fn.data(), O_RDONLY);
-  std::cout << "fd: " << fd << std::endl;
   if (fd == -1) {
     std::cerr << "Failed to open file" << std::endl;
     return -1;
   }
-  size_t length = std::atoi(argv[2]);
-  std::cout << "length: " << length << std::endl;
-
+  size_t length = std::min(std::atoi(argv[2], fd / sizeof(Frame));
   uint8_t *bytes = new uint8_t[length * sizeof(Frame)];
   const auto r = pread(fd, bytes, length * sizeof(Frame), 0);
   if (r == -1) {
@@ -78,11 +75,12 @@ int main(int argc, char **argv) {
         *reinterpret_cast<const Frame *>(bytes + (sizeof(Frame) * i));
     std::cout << i << ":\n";
     pkmn_gen1_battle battle;
-    print_durations(frame.durations);
     std::memcpy(battle.bytes, frame.battle.data(), Sizes::battle);
-    std::cout << Strings::battle_to_string(battle) << '\n';
+    std::cout << Strings::battle_to_string(battle);
+    print_durations(frame.durations);
     std::cout << "eval: " << frame.eval << "; iter: " << frame.iter
-              << "; score: " << frame.score << '\n';
+              << "; score: " << frame.score << '\n'
+              << '\n';
   }
   return 0;
 }
