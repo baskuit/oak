@@ -49,8 +49,8 @@ static_assert(sizeof(Frame) == 405);
 
 int main(int argc, char **argv) {
 
-  if (argc != 3) {
-    std::cerr << "Input: filename, number of frames" << std::endl;
+  if (argc != 4) {
+    std::cerr << "Input: filename, start, end" << std::endl;
     return -1;
   }
 
@@ -62,15 +62,23 @@ int main(int argc, char **argv) {
     std::cerr << "Failed to open file" << std::endl;
     return -1;
   }
-  size_t length = std::min(std::atoi(argv[2], fd / sizeof(Frame));
+  size_t start = std::atoi(argv[2]);
+  size_t end = std::atoi(argv[3]);
+  end = std::min(end, static_cast<size_t>(fd / sizeof(Frame)));
+  if (start > end) {
+    std::cerr << "Invalid range." << std::endl;
+    return -1;
+  }
+  const size_t length = end - start;
   uint8_t *bytes = new uint8_t[length * sizeof(Frame)];
-  const auto r = pread(fd, bytes, length * sizeof(Frame), 0);
+  const auto r =
+      pread(fd, bytes, length * sizeof(Frame), start * sizeof(Frame));
   if (r == -1) {
     std::cerr << "pread Error." << std::endl;
     return -1;
   }
 
-  for (auto i = 0; i < length; ++i) {
+  for (auto i = start; i < length; ++i) {
     const auto &frame =
         *reinterpret_cast<const Frame *>(bytes + (sizeof(Frame) * i));
     std::cout << i << ":\n";
