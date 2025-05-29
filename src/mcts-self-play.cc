@@ -97,18 +97,21 @@ void generate(int fd, std::atomic<size_t> *write_index,
   const auto write_thread_buffer_and_check_if_terminated = [&]() {
     const auto start_index = write_index->fetch_add(buffer_size);
     if (start_index >= global_buffer_size) {
-      std::cout << "Terminating because global buffer size reached before write" << std::endl;
+      std::cout << "Terminating because global buffer size reached before write"
+                << std::endl;
       terminated = true;
       return;
     }
     const auto end_index =
         std::min(start_index + buffer_size, global_buffer_size);
-    std::cout << "writing to [" << start_index << ", " << end_index << ")." <<  std::endl;
+    std::cout << "writing to [" << start_index << ", " << end_index << ")."
+              << std::endl;
     pwrite(fd, buffer.data(), (end_index - start_index) * sizeof(Frame),
-           start_index);
+           start_index * sizeof(Frame));
     buffer_size = 0;
     if (end_index >= global_buffer_size) {
-      std::cout << "Terminating because global buffer size reached after write" << std::endl;
+      std::cout << "Terminating because global buffer size reached after write"
+                << std::endl;
       terminated = true;
     }
     return;
@@ -196,7 +199,8 @@ void generate(int fd, std::atomic<size_t> *write_index,
       game_buffer.clear();
     }
 
-    const auto added = game_buffer.fill(buffer, buffer_size, thread_buffer_size);
+    const auto added =
+        game_buffer.fill(buffer, buffer_size, thread_buffer_size);
     std::cout << "added: " << added << std::endl;
     game_buffer.clear();
 
@@ -302,11 +306,10 @@ int main(int argc, char **argv) {
   }
   print_thread.join();
 
-
   const size_t frames_generated =
       std::min(write_index.load(), global_buffer_size);
-      std::cout << "Generated " << frames_generated << " training frames."
-      << std::endl;
+  std::cout << "Generated " << frames_generated << " training frames."
+            << std::endl;
   if (ftruncate(buffer_fd, frames_generated * sizeof(Frame)) != 0) {
     std::cerr << "Failed to truncate final buffer." << std::endl;
   }
