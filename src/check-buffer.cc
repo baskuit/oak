@@ -2,7 +2,6 @@
 #include <battle/strings.h>
 #include <battle/view.h>
 #include <data/durations.h>
-
 #include <util/print.h>
 
 #include <iostream>
@@ -10,6 +9,21 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
+
+void print_durations(const pkmn_gen1_chance_durations &dur) {
+  for (auto p = 0; p < 2; ++p) {
+    const auto &d = View::ref(dur).duration(p);
+    std::cout << "Sleep: ";
+    for (auto i = 0; i < 6; ++i) {
+      std::cout << d.sleep(i) << ' ';
+    }
+    std::cout << '\n';
+    std::cout << "Confusion: " << d.confusion() << ' ';
+    std::cout << "Disable: " << d.disable() << ' ';
+    std::cout << "Attacking: " << d.attacking() << ' ';
+    std::cout << "Binding: " << d.binding() << '\n';
+  }
+}
 
 #pragma pack(push, 1)
 struct Frame {
@@ -64,6 +78,7 @@ int main(int argc, char **argv) {
         *reinterpret_cast<const Frame *>(bytes + (sizeof(Frame) * i));
     std::cout << i << ":\n";
     pkmn_gen1_battle battle;
+    print_durations(frame.durations);
     std::memcpy(battle.bytes, frame.battle.data(), Sizes::battle);
     std::cout << Strings::battle_to_string(battle) << '\n';
     std::cout << "eval: " << frame.eval << "; iter: " << frame.iter
