@@ -49,7 +49,10 @@ class TwoLayerMLP(nn.Module):
 
 
 x = torch.rand(512)
+torch.save(x, "tensor.pt")
+y = torch.load('tensor.pt')
 
+x.numpy().tofile("tensor.raw")
 
 if __name__ == "__main__":
     pass

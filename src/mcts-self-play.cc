@@ -200,7 +200,6 @@ void generate(int fd, std::atomic<size_t> *write_index,
 
     const auto added =
         game_buffer.fill(buffer, buffer_size, thread_buffer_size);
-    std::cout << "added: " << added << std::endl;
     game_buffer.clear();
 
     // flush thread buffer
