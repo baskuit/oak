@@ -122,7 +122,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
   const auto think_time = [&]() { return dur; };
 
   const auto prune_low_probs = [](auto &p) {
-    const double t = 1.0d / p.size();
+    const double t = 1.0 / p.size();
     double sum = 0;
     for (auto &x : p) {
       if (x < t) {
