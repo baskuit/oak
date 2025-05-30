@@ -5,6 +5,7 @@
 #include <battle/strings.h>
 #include <battle/view.h>
 
+#include <pi/frame.h>
 #include <pi/mcts.h>
 
 #include <util/print.h>
@@ -28,28 +29,6 @@ static_assert(Options::calc && Options::chance && !Options::log);
 bool terminated = false;
 bool suspended = false;
 constexpr size_t max_teams = SampleTeams::teams.size();
-
-#pragma pack(push, 1)
-struct Frame {
-  std::array<uint8_t, Sizes::battle> battle;
-  pkmn_gen1_chance_durations durations;
-  pkmn_result result;
-  float eval;
-  float score;
-  uint32_t iter;
-
-  Frame() = default;
-  Frame(const pkmn_gen1_battle *const battle,
-        const pkmn_gen1_chance_durations *const durations, pkmn_result result,
-        float eval, auto iter)
-      : result{result}, eval{eval}, iter{static_cast<uint32_t>(iter)} {
-    std::memcpy(this->battle.data(), battle, Sizes::battle);
-    std::memcpy(this->durations.bytes, durations->bytes, Sizes::durations);
-  }
-};
-#pragma pack(pop)
-
-static_assert(sizeof(Frame) == 405);
 
 struct GameBuffer {
 
@@ -128,8 +107,15 @@ void generate(int fd, std::atomic<size_t> *write_index,
   };
 
   // probably a good idea to reuse the tree from last turn
-  const auto keep_node = [](const auto node, const auto battle,
-                            const auto obs) { return Node{}; };
+  // const auto keep_node = [](const auto node, const auto p1_index, const auto
+  // p2_index, const auto obs)
+  // {
+  //   // auto* child = node->at(p1_index, p2_index, obs);
+  //   // if (child == nullptr) {
+  //   //   return
+  //   // }
+  //   return node
+  // };
 
   // think longer when more mons? Then frames need metadata
   const auto think_time = [&]() { return dur; };
@@ -222,9 +208,13 @@ void generate(int fd, std::atomic<size_t> *write_index,
   }
 }
 
-void handle_print() {
+void handle_print(std::atomic<size_t> *frame_count) {
+  size_t done = 0;
+  int sec = 10;
   while (!terminated) {
-    sleep(1);
+    sleep(sec);
+    done = frame_count->load();
+    std::cout << done / (float)sec << " samples/sec." << std::endl;
   }
 }
 
@@ -302,7 +292,7 @@ int main(int argc, char **argv) {
         &frame_count,       global_buffer_size, std::chrono::milliseconds{ms},
         device.uniform_64()};
   }
-  std::thread print_thread{&handle_print};
+  std::thread print_thread{&handle_print, &frame_count};
 
   for (auto t = 0; t < threads; ++t) {
     thread_pool[t].join();
