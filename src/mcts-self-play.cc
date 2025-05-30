@@ -17,6 +17,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <exception>
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -106,16 +107,16 @@ void generate(int fd, std::atomic<size_t> *write_index,
     return n - index;
   };
 
-  // probably a good idea to reuse the tree from last turn
-  // const auto keep_node = [](const auto node, const auto p1_index, const auto
-  // p2_index, const auto obs)
-  // {
-  //   // auto* child = node->at(p1_index, p2_index, obs);
-  //   // if (child == nullptr) {
-  //   //   return
-  //   // }
-  //   return node
-  // };
+  const auto get_new_node = [](auto &unique_node, auto i1, auto i2,
+                               const auto &obs) {
+    auto *child = (*unique_node)(i1, i2, obs);
+    if (!child) {
+      unique_node = std::make_unique<Node>();
+    } else {
+      auto unique_child = unique_node->release_child(i1, i2, obs);
+      unique_node.swap(unique_child);
+    }
+  };
 
   // think longer when more mons? Then frames need metadata
   const auto think_time = [&]() { return dur; };
@@ -149,6 +150,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
 
     MCTS search{};
     MonteCarlo::Model mcm{device.uniform_64()};
+    auto node = std::make_unique<Node>();
 
     try {
 
@@ -168,24 +170,31 @@ void generate(int fd, std::atomic<size_t> *write_index,
           result = Init::update(battle, p1_choices[0], p2_choices[0], options);
         } else {
 
-          Node node{};
           MonteCarlo::Input input{battle, durations, result};
-          auto output = search.run(think_time(), node, input, mcm);
+          auto output = search.run(think_time(), *node.get(), input, mcm);
           Frame frame{&battle, &durations, result, output.average_value,
                       output.iterations};
           game_buffer.add(frame);
 
           prune_low_probs(output.p1);
           prune_low_probs(output.p2);
-          const auto c1 = p1_choices[device.sample_pdf(output.p1)];
-          const auto c2 = p2_choices[device.sample_pdf(output.p2)];
+          const auto i1 = device.sample_pdf(output.p1);
+          const auto i2 = device.sample_pdf(output.p2);
+          const auto c1 = p1_choices[i1];
+          const auto c2 = p2_choices[i2];
           result = Init::update(battle, c1, c2, options);
           durations = *pkmn_gen1_battle_options_chance_durations(&options);
+          const auto &obs = *reinterpret_cast<std::array<uint8_t, 16> *>(
+              pkmn_gen1_battle_options_chance_actions(&options));
+          // TODO check this is correct place to set durations
+
+          get_new_node(node, i1, i2, obs);
         }
       }
 
-    } catch (...) {
+    } catch (const std::exception &e) {
       std::cerr << "Caught some exception in the game loop" << std::endl;
+      std::cerr << e.what() << std::endl;
       game_buffer.clear();
     }
 
@@ -213,8 +222,9 @@ void handle_print(std::atomic<size_t> *frame_count) {
   int sec = 10;
   while (!terminated) {
     sleep(sec);
-    done = frame_count->load();
-    std::cout << done / (float)sec << " samples/sec." << std::endl;
+    const auto more = frame_count->load();
+    std::cout << (more - done) / (float)sec << " samples/sec." << std::endl;
+    done = more;
   }
 }
 

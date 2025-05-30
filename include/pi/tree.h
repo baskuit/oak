@@ -7,12 +7,6 @@
 #include <map>
 #include <memory>
 
-// This is the tree structure that will be used from computing the 1v1 evals
-
-// Instead of hashing bucketed states like in the TT, we have a 'perfect
-// hashing' scheme using trees. This is because this search needs correctness
-// over speed
-
 namespace Tree {
 
 template <typename BanditData, typename Obs> class Node {
@@ -32,9 +26,6 @@ public:
 
   bool is_init() const noexcept { return _data.is_init(); }
 
-  Node *at(auto p1_index, auto p2_index, auto obs) const {
-    return _map.at({p1_index, p2_index, obs}).get();
-  };
 
   Node *operator()(auto p1_index, auto p2_index, auto obs) {
     auto &node = _map[{p1_index, p2_index, obs}];
@@ -42,7 +33,11 @@ public:
       node = std::make_unique<Node<BanditData, Obs>>();
     }
     return node.get();
-  };
+  }
+
+  std::unique_ptr<Node> release_child(auto p1_index, auto p2_index, auto obs) {
+    return std::move(_map[{p1_index, p2_index, obs}]);
+  }
 };
 
 }; // namespace Tree
