@@ -13,17 +13,15 @@
 
 #include <atomic>
 #include <csignal>
+#include <exception>
 #include <iostream>
 #include <mutex>
 #include <sstream>
 #include <thread>
-#include <exception>
 
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-
-// TODO duration writing is probably not correct
 
 static_assert(Options::calc && Options::chance && !Options::log);
 
@@ -109,7 +107,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
 
   const auto get_new_node = [](auto &unique_node, auto i1, auto i2,
                                const auto &obs) {
-    auto *child = (*unique_node)(i1, i2, obs);
+    auto *child = (*unique_node)[i1, i2, obs];
     if (!child) {
       unique_node = std::make_unique<Node>();
     } else {
@@ -218,9 +216,14 @@ void generate(int fd, std::atomic<size_t> *write_index,
 
 void handle_print(std::atomic<size_t> *frame_count) {
   size_t done = 0;
-  int sec = 10;
-  while (!terminated) {
-    sleep(sec);
+  auto sec = 10;
+  while (true) {
+    for (auto i = 0; i < sec; ++i) {
+      if (terminated) {
+        return;
+      }
+      sleep(1);
+    }
     const auto more = frame_count->load();
     std::cout << (more - done) / (float)sec << " samples/sec." << std::endl;
     done = more;

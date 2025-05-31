@@ -35,6 +35,10 @@ public:
     return node.get();
   }
 
+  Node *operator[](auto p1_index, auto p2_index, auto obs) {
+    return _map[{p1_index, p2_index, obs}].get();
+  }
+
   std::unique_ptr<Node> release_child(auto p1_index, auto p2_index, auto obs) {
     return std::move(_map[{p1_index, p2_index, obs}]);
   }
