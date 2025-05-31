@@ -160,6 +160,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
         }
         if (terminated) {
           write_thread_buffer_and_check_if_terminated();
+          delete (buffer_raw);
           return;
         }
 
@@ -210,6 +211,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
     const auto fc = frame_count->fetch_add(added);
     if (fc + added >= global_buffer_size) {
       write_thread_buffer_and_check_if_terminated();
+      delete (buffer_raw);
       return;
     }
   }
