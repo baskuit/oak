@@ -3,8 +3,6 @@
 # import torch.nn.functional as F
 import torch.multiprocessing as mp
 
-mp.
-
 # class ClampedReLU(nn.Module):
 #     def forward(self, x):
 #         return torch.clamp(F.relu(x), 0.0, 1.0)
@@ -34,10 +32,6 @@ mp.
 # y = torch.load('tensor.pt')
 
 # x.numpy().tofile("tensor.raw")
-
-
-import numpy as np
-import os
 
 n_moves = 166
 n_species = 151
@@ -86,16 +80,41 @@ class Frame:
     def input(self):
         pass
 
+import os
+import random
 
+FILENAME = 'buffer'
+RECORD_SIZE = 405
+NUM_READS = 1000
 
-if __name__ == "__main__":
-    # np.load("/home/user/oak/buffer")
-    # os.read()
-    file = open("/home/user/oak/buffer", encoding=None, mode="r")
-    
-    frame = os.read(file.fileno(), 405)
-    print(int(frame[0]))
-    print(int(frame[1]))
-    print(int(frame[401]))
+def main():
+    # Get the file size to determine how many records fit
+    filesize = os.path.getsize(FILENAME)
+    max_records = filesize // RECORD_SIZE
 
-    f = Frame(frame)
+    if max_records == 0:
+        print("File too small for even one 405-byte record.")
+        return
+
+    with open(FILENAME, 'rb') as f:
+        for _ in range(NUM_READS):
+            # Pick a random record index
+            n = random.randint(0, max_records - 1)
+            offset = RECORD_SIZE * n
+
+            # Seek to the offset and read the 405-byte slice
+            f.seek(offset)
+            slice_bytes = f.read(RECORD_SIZE)
+
+            if len(slice_bytes) < 3:
+                print(f"Slice at record {n} too small.")
+                continue
+
+            # Print the first 3 bytes of the slice
+            # print(f"Record {n}, First 3 bytes: {slice_bytes[:3]}")            print(int(slice_bytes[0]))
+            print(int(slice_bytes[0]))
+            print(int(slice_bytes[1]))
+            print(int(slice_bytes[2]))
+
+if __name__ == '__main__':
+    main()
