@@ -24,32 +24,6 @@ add_custom_target(build_client_release ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/l
 add_custom_target(build_chance_release ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpkmn/release/chance/libpkmn-showdown.a)
 add_custom_target(build_fast_release ALL DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/libpkmn/release/fast/libpkmn-showdown.a)
 
-add_executable(benchmark src/benchmark.cc)
-add_dependencies(benchmark build_chance_release)
-target_include_directories(benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(benchmark PRIVATE libpkmn_chance)
-
-# add_library(lab_client lab/log.cc)
-# add_dependencies(lab_client build_client_release)
-# target_include_directories(lab_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-# target_link_libraries(lab_client PRIVATE libpkmn_client)
-
-# add_executable(lab lab/main.cc lab/sides.cc lab/games.cc)
-# add_dependencies(lab build_chance_release)
-# target_include_directories(lab PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-# target_include_directories(lab PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lab)
-# target_link_libraries(lab PRIVATE libpkmn_chance readline lab_client)
-
-add_executable(randbat src/randbat.cc)
-add_dependencies(randbat build_client_release)
-target_include_directories(randbat PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(randbat PRIVATE libpkmn_client)
-
-add_executable(debug-log src/debug-log.cc)
-add_dependencies(debug-log build_client_release)
-target_include_directories(debug-log PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(debug-log PRIVATE libpkmn_client)
-
 add_executable(mcts-self-play src/mcts-self-play.cc)
 add_dependencies(mcts-self-play build_chance_release)
 target_include_directories(mcts-self-play PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -59,9 +33,3 @@ add_executable(check-buffer src/check-buffer.cc)
 add_dependencies(check-buffer build_chance_release)
 target_include_directories(check-buffer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(check-buffer PRIVATE libpkmn_chance)
-
-add_executable(nnue src/nnue.cc)
-add_dependencies(nnue build_chance_release)
-target_include_directories(nnue PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(nnue PRIVATE libpkmn_chance)
-target_compile_options(nnue PRIVATE -mavx2)
