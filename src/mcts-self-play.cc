@@ -186,7 +186,8 @@ void generate(int fd, std::atomic<size_t> *write_index,
               pkmn_gen1_battle_options_chance_actions(&options));
           // TODO check this is correct place to set durations
 
-          get_new_node(node, i1, i2, obs);
+          // get_new_node(node, i1, i2, obs);
+          node = std::make_unique<Node>();
         }
       }
 
