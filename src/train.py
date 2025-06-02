@@ -2,9 +2,9 @@ import os
 import random
 import struct
 
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 # class ClampedReLU(nn.Module):
 #     def forward(self, x):
@@ -33,7 +33,6 @@ import struct
 # x = torch.rand(512)
 # torch.save(x, "tensor.pt")
 # y = torch.load('tensor.pt')
-
 # x.numpy().tofile("tensor.raw")
 
 n_moves = 166
@@ -68,14 +67,14 @@ class Pokemon:
         self.sleep = None # duration info written after construction
 
     def to_tensor(self):
-        return None
+        t = torch.zeros((1, 40))
+        t[0] = self.hp
+            
 
 class Volatiles:
     def __init__(self, buffer: bytes):
         assert len(buffer) == 8
         bits = int.from_bytes(buffer, byteorder="little")
-
-        # 1-bit flags
         self.bide         = bool((bits >> 0)  & 1)
         self.thrashing     = bool((bits >> 1)  & 1)
         self.multi_hit     = bool((bits >> 2)  & 1)
@@ -94,8 +93,6 @@ class Volatiles:
         self.light_screen  = bool((bits >> 15) & 1)
         self.reflect       = bool((bits >> 16) & 1)
         self.transform     = bool((bits >> 17) & 1)
-
-
         self.confusion = (bits >> 18) & 0b111
         self.attacks = (bits >> 21) & 0b111
         self.state = (bits >> 24) & 0xFFFF
@@ -155,8 +152,8 @@ class Frame:
         self.eval = struct.unpack('<f', buffer[397 : 401])
         self.iter = int.from_bytes(buffer[401 : 405])
 
-    #  def to_tensor(self):
-    #     return None       
+    def to_tensor(self):
+        return None       
 
 FILENAME = 'buffer'
 FRAME_SIZE = 405
