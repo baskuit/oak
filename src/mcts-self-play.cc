@@ -29,6 +29,9 @@ bool terminated = false;
 bool suspended = false;
 constexpr size_t max_teams = SampleTeams::teams.size();
 
+bool keep_node = false;
+std::string randomize_teams = "off";
+
 struct GameBuffer {
 
   std::vector<Frame> frames{};
@@ -107,12 +110,16 @@ void generate(int fd, std::atomic<size_t> *write_index,
 
   const auto get_new_node = [](auto &unique_node, auto i1, auto i2,
                                const auto &obs) {
-    auto *child = (*unique_node)[i1, i2, obs];
-    if (!child) {
-      unique_node = std::make_unique<Node>();
+    if (keep_node) {
+      auto *child = (*unique_node)[i1, i2, obs];
+      if (!child) {
+        unique_node = std::make_unique<Node>();
+      } else {
+        auto unique_child = unique_node->release_child(i1, i2, obs);
+        unique_node.swap(unique_child);
+      }
     } else {
-      auto unique_child = unique_node->release_child(i1, i2, obs);
-      unique_node.swap(unique_child);
+      unique_node = std::make_unique<Node>();
     }
   };
 
@@ -142,6 +149,8 @@ void generate(int fd, std::atomic<size_t> *write_index,
     const auto p1 = SampleTeams::teams[random_index(max_teams)];
     const auto p2 = SampleTeams::teams[random_index(max_teams)];
     auto battle = Init::battle(p1, p2);
+    std::bit_cast<uint64_t *>(battle.bytes + Offsets::seed)[0] =
+        device.uniform_64();
     pkmn_gen1_chance_durations durations{};
     pkmn_gen1_battle_options options{};
     auto result = Init::update(battle, 0, 0, options);
@@ -270,23 +279,88 @@ int main(int argc, char **argv) {
   size_t global_buffer_size = 1 << 20;
   uint64_t seed = 2934828342938;
 
-  if (argc != 5) {
-    std::cerr
-        << "Description: Generates MCTS training games and saves to a buffer."
-        << std::endl;
-
-    std::cerr << "input: threads, search time (ms), max frames, seed"
-              << std::endl;
+  if (argc < 5) {
+    std::cerr << "Description: Generates MCTS training games and saves to a "
+                 "buffer.\n";
+    std::cerr << "Usage: program threads ms max_frames seed "
+                 "[--keep-node=true|false] [--randomize=off|sets]\n";
     return 1;
+  }
+
+  bool keepNode = false;
+  std::string randomize = "off";
+
+  std::vector<std::string> pArgs;
+
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+    if (arg.starts_with("--")) {
+      if (arg.starts_with("--keep-node=")) {
+        std::string val = arg.substr(12);
+        if (val == "true") {
+          keepNode = true;
+        } else if (val == "false") {
+          keepNode = false;
+        } else {
+          std::cerr << "Invalid value for --keep-node: " << val << "\n";
+          return 1;
+        }
+      } else if (arg.starts_with("--randomize=")) {
+        randomize = arg.substr(12);
+        if (randomize != "off" && randomize != "sets") {
+          std::cerr << "Invalid value for --randomize: " << randomize << "\n";
+          return 1;
+        }
+      } else {
+        std::cerr << "Unknown flag: " << arg << "\n";
+        return 1;
+      }
+    } else {
+      pArgs.push_back(arg);
+    }
+  }
+  if (pArgs.size() != 4) {
+    std::cerr
+        << "Expected 4 positional arguments: threads ms max_frames seed\n";
+    return 1;
+  }
+  threads = std::atoi(pArgs[0].c_str());
+  ms = std::atoi(pArgs[1].c_str());
+  global_buffer_size = std::atoi(pArgs[2].c_str());
+  seed = std::atoi(pArgs[3].c_str());
+
+  std::cout << "threads: " << threads << "\n";
+  std::cout << "ms: " << ms << "\n";
+  std::cout << "max_frames: " << global_buffer_size << "\n";
+  std::cout << "seed: " << seed << "\n";
+  std::cout << "keep_node: " << (keepNode ? "true" : "false") << "\n";
+  std::cout << "randomize: " << randomize << "\n";
+
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+
+    if (arg.starts_with("--keep-node=")) {
+      std::string value = arg.substr(12);
+      if (value == "true") {
+        keep_node = true;
+      } else if (value == "false") {
+        keep_node = false;
+      } else {
+        std::cerr << "--keep-node: Unrecognized value (true/false)."
+                  << std::endl;
+        return 1;
+      }
+    } else if (arg.starts_with("--randomize=")) {
+      randomize_teams = arg.substr(12);
+      // TODO
+    } else {
+      std::cerr << "Unknown argument: " << arg << "\n";
+      return 1;
+    }
   }
 
   std::signal(SIGINT, handle_terminate);
   std::signal(SIGTSTP, handle_suspend);
-
-  threads = std::atoi(argv[1]);
-  ms = std::atoi(argv[2]);
-  global_buffer_size = std::atoi(argv[3]);
-  seed = std::atoi(argv[4]);
 
   std::cout << "Input: " << ms << ' ' << threads << ' ' << global_buffer_size
             << ' ' << seed << std::endl;
