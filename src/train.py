@@ -43,15 +43,16 @@ class TwoLayerMLP(nn.Module):
             self.fc2.weight.clamp_(-2, 2)
 
     def save_quantized(self, path):
-        raw_save((self.fc0.weight * (127)).to(torch.int8), os.path.join(path, "w0"))
-        raw_save((self.fc1.weight * (127)).to(torch.int8), os.path.join(path, "w1"))
-        raw_save((self.fc2.weight * (127)).to(torch.int8), os.path.join(path, "w2"))
+        n = 0
+        raw_save((self.fc0.weight * (64)).to(torch.int8).transpose(0, n), os.path.join(path, "w0"))
+        raw_save((self.fc1.weight * (64)).to(torch.int8).transpose(0, n), os.path.join(path, "w1"))
+        raw_save((self.fc2.weight * (64)).to(torch.int8).transpose(0, n), os.path.join(path, "w2"))
         raw_save((self.fc0.bias * (127 * 64)).to(torch.int32), os.path.join(path, "b0"))
         raw_save((self.fc1.bias * (127 * 64)).to(torch.int32), os.path.join(path, "b1"))
         raw_save((self.fc2.bias * (127 * 64)).to(torch.int32), os.path.join(path, "b2"))
 
 
-def init_weights():
+def init():
     acc = torch.rand(512).clamp_(0, 1)
     torch.save(acc, "./weights/acc.pt")
     accd = (acc * 127).to(torch.int8)
@@ -72,8 +73,11 @@ def test():
     x = acc[:32]
     print("trunacated acc:")
     print((x * 127).to(torch.int8))
+    # print("weights:")
+    # print((net.fc2.weight.clone().detach() * 64).to(torch.int8))
     x = net.fc1.forward(x)
     x = net.activation.forward(x)
+    print(x)
     print((x * 127).to(torch.int8))
 
 def train():
@@ -263,5 +267,9 @@ def main():
 
             frame = Frame(slice_bytes)
 
+import sys
 if __name__ == '__main__':
-    test()
+    if len(sys.argv) > 1:
+        init()
+    else:
+        test()
