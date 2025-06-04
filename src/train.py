@@ -18,14 +18,14 @@ class ClampedReLU(nn.Module):
 class TwoLayerMLP(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(TwoLayerMLP, self).__init__()
-        self.activation = ClampedReLU()
+        self.relu = ClampedReLU()
         self.fc0 = nn.Linear(input_dim, hidden_dim)
         self.fc1 = nn.Linear(hidden_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
-        x = self.activation(self.fc0(x))
-        x = self.activation(self.fc1(x))
+        x = self.relu(self.fc0(x))
+        x = self.relu(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -70,15 +70,9 @@ def test():
     net = TwoLayerMLP(512, 32, 1)
     net.load("./weights/nn.pt")
     acc = torch.load("./weights/acc.pt")
-    x = acc[:32]
-    print("trunacated acc:")
-    print((x * 127).to(torch.int8))
-    # print("weights:")
-    # print((net.fc2.weight.clone().detach() * 64).to(torch.int8))
-    x = net.fc1.forward(x)
-    x = net.activation.forward(x)
+    x = net.forward(acc)
     print(x)
-    print((x * 127).to(torch.int8))
+    print((x * 127 * 64).to(torch.int32))
 
 def train():
     # Dummy data

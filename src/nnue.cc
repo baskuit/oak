@@ -10,50 +10,32 @@ int main(int argc, char **argv) {
 
   Stockfish::Eval::NNUE::NetworkArchitecture nn{};
 
-  std::ifstream accs, w1s, b1s, w2s, b2s, dummys;
+  std::ifstream accs, w0s, b0s, w1s, b1s, w2s, b2s;
 
   uint8_t acc[512];
-  uint8_t dummy[32];
-  int32_t last[1000];
-
-  int32_t fc_0_out[32];
-  uint8_t ac_0_out[32];
 
   accs.open("./weights/accd", std::ios::binary);
   Stockfish::Eval::NNUE::read_little_endian(accs, acc, 512);
-  dummys.open("./weights/accd", std::ios::binary);
-  Stockfish::Eval::NNUE::read_little_endian(dummys, dummy, 32);
 
-  std::cout << "Trunaced acc:\n";
-  for (auto i = 0; i < 32; ++i) {
-    std::cout << (int)dummy[i] << ' ';
-  }
-  std::cout << std::endl;
-
+  w0s.open("./weights/w0", std::ios::binary);
+  b0s.open("./weights/b0", std::ios::binary);
   w1s.open("./weights/w1", std::ios::binary);
   b1s.open("./weights/b1", std::ios::binary);
-  nn.fc_1.read_parameters(w1s, b1s);
+  w2s.open("./weights/w2", std::ios::binary);
+  b2s.open("./weights/b2", std::ios::binary);
 
-  nn.fc_1.propagate(dummy, fc_0_out);
-  nn.ac_1.propagate(fc_0_out, ac_0_out);
+  const bool success = nn.fc_0.read_parameters(w0s, b0s) &&
+                       nn.fc_1.read_parameters(w1s, b1s) &&
+                       nn.fc_2.read_parameters(w2s, b2s);
 
-  std::cout << "Output of 32x32 layer on truncated acc:\n";
-  for (auto i = 0; i < 32; ++i) {
-    std::cout << (int)ac_0_out[i] << ' ';
+  if (!success) {
+    std::cerr << "read_params failed." << std::endl;
+    return 1;
   }
-  std::cout << std::endl;
 
-  // w2s.open("./weights/w2", std::ios::binary);
-  // b2s.open("./weights/b2", std::ios::binary);
-  // nn.fc_2.read_parameters(w2s, b2s);
-  // nn.fc_2.propagate(dummy, last);
+  auto out = nn.propagate(acc);
 
-  // std::cout << "weights:\n";
-  // for (auto i = 0; i < 32; ++i) {
-  //   std::cout << (int)nn.fc_2.weights[i] << ' ';
-  // }
-  // std::cout << std::endl;
-  // std::cout << "last: " << last[0] << std::endl;
-  // std::cout << "last (float): " << (float)last[0]/(127 * 64) << std::endl;
+  std::cout << "last: " << out << std::endl;
+  std::cout << "last (float): " << (float)out / (127 * 64) << std::endl;
   return 0;
 }
