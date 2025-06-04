@@ -68,13 +68,13 @@ def init_weights():
 def test():
     net = TwoLayerMLP(512, 32, 1)
     net.load("./weights/nn.pt")
-    # acc = torch.load("./weights/acc.pt")
-    # x = (net.fc1.forward(acc) * 127).to(torch.uint8)
-    # print(x)
-    # print(net.fc1.bias)
-    print(net.fc2.weight.detach().numpy())
-    print((net.fc2.weight * 64).to(torch.int8))
-
+    acc = torch.load("./weights/acc.pt")
+    x = acc[:32]
+    print("trunacated acc:")
+    print((x * 127).to(torch.int8))
+    x = net.fc1.forward(x)
+    x = net.activation.forward(x)
+    print((x * 127).to(torch.int8))
 
 def train():
     # Dummy data
@@ -264,4 +264,4 @@ def main():
             frame = Frame(slice_bytes)
 
 if __name__ == '__main__':
-    init_weights()
+    test()

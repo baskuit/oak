@@ -363,8 +363,7 @@ int main(int argc, char **argv) {
       } else if (value == "false") {
         prune = false;
       } else {
-        std::cerr << "--prune: Unrecognized value (true/false)."
-                  << std::endl;
+        std::cerr << "--prune: Unrecognized value (true/false)." << std::endl;
         return 1;
       }
     } else {
