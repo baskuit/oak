@@ -84,6 +84,14 @@ class AffineTransform {
         return !stream.fail();
     }
 
+    bool read_parameters(std::istream& stream_weight, std::istream& stream_bias) {
+        read_little_endian<BiasType>(stream_bias, biases, OutputDimensions);
+        for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i) {
+            weights[get_weight_index(i)] = read_little_endian<WeightType>(stream_weight);
+        }
+        return !(stream_weight.fail() || stream_bias.fail());
+    }
+
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
         write_little_endian<BiasType>(stream, biases, OutputDimensions);
