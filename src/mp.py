@@ -64,7 +64,8 @@ def main():
                         break
 
             # You could now train on the tensor here
-            batch_tensor = torch.frombuffer(shared_tensor, dtype=torch.uint8).view(*shape)            print("Sample from tensor[0]:", batch_tensor[0][:10])
+            batch_tensor = torch.frombuffer(shared_tensor, dtype=torch.uint8).view(*shape)
+            print("Sample from tensor[0]:", batch_tensor[0][:10])
 
             # Refill index queue for next batch
             for i in range(shape[0]):

@@ -5,35 +5,81 @@ import struct
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 
-# class ClampedReLU(nn.Module):
-#     def forward(self, x):
-#         return torch.clamp(F.relu(x), 0.0, 1.0)
+class ClampedReLU(nn.Module):
+    def forward(self, x):
+        return torch.clamp(F.relu(x), 0.0, 1.0)
 
-# class TwoLayerMLP(nn.Module):
-#     def __init__(self, input_dim, hidden_dim, output_dim):
-#         super(TwoLayerMLP, self).__init__()
-#         self.fc1 = nn.Linear(input_dim, hidden_dim)
-#         self.activation = ClampedReLU()
-#         self.fc2 = nn.Linear(hidden_dim, output_dim)
+class TwoLayerMLP(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super(TwoLayerMLP, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.activation = ClampedReLU()
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
 
-#     def forward(self, x):
-#         x = self.activation(self.fc1(x))
-#         x = self.fc2(x)
-#         return x
+    def forward(self, x):
+        x = self.activation(self.fc1(x))
+        x = self.fc2(x)
+        return x
 
-#     def save(self, path):
-#         torch.save(self.state_dict(), path)
+    def save(self, path):
+        torch.save(self.state_dict(), path)
 
-#     def load(self, path, map_location=None):
-#         state_dict = torch.load(path, map_location=map_location)
-#         self.load_state_dict(state_dict)
+    def load(self, path, map_location=None):
+        state_dict = torch.load(path, map_location=map_location)
+        self.load_state_dict(state_dict)
 
+def raw_write(tensor, path):
+    with open(path, "wb") as f:
+        f.write(tensor.numpy().tobytes())
 
-# x = torch.rand(512)
-# torch.save(x, "tensor.pt")
-# y = torch.load('tensor.pt')
-# x.numpy().tofile("tensor.raw")
+def init_weights():
+    acc = torch.rand(512).clamp_(0, 1)
+    torch.save(acc, "./weights/acc.pt")
+    accd = (acc * 127).to(torch.int8)
+    raw_write(accd, "./weights/accd")    
+
+    net = TwoLayerMLP(512, 32, 1)
+    with torch.no_grad():
+        for param in net.parameters():
+            param.clamp_(-2, 2)
+    net.save("./weights/nn.pt")
+
+    w1d = (net.fc1.weight * (127)).to(torch.int8)
+    b1d = (net.fc1.bias * (127 * 64)).to(torch.int32)
+    w2d = (net.fc2.weight * (127)).to(torch.int8)
+    b2d = (net.fc2.bias * (127 * 64)).to(torch.int32)
+
+    raw_write(w1d, "./weights/w1d")
+    raw_write(b1d, "./weights/b1d")
+    raw_write(w2d, "./weights/w2d")
+    raw_write(b2d, "./weights/b2d")
+
+    print(acc[:10])
+    print(accd[:10])
+    
+
+def train():
+    # Dummy data
+    batch_size = 64
+    inputs = torch.randn(batch_size, 512)
+    targets = torch.rand(batch_size, 1)  # Target in [0, 1]
+
+    # Model
+    model = TwoLayerMLP(input_dim=512, hidden_dim=32, output_dim=1)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+    # Training step
+    model.train()
+    optimizer.zero_grad()            # Clear previous gradients
+    outputs = model(inputs)          # Forward pass
+    loss = criterion(outputs, targets)  # Compute loss
+    loss.backward()                  # Backpropagation
+    optimizer.step()                 # Update weights
+
+    print("Loss:", loss.item())
 
 n_moves = 166
 n_species = 151
@@ -67,9 +113,27 @@ class Pokemon:
         self.sleep = None # duration info written after construction
 
     def to_tensor(self):
+        c = 0
         t = torch.zeros((1, 40))
         t[0] = self.hp
-            
+        t[1] = self.atk
+        t[2] = self.def_
+        t[3] = self.spc
+        t[4] = self.spe
+        c += 5
+        for i in range(4):
+            m = self.moves[i][0]
+            pp = self.moves[i][1]
+            if (m != 0):
+                t[c + m - 1] = 1
+        c += 165 # no None, Struggle
+        t[c + self.status] = 1.0
+        c += 16 # TODO
+        # No species smbeding for now. Surely its wasted since stats/type/moves determine everything
+        t[c + self.type1] = 1.0
+        t[c + self.type2] = 1.0
+        c += 16
+        return t
 
 class Volatiles:
     def __init__(self, buffer: bytes):
@@ -181,11 +245,7 @@ def main():
             f.seek(offset)
             slice_bytes = f.read(FRAME_SIZE)
 
-            if len(slice_bytes) < 3:
-                print(f"Slice at record {n} too small.")
-                continue
-
             frame = Frame(slice_bytes)
 
 if __name__ == '__main__':
-    main()
+    init_weights()

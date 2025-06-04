@@ -30,6 +30,7 @@ bool suspended = false;
 constexpr size_t max_teams = SampleTeams::teams.size();
 
 bool keep_node = false;
+bool prune = false;
 std::string randomize_teams = "off";
 
 struct GameBuffer {
@@ -127,6 +128,9 @@ void generate(int fd, std::atomic<size_t> *write_index,
   const auto think_time = [&]() { return dur; };
 
   const auto prune_low_probs = [](auto &p) {
+    if (!prune) {
+      return;
+    }
     const double t = 1.0 / p.size();
     double sum = 0;
     for (auto &x : p) {
@@ -196,8 +200,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
               pkmn_gen1_battle_options_chance_actions(&options));
           // TODO check this is correct place to set durations
 
-          // get_new_node(node, i1, i2, obs);
-          node = std::make_unique<Node>();
+          get_new_node(node, i1, i2, obs);
         }
       }
 
@@ -353,6 +356,17 @@ int main(int argc, char **argv) {
     } else if (arg.starts_with("--randomize=")) {
       randomize_teams = arg.substr(12);
       // TODO
+    } else if (arg.starts_with("--prune=")) {
+      std::string value = arg.substr(8);
+      if (value == "true") {
+        prune = true;
+      } else if (value == "false") {
+        prune = false;
+      } else {
+        std::cerr << "--prune: Unrecognized value (true/false)."
+                  << std::endl;
+        return 1;
+      }
     } else {
       std::cerr << "Unknown argument: " << arg << "\n";
       return 1;
