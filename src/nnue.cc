@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
 
   uint8_t acc[512];
   uint8_t dummy[32];
+  int32_t last[1000];
 
   int32_t fc_0_out[32];
   uint8_t ac_0_out[32];
@@ -34,7 +35,7 @@ int main(int argc, char **argv) {
   nn.fc_1.read_parameters(w1s, b1s);
 
   nn.fc_1.propagate(dummy, fc_0_out);
-  nn.ac_0.propagate(fc_0_out, ac_0_out);
+  nn.ac_1.propagate(fc_0_out, ac_0_out);
 
   std::cout << "Output of 32x32 layer on truncated acc:\n";
   for (auto i = 0; i < 32; ++i) {
@@ -42,5 +43,17 @@ int main(int argc, char **argv) {
   }
   std::cout << std::endl;
 
+  // w2s.open("./weights/w2", std::ios::binary);
+  // b2s.open("./weights/b2", std::ios::binary);
+  // nn.fc_2.read_parameters(w2s, b2s);
+  // nn.fc_2.propagate(dummy, last);
+
+  // std::cout << "weights:\n";
+  // for (auto i = 0; i < 32; ++i) {
+  //   std::cout << (int)nn.fc_2.weights[i] << ' ';
+  // }
+  // std::cout << std::endl;
+  // std::cout << "last: " << last[0] << std::endl;
+  // std::cout << "last (float): " << (float)last[0]/(127 * 64) << std::endl;
   return 0;
 }
