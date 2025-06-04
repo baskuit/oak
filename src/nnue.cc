@@ -1,5 +1,6 @@
 #include "nnue/nnue_architecture.h"
 
+#include <fstream>
 #include <random>
 
 int main(int argc, char **argv) {
@@ -9,50 +10,24 @@ int main(int argc, char **argv) {
 
   Stockfish::Eval::NNUE::NetworkArchitecture nn{};
 
-  uint8_t ones[32];
-  int32_t output[1];
+  std::ifstream accs, w1s, b1s, w2s, b2s, dummys;
 
-  Stockfish::Eval::NNUE::Layers::AffineTransform<32, 1> layer{};
-  for (auto i = 0; i < 32; ++i) {
-    ones[i] = 127;
-    layer.weights[i] = 64; // aka 64 = 1.0
-  }
-  layer.propagate(ones, output);
-  std::cout << output[0] << std::endl;
-  return 0;
+  uint8_t acc[512];
+  uint8_t dummy[32];
 
-  // layer.write_parameters()
+  int32_t fc_0_out[32];
+  uint8_t ac_0_out[32];
 
-  uint64_t seed;
+  accs.open("./weights/accd", std::ios::binary);
+  Stockfish::Eval::NNUE::read_little_endian(accs, acc, 512);
+  dummys.open("./weights/accd", std::ios::binary);
+  Stockfish::Eval::NNUE::read_litt  le_endian(dummys, dummy, 32);
 
-  seed = std::atoi(argv[1]);
-  std::cout << "seed: " << seed << std::endl;
 
-  std::random_device rd{};
-  std::mt19937 gen{rd()};
-  std::uniform_int_distribution<uint32_t> randint{0, size - 512};
+  w1s.open("./weights/w2d", std::ios::binary);
+  b1s.open("./weights/b2d", std::ios::binary);
+  nn.fc_1.read_parameters(w1s, b1s);
 
-  uint8_t randomNoise[size];
-  uint32_t offset[trials];
-  for (auto i = 0; i < size; ++i) {
-    randomNoise[i] = gen() % 128;
-  }
-  for (auto i = 0; i < trials; ++i) {
-    offset[i] = randint(gen);
-  }
-
-  for (int i = 0; i < 10; ++i) {
-    std::cout << offset[i] << ' ';
-  }
-  std::cout << std::endl;
-
-  for (auto i = 0; i < trials; ++i) {
-    const auto result = nn.propagate(randomNoise + offset[i]);
-  }
-
-  const auto result = nn.propagate(randomNoise);
-
-  std::cout << "result <i32, 16>  : " << result << std::endl;
 
   return 0;
 }
