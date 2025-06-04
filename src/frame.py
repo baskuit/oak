@@ -115,9 +115,9 @@ class Active:
 class Side:
     def __init__(self, buffer):
         self.active = Active(buffer[144 : 176])
-        self.party : list[Pokemon] = []
+        self.pokemon : list[Pokemon] = []
         for i in range(6):
-            self.party.append(Pokemon(buffer[i * 24 : (i + 1) * 24]))
+            self.pokemon.append(Pokemon(buffer[i * 24 : (i + 1) * 24]))
         self.active_slot = 0
 
     def to_tensor(self):
