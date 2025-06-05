@@ -3,17 +3,17 @@ import os
 import random
 import struct
 
-n_moves = 166
-n_species = 151
-n_status = 16
-n_volatiles = 32
-
 def decode_u16(buffer, n):
     return buffer[n] + 256 * buffer[n + 1]
 def decode_u4(buffer, n):
     return buffer[n] % 16, buffer[n] // 16
 
 class Pokemon:
+    n_moves = 166 # no None, Struggle
+    n_species = 151
+    n_status = 16
+    n_types = 15
+
     def __init__(self, buffer):
         assert(len(buffer) == 24)
         self.hp = decode_u16(buffer, 0)
@@ -36,24 +36,26 @@ class Pokemon:
 
     def to_tensor(self, t):
         c = 0
+        # stats
         t[0] = self.hp
         t[1] = self.atk
         t[2] = self.def_
         t[3] = self.spc
         t[4] = self.spe
         c += 5
+        # moves
         for i in range(4):
             m = self.moves[i][0]
             pp = self.moves[i][1]
             if (m != 0):
-                t[c + m - 1] = 1
-        c += 165 # no None, Struggle
-        t[c + self.status] = 1.0
-        c += 16 # TODO
-        # No species smbeding for now. Surely its wasted since stats/type/moves determine everything
+                t[c + (m - 1)] = 1
+        c += n_moves
+        # status
+        c += n_status
+        # types
         t[c + self.type1] = 1.0
         t[c + self.type2] = 1.0
-        c += 16
+        c += n_types
         return t
 
 class Volatiles:
@@ -118,7 +120,7 @@ class Side:
         self.pokemon : list[Pokemon] = []
         for i in range(6):
             self.pokemon.append(Pokemon(buffer[i * 24 : (i + 1) * 24]))
-        self.active_slot = 0
+        self.active_slot = buffer[176]
 
     def to_tensor(self):
         return None
