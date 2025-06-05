@@ -68,14 +68,29 @@ int main(int argc, char **argv) {
   for (auto i = 0; i < length; ++i) {
     const auto &frame =
         *reinterpret_cast<const Frame *>(bytes + (sizeof(Frame) * i));
-    std::cout << i + start << ":\n";
+
     pkmn_gen1_battle battle;
     std::memcpy(battle.bytes, frame.battle.data(), Sizes::battle);
+    size_t m = (frame.row_col / 9) + 1;
+    size_t n = (frame.row_col % 9) + 1;
+
+    std::cout << i + start << ":\n";
     std::cout << Strings::battle_to_string(battle);
     print_durations(frame.durations);
-    std::cout << "eval: " << frame.eval << "; iter: " << frame.iter
-              << "; score: " << frame.score << '\n'
-              << '\n';
+
+    std::cout << "Q/Z: " << frame.eval << " ~ " << frame.score
+              << " | iter: " << frame.iter << '\n';
+    // std::cout << "m: " << m << " n: " << n << '\n';
+    std::cout << "P1 Policy:\n";
+    for (auto i = 0; i < m; ++i) {
+      std::cout << frame.p1_visits[i] / (float)frame.iter << ' ';
+    }
+    std::cout << '\n';
+    std::cout << "P2 Policy:\n";
+    for (auto i = 0; i < n; ++i) {
+      std::cout << frame.p2_visits[i] / (float)frame.iter << ' ';
+    }
+    std::cout << '\n';
   }
   return 0;
 }

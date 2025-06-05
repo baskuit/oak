@@ -12,6 +12,7 @@
 #include <util/random.h>
 
 #include <atomic>
+#include <cmath>
 #include <csignal>
 #include <exception>
 #include <iostream>
@@ -29,9 +30,18 @@ bool terminated = false;
 bool suspended = false;
 constexpr size_t max_teams = SampleTeams::teams.size();
 
+namespace Stats {
+std::array<std::atomic<size_t>, max_teams> sample_counts{};
+std::array<std::array<std::atomic<size_t>, max_teams>, max_teams>
+    matchup_counts{};
+std::array<std::array<std::atomic<size_t>, max_teams>, max_teams>
+    matchup_scores{};
+} // namespace Stats
+
 bool keep_node = false;
 bool prune = false;
 std::string randomize_teams = "off";
+double sample_temp = 2.0;
 
 struct GameBuffer {
 
@@ -60,7 +70,6 @@ struct GameBuffer {
   }
 };
 
-// worker local thread buffer that is filled before writing to disk
 constexpr size_t thread_buffer_size = 1 << 12;
 using ThreadFrameBuffer = std::array<Frame, thread_buffer_size>;
 using Node =
@@ -72,12 +81,12 @@ void generate(int fd, std::atomic<size_t> *write_index,
 
   auto buffer_raw = new ThreadFrameBuffer{};
   auto &buffer = *buffer_raw;
-  size_t buffer_size = 0;
+  size_t buffer_index = 0;
   GameBuffer game_buffer{};
   prng device{seed};
 
   const auto write_thread_buffer_and_check_if_terminated = [&]() {
-    const auto start_index = write_index->fetch_add(buffer_size);
+    const auto start_index = write_index->fetch_add(buffer_index);
     if (start_index >= global_buffer_size) {
       std::cout << "Terminating because global buffer size reached before write"
                 << std::endl;
@@ -85,7 +94,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
       return;
     }
     const auto end_index =
-        std::min(start_index + buffer_size, global_buffer_size);
+        std::min(start_index + buffer_index, global_buffer_size);
     std::cout << "writing to [" << start_index << ", " << end_index << ")."
               << std::endl;
     const auto p =
@@ -94,7 +103,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
     if (p != ((end_index - start_index) * sizeof(Frame))) {
       std::cerr << "Failed to write all of thread buffer." << std::endl;
     }
-    buffer_size = 0;
+    buffer_index = 0;
     if (end_index >= global_buffer_size) {
       std::cout << "Terminating because global buffer size reached after write"
                 << std::endl;
@@ -103,10 +112,11 @@ void generate(int fd, std::atomic<size_t> *write_index,
     return;
   };
 
-  // fat tail favoring smaller index (better teams)
-  const auto random_index = [&device](size_t n) {
-    size_t index = sqrt(device.random_int(n * n));
-    return n - index;
+  // temp = 1 is uniform. Higher temp favors lower indices
+  const auto random_index = [&device](size_t n, double sample_temp) {
+    double r = pow(device.uniform() * pow(n, sample_temp), 1 / sample_temp);
+    auto m = static_cast<size_t>(r);
+    return std::max<size_t>(0, n - (m + 1));
   };
 
   const auto get_new_node = [](auto &unique_node, auto i1, auto i2,
@@ -149,9 +159,14 @@ void generate(int fd, std::atomic<size_t> *write_index,
   };
 
   while (true) {
+    auto t1 = random_index(max_teams, sample_temp);
+    auto t2 = random_index(max_teams, sample_temp);
+    if (t1 > t2) {
+      std::swap(t1, t2);
+    }
 
-    const auto p1 = SampleTeams::teams[random_index(max_teams)];
-    const auto p2 = SampleTeams::teams[random_index(max_teams)];
+    auto p1 = SampleTeams::teams[t1];
+    auto p2 = SampleTeams::teams[t2];
     auto battle = Init::battle(p1, p2);
     std::bit_cast<uint64_t *>(battle.bytes + Offsets::seed)[0] =
         device.uniform_64();
@@ -167,7 +182,6 @@ void generate(int fd, std::atomic<size_t> *write_index,
 
       while (!pkmn_result_type(result)) {
 
-        // we need checks on a turn by turn basis, game by game is too slow.
         while (suspended) {
           sleep(1);
         }
@@ -184,8 +198,7 @@ void generate(int fd, std::atomic<size_t> *write_index,
 
           MonteCarlo::Input input{battle, durations, result};
           auto output = search.run(think_time(), *node.get(), input, mcm);
-          Frame frame{&battle, &durations, result, output.average_value,
-                      output.iterations};
+          Frame frame{&battle, &durations, result, output};
           game_buffer.add(frame);
 
           prune_low_probs(output.p1);
@@ -198,7 +211,6 @@ void generate(int fd, std::atomic<size_t> *write_index,
           durations = *pkmn_gen1_battle_options_chance_durations(&options);
           const auto &obs = *reinterpret_cast<std::array<uint8_t, 16> *>(
               pkmn_gen1_battle_options_chance_actions(&options));
-          // TODO check this is correct place to set durations
 
           get_new_node(node, i1, i2, obs);
         }
@@ -208,14 +220,25 @@ void generate(int fd, std::atomic<size_t> *write_index,
       std::cerr << "Caught some exception in the game loop" << std::endl;
       std::cerr << e.what() << std::endl;
       game_buffer.clear();
+      continue;
+    }
+
+    game_buffer.score(Init::score(result));
+
+    Stats::sample_counts[t1].fetch_add(1);
+    Stats::sample_counts[t2].fetch_add(1);
+    if (t1 != t2) {
+      Stats::matchup_counts[t1][t2].fetch_add(1);
+      Stats::matchup_scores[t1][t2].fetch_add(
+          static_cast<int>(Init::score(result) * 2));
     }
 
     const auto added =
-        game_buffer.fill(buffer, buffer_size, thread_buffer_size);
+        game_buffer.fill(buffer, buffer_index, thread_buffer_size);
     game_buffer.clear();
 
     // flush thread buffer
-    if (buffer_size >= thread_buffer_size) {
+    if (buffer_index >= thread_buffer_size) {
       write_thread_buffer_and_check_if_terminated();
     }
 
@@ -242,6 +265,10 @@ void handle_print(std::atomic<size_t> *frame_count) {
     const auto more = frame_count->load();
     std::cout << (more - done) / (float)sec << " samples/sec." << std::endl;
     done = more;
+    // for (auto i = 0; i < max_teams; ++i) {
+    //   std::cout << Stats::sample_counts[i] << ' ';
+    // }
+    // std::cout << std::endl;
   }
 }
 
@@ -267,51 +294,35 @@ int allocate_buffer(std::string filename, size_t global_buffer_size) {
       return -1;
     }
   } catch (...) {
-    std::cerr << "Cound not allocate " << file_size << " bytes on disk"
+    std::cerr << "Cound not allocate " << file_size << " bytes on disk."
               << std::endl;
     return -1;
   }
-  std::cout << "Able to open file" << std::endl;
+  std::cout << "Able to allocate buffer." << std::endl;
   return fd;
 }
 
 int main(int argc, char **argv) {
 
-  size_t threads = 1;
-  size_t ms = 100;
-  size_t global_buffer_size = 1 << 20;
-  uint64_t seed = 2934828342938;
-
-  if (argc < 5) {
-    std::cerr << "Description: Generates MCTS training games and saves to a "
-                 "buffer.\n";
-    std::cerr << "Usage: program threads ms max_frames seed "
-                 "[--keep-node=true|false] [--randomize=off|sets]\n";
-    return 1;
-  }
-
-  bool keepNode = false;
-  std::string randomize = "off";
-
   std::vector<std::string> pArgs;
-
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
     if (arg.starts_with("--")) {
       if (arg.starts_with("--keep-node=")) {
         std::string val = arg.substr(12);
         if (val == "true") {
-          keepNode = true;
+          keep_node = true;
         } else if (val == "false") {
-          keepNode = false;
+          keep_node = false;
         } else {
           std::cerr << "Invalid value for --keep-node: " << val << "\n";
           return 1;
         }
       } else if (arg.starts_with("--randomize=")) {
-        randomize = arg.substr(12);
-        if (randomize != "off" && randomize != "sets") {
-          std::cerr << "Invalid value for --randomize: " << randomize << "\n";
+        randomize_teams = arg.substr(12);
+        if (randomize_teams != "off" && randomize_teams != "sets") {
+          std::cerr << "Invalid value for --randomize: " << randomize_teams
+                    << "\n";
           return 1;
         }
       } else {
@@ -324,59 +335,23 @@ int main(int argc, char **argv) {
   }
   if (pArgs.size() != 4) {
     std::cerr
-        << "Expected 4 positional arguments: threads ms max_frames seed\n";
+        << "Expected 4 positional arguments: threads, ms, max_frames, seed\n";
     return 1;
   }
-  threads = std::atoi(pArgs[0].c_str());
-  ms = std::atoi(pArgs[1].c_str());
-  global_buffer_size = std::atoi(pArgs[2].c_str());
-  seed = std::atoi(pArgs[3].c_str());
+  size_t threads = std::atoi(pArgs[0].c_str());
+  size_t ms = std::atoi(pArgs[1].c_str());
+  size_t global_buffer_size = std::atoi(pArgs[2].c_str());
+  uint64_t seed = std::atoi(pArgs[3].c_str());
 
   std::cout << "threads: " << threads << "\n";
   std::cout << "ms: " << ms << "\n";
   std::cout << "max_frames: " << global_buffer_size << "\n";
   std::cout << "seed: " << seed << "\n";
-  std::cout << "keep_node: " << (keepNode ? "true" : "false") << "\n";
-  std::cout << "randomize: " << randomize << "\n";
-
-  for (int i = 1; i < argc; ++i) {
-    std::string arg = argv[i];
-
-    if (arg.starts_with("--keep-node=")) {
-      std::string value = arg.substr(12);
-      if (value == "true") {
-        keep_node = true;
-      } else if (value == "false") {
-        keep_node = false;
-      } else {
-        std::cerr << "--keep-node: Unrecognized value (true/false)."
-                  << std::endl;
-        return 1;
-      }
-    } else if (arg.starts_with("--randomize=")) {
-      randomize_teams = arg.substr(12);
-      // TODO
-    } else if (arg.starts_with("--prune=")) {
-      std::string value = arg.substr(8);
-      if (value == "true") {
-        prune = true;
-      } else if (value == "false") {
-        prune = false;
-      } else {
-        std::cerr << "--prune: Unrecognized value (true/false)." << std::endl;
-        return 1;
-      }
-    } else {
-      std::cerr << "Unknown argument: " << arg << "\n";
-      return 1;
-    }
-  }
+  std::cout << "keep_node: " << (keep_node ? "true" : "false") << "\n";
+  std::cout << "randomize: " << randomize_teams << "\n";
 
   std::signal(SIGINT, handle_terminate);
   std::signal(SIGTSTP, handle_suspend);
-
-  std::cout << "Input: " << ms << ' ' << threads << ' ' << global_buffer_size
-            << ' ' << seed << std::endl;
 
   int buffer_fd = allocate_buffer("buffer", global_buffer_size);
   if (buffer_fd == -1) {
