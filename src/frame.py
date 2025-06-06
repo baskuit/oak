@@ -250,7 +250,7 @@ def main():
     max_frames = filesize // FRAME_SIZE
 
     if len(sys.argv) >= 3:
-        max_frames = min(max_frames, int(argv[2]))
+        max_frames = min(max_frames, int(sys.argv[2]))
 
     print(f"Reading {max_frames} frames.")
 
