@@ -31,7 +31,7 @@ class Durations:
 
 class Pokemon:
     n_moves = 164 # no None, Struggle
-    n_status = 12 + 8 # 4 + 8 + 3
+    n_status = 4 + 8 + 2 # 4 + 8 + 3
     n_types = 15
 
     n_dim = 5 + n_moves + n_status + n_types
@@ -75,12 +75,13 @@ class Pokemon:
                 # print("{:08b}".format(self.status), self.sleep_duration)
                 assert(status_index >= 4 and status_index < 12)
             else:
-                if (self.sleep_duration > 0):
-                    print("weird shit at :", frame_number)
+                # if (self.sleep_duration > 0):
+                #     print("weird shit at :", frame_number)
                 # print(self.sleep_duration)
-                self.rest_durations[self.sleep_duration] += 1
-                status_index = 12 + self.sleep_duration
-                assert(status_index >= 12 and status_index < self.n_status)
+                s = self.status & 7
+                self.rest_durations[s] += 1
+                status_index = 12 + (s - 1)
+                assert(status_index >= 12 and status_index < 14)
         self.all_status[status_index] += 1
         return status_index
 
