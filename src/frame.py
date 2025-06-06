@@ -3,10 +3,16 @@ import os
 import random
 import struct
 
+FRAME_SIZE = 442
+
 def decode_u16(buffer, n):
     return buffer[n] + 256 * buffer[n + 1]
 def decode_u4(buffer, n):
     return buffer[n] % 16, buffer[n] // 16
+def lsb(x):
+    return (x & -x).bit_length()
+
+all_status = [0 for _ in range(13)]
 
 class Duration:
     def __init__(self, buffer):
@@ -47,10 +53,30 @@ class Pokemon:
 
         self.current_hp = decode_u16(buffer, 18)
         self.status = buffer[20]
+        self.is_sleep: bool = (self.status & 7)
+        self.is_self = self.status >> 7
         self.species = buffer[21]
         self.type1, self.type2 = decode_u4(buffer, 22)
         self.level = buffer[23]
-        self.sleep = None # duration info written after construction
+        self.sleep_duration = None # duration info written after construction
+        # self.si = self.status_index()
+
+def status_index(self):
+    status_index = -1
+    if not self.status:
+        return status_index 
+    if not self.is_sleep:
+        status_index = lsb(self.status) - 4
+        assert(status_index >= 0 and status_index < 4)
+    else:
+        if not self.is_self:
+            status_index = 4 + self.sleep_duration
+            assert(status_index >= 4 and status_index < 11)
+        else:
+            status_index = 11 + self.sleep_duration
+            assert(status_index >= 11 and status_index < 13)
+    all_status[status_index] += 1
+    return status_index
 
     def to_tensor(self, t):
         c = 0
@@ -70,6 +96,9 @@ class Pokemon:
             assert(m < 165 and m > 0)
         c += n_moves
         # status
+        if self.status:
+            t[c + self.status_index()] = 1
+
         c += n_status
         # types
         t[c + self.type1] = 1.0
@@ -171,18 +200,32 @@ class Battle:
         self.p2 = Side(buffer[184 : 368])
         self.result = None
 
+def print_status_duration(side, duration):
+    for _ in range(6):
+        i = side.order[_] - 1
+        pokemon = side.pokemon[i]
+        print(_, "{:08b}".format(pokemon.status), duration.sleeps[_])
+
 
 class Frame:
     def __init__(self, buffer):
         self.battle = Battle(buffer[0 : 384])
         self.durations = Durations(buffer[384 : 392])
-        # here use durations info to update battle struct
+
+        for _ in range(6):
+            i = self.battle.p1.order[_] - 1
+            j = self.battle.p2.order[_] - 1
+            self.battle.p1.pokemon[i].sleep_duration = self.durations.p1.sleeps[_]
+            self.battle.p2.pokemon[j].sleep_duration = self.durations.p2.sleeps[_]
+        for _ in range(6):
+            self.battle.p1.pokemon[i].status_index()
+            self.battle.p2.pokemon[j].status_index()
+
         self.result = int(buffer[392])
         self.eval = struct.unpack('<f', buffer[393 : 397])[0]
         self.score = struct.unpack('<f', buffer[397 : 401])[0]
 
         self.iter = decode_u16(buffer, 401) + (256 ** 2) * decode_u16(buffer, 403)
-        print(buffer[401], buffer[402], buffer[403], buffer[404])
         row_col = int(buffer[405])
         self.m = (row_col // 9) + 1
         self.n = (row_col % 9) + 1
@@ -195,11 +238,13 @@ class Frame:
         self.p1_policy = [x / self.iter for x in self.p1_visits]
         self.p2_policy = [x / self.iter for x in self.p2_visits]  
 
-FILENAME = 'buffer'
-FRAME_SIZE = 442
-NUM_READS = 1
-
 def main():
+
+    if len(sys.argv) < 2:
+        print("Error: provide path to buffer.")
+        exit()
+        
+    FILENAME = sys.argv[1]
     filesize = os.path.getsize(FILENAME)
     max_frames = filesize // FRAME_SIZE
 
@@ -210,20 +255,18 @@ def main():
         return
 
     with open(FILENAME, 'rb') as f:
-        for _ in range(NUM_READS):
-            n = random.randint(0, max_frames - 1)
-            offset = FRAME_SIZE * n
-            f.seek(offset)
+        for _ in range(max_frames):
+            # n = random.randint(0, max_frames - 1)
+            # offset = FRAME_SIZE * n
+            f.seek(_ * FRAME_SIZE)
             slice_bytes = f.read(FRAME_SIZE)
 
             frame = Frame(slice_bytes)
-            print(frame.eval)
-            print(frame.score)
-            print(frame.iter)
-            print(frame.p1_visits)
-            print(frame.p2_visits)
-            print(frame.p1_policy)
-            print(frame.p2_policy)
+            # for _ in range(6):
+            #     print("{:08b}".format(frame.battle.p1.pokemon[_].status),
+            #         frame.durations.p1.sleeps[_])
+            # print('\n')
+    print(all_status)
 
 if __name__ == "__main__":
     main()
