@@ -16,7 +16,7 @@ all_status = [0 for _ in range(13)]
 
 class Duration:
     def __init__(self, buffer):
-        s = int.from_bytes(buffer[0 : 3])
+        s = int.from_bytes(buffer[0 : 3], byteorder="little")
         self.sleeps = []
         for _ in range(6):
             self.sleeps.append(s & 7)
@@ -61,22 +61,23 @@ class Pokemon:
         self.sleep_duration = None # duration info written after construction
         # self.si = self.status_index()
 
-def status_index(self):
-    status_index = -1
-    if not self.status:
-        return status_index 
-    if not self.is_sleep:
-        status_index = lsb(self.status) - 4
-        assert(status_index >= 0 and status_index < 4)
-    else:
-        if not self.is_self:
-            status_index = 4 + self.sleep_duration
-            assert(status_index >= 4 and status_index < 11)
+    def status_index(self):
+        status_index = -1
+        if not self.status:
+            return status_index 
+        if not self.is_sleep:
+            status_index = lsb(self.status) - 4
+            assert(status_index >= 0 and status_index < 4)
         else:
-            status_index = 11 + self.sleep_duration
-            assert(status_index >= 11 and status_index < 13)
-    all_status[status_index] += 1
-    return status_index
+            if not self.is_self:
+                status_index = 4 + (self.sleep_duration - 1)
+                # print("{:08b}".format(self.status), self.sleep_duration)
+                assert(status_index >= 4 and status_index < 11)
+            else:
+                status_index = 11 + self.sleep_duration
+                assert(status_index >= 11 and status_index < 13)
+        all_status[status_index] += 1
+        return status_index
 
     def to_tensor(self, t):
         c = 0
