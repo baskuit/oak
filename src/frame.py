@@ -36,7 +36,7 @@ class Pokemon:
 
     n_dim = 5 + n_moves + n_status + n_types
     all_status = [0 for _ in range(n_status)]
-    rest_durations = [0 for _ in range(4)]
+    rest_durations = [0 for _ in range(12)]
 
 
     def __init__(self, buffer):
