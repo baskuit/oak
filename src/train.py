@@ -8,8 +8,7 @@ import torch
 import frame
 import net
 
-FRAME_SIZE = 405
-TENSOR_SHAPE = (16, 100)  # (batch size, feature size)
+FRAME_SIZE = 442
 
 def worker(shared_buffers, buffer_path, global_buffer_size, lock, index_queue, ready_counter):
     while True:

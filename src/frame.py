@@ -8,11 +8,29 @@ def decode_u16(buffer, n):
 def decode_u4(buffer, n):
     return buffer[n] % 16, buffer[n] // 16
 
+class Duration:
+    def __init__(self, buffer):
+        s = int.from_bytes(buffer[0 : 3])
+        self.sleeps = []
+        for _ in range(6):
+            self.sleeps.append(s & 7)
+            s >>= 3
+        self.confusion = (buffer[2] >> 2) & 7
+        self.disable = (buffer[2] >> 5) + 8 * (buffer[3] & 1)
+        self.attacking = (buffer[3] >> 1) & 7
+        self.binding = (buffer[3] >> 4) & 7
+
+class Durations:
+    def __init__(self, buffer):
+        self.p1 = Duration(buffer[:4])
+        self.p2 = Duration(buffer[4:8])
+
 class Pokemon:
-    n_moves = 166 # no None, Struggle
-    n_species = 151
-    n_status = 16
+    n_moves = 164 # no None, Struggle
+    n_status = 13 # 4 + 7 + 2
     n_types = 15
+
+    n_dim = 5 + n_moves + n_status + n_types
 
     def __init__(self, buffer):
         assert(len(buffer) == 24)
@@ -49,6 +67,7 @@ class Pokemon:
             pp = self.moves[i][1]
             if (m != 0):
                 t[c + (m - 1)] = 1
+            assert(m < 165 and m > 0)
         c += n_moves
         # status
         c += n_status
@@ -59,6 +78,9 @@ class Pokemon:
         return t
 
 class Volatiles:
+    n_confusion = 5
+    n_dim = 9 + n_confusion # ls/reflect/trapping/recharge/leech/toxic/toxic_counter/sub/subhp
+
     def __init__(self, buffer: bytes):
         assert len(buffer) == 8
         bits = int.from_bytes(buffer, byteorder="little")
@@ -88,11 +110,23 @@ class Volatiles:
         self.disable_duration = (bits >> 52) & 0xF
         self.disable_move = (bits >> 56) & 0b111
         self.toxic_counter = (bits >> 59) & 0b11111
+        self.confusion_duration = None
 
-    def to_tensor(self):
-        return None
+    def to_tensor(self, t):
+        t[0] = self.binding
+        t[1] = self.substitute
+        t[2] = self.recharging
+        t[3] = self.leech_seed
+        t[4] = self.toxic
+        t[5] = self.light_screen
+        t[6] = self.reflect
+        t[7] = self.substitute_hp
+        t[8] = self.toxic_counter
+        t[8 + self.confusion_duration] = 1
 
 class Active:
+    n_dim = 5 + Volatiles.n_dim
+
     def __init__(self, buffer):
         self.hp = decode_u16(buffer, 0)
         self.atk = decode_u16(buffer, 2)
@@ -111,19 +145,25 @@ class Active:
                 [buffer[24 + 2 * i], buffer[25 + 2 * i]]
             )
 
-    def to_tensor(self):
-        return None
+    def to_tensor(self, t):
+        t[0] = self.hp
+        t[1] = self.atk
+        t[2] = self.def_
+        t[3] = self.spe
+        t[4] = self.spc
+        self.volatiles.to_tensor(t[5:])
 
 class Side:
     def __init__(self, buffer):
-        self.active = Active(buffer[144 : 176])
         self.pokemon : list[Pokemon] = []
         for i in range(6):
             self.pokemon.append(Pokemon(buffer[i * 24 : (i + 1) * 24]))
-        self.active_slot = buffer[176]
-
-    def to_tensor(self):
-        return None
+        self.active = Active(buffer[144 : 176])
+        self.order = []
+        for i in range(6):
+            self.order.append(buffer[176 + i])
+        self.last_selected_move = buffer[182]
+        self.last_used_move = buffer[183]
 
 class Battle:
     def __init__(self, buffer):
@@ -135,21 +175,32 @@ class Battle:
 class Frame:
     def __init__(self, buffer):
         self.battle = Battle(buffer[0 : 384])
-        self.score = struct.unpack('<f', buffer[393 : 397])
-        self.eval = struct.unpack('<f', buffer[397 : 401])
-        self.iter = int.from_bytes(buffer[401 : 405])
+        self.durations = Durations(buffer[384 : 392])
+        # here use durations info to update battle struct
+        self.result = int(buffer[392])
+        self.eval = struct.unpack('<f', buffer[393 : 397])[0]
+        self.score = struct.unpack('<f', buffer[397 : 401])[0]
 
-    def to_tensor(self):
-        return None       
+        self.iter = decode_u16(buffer, 401) + (256 ** 2) * decode_u16(buffer, 403)
+        print(buffer[401], buffer[402], buffer[403], buffer[404])
+        row_col = int(buffer[405])
+        self.m = (row_col // 9) + 1
+        self.n = (row_col % 9) + 1
+        self.p1_visits = []
+        for _ in range(self.m):
+            self.p1_visits.append(decode_u16(buffer, 406 + 2*_))
+        self.p2_visits = []
+        for _ in range(self.n):
+            self.p2_visits.append(decode_u16(buffer, 424 + 2*_))
+        self.p1_policy = [x / self.iter for x in self.p1_visits]
+        self.p2_policy = [x / self.iter for x in self.p2_visits]  
 
 FILENAME = 'buffer'
-FRAME_SIZE = 405
+FRAME_SIZE = 442
 NUM_READS = 1
 
 def main():
-    # Get the file size to determine how many frames fit
     filesize = os.path.getsize(FILENAME)
-    # assert((filesize % FRAME_SIZE) != 0, "File size is not a multiple of the frame size, likely an error.")
     max_frames = filesize // FRAME_SIZE
 
     print(f"Found {max_frames} frames.")
@@ -160,15 +211,19 @@ def main():
 
     with open(FILENAME, 'rb') as f:
         for _ in range(NUM_READS):
-            # Pick a random record index
             n = random.randint(0, max_frames - 1)
             offset = FRAME_SIZE * n
-
-            # Seek to the offset and read the 405-byte slice
             f.seek(offset)
             slice_bytes = f.read(FRAME_SIZE)
 
             frame = Frame(slice_bytes)
+            print(frame.eval)
+            print(frame.score)
+            print(frame.iter)
+            print(frame.p1_visits)
+            print(frame.p2_visits)
+            print(frame.p1_policy)
+            print(frame.p2_policy)
 
 if __name__ == "__main__":
     main()
