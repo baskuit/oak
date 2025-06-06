@@ -12,8 +12,6 @@ def decode_u4(buffer, n):
 def lsb(x):
     return (x & -x).bit_length()
 
-all_status = [0 for _ in range(13)]
-
 class Duration:
     def __init__(self, buffer):
         s = int.from_bytes(buffer[0 : 3], byteorder="little")
@@ -33,10 +31,13 @@ class Durations:
 
 class Pokemon:
     n_moves = 164 # no None, Struggle
-    n_status = 13 # 4 + 7 + 2
+    n_status = 14 # 4 + 8 + 2
     n_types = 15
 
     n_dim = 5 + n_moves + n_status + n_types
+    all_status = [0 for _ in range(n_status)]
+    rest_durations = [0 for _ in range(4)]
+
 
     def __init__(self, buffer):
         assert(len(buffer) == 24)
@@ -70,14 +71,15 @@ class Pokemon:
             assert(status_index >= 0 and status_index < 4)
         else:
             if not self.is_self:
-                status_index = 4 + (self.sleep_duration - 1)
+                status_index = 4 + (self.sleep_duration)
                 # print("{:08b}".format(self.status), self.sleep_duration)
-                assert(status_index >= 4 and status_index < 11)
+                assert(status_index >= 4 and status_index < 12)
             else:
-                print(self.sleep_duration)
-                status_index = 11 + self.sleep_duration
-                assert(status_index >= 11 and status_index < 13)
-        all_status[status_index] += 1
+                # print(self.sleep_duration)
+                self.rest_durations[self.sleep_duration] += 1
+                status_index = 12 + self.sleep_duration
+                assert(status_index >= 12 and status_index < 13)
+        self.all_status[status_index] += 1
         return status_index
 
     def to_tensor(self, t):
@@ -220,8 +222,8 @@ class Frame:
             self.battle.p1.pokemon[i].sleep_duration = self.durations.p1.sleeps[_]
             self.battle.p2.pokemon[j].sleep_duration = self.durations.p2.sleeps[_]
         for _ in range(6):
-            self.battle.p1.pokemon[i].status_index()
-            self.battle.p2.pokemon[j].status_index()
+            self.battle.p1.pokemon[_].status_index()
+            self.battle.p2.pokemon[_].status_index()
 
         self.result = int(buffer[392])
         self.eval = struct.unpack('<f', buffer[393 : 397])[0]
@@ -266,7 +268,7 @@ def main():
 
             frame = Frame(slice_bytes)
 
-    print(all_status)
-
+    print(Pokemon.all_status)
+    print(Pokemon.rest_durations)
 if __name__ == "__main__":
     main()
