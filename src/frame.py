@@ -31,7 +31,7 @@ class Durations:
 
 class Pokemon:
     n_moves = 164 # no None, Struggle
-    n_status = 14 # 4 + 8 + 2
+    n_status = 15 # 4 + 8 + 3
     n_types = 15
 
     n_dim = 5 + n_moves + n_status + n_types
