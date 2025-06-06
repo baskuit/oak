@@ -31,13 +31,9 @@ class Durations:
 
 class Pokemon:
     n_moves = 164 # no None, Struggle
-    n_status = 4 + 8 + 2 # 4 + 8 + 3
+    n_status = 4 + 8 + 2 # non sleep, slept, resting
     n_types = 15
-
     n_dim = 5 + n_moves + n_status + n_types
-    all_status = [0 for _ in range(n_status)]
-    rest_durations = [0 for _ in range(12)]
-
 
     def __init__(self, buffer):
         assert(len(buffer) == 24)
@@ -48,9 +44,10 @@ class Pokemon:
         self.spc = decode_u16(buffer, 8)
         self.moves = []
         for i in range(4):
-            self.moves.append(
-                [buffer[10 + 2 * i], buffer[11 + 2 * i]]
-            )
+            m = buffer[10 + 2 * i]
+            pp = buffer[11 + 2 * i]
+            assert(m >= 1 and m < 165)
+            self.moves.append([m, pp])
 
         self.current_hp = decode_u16(buffer, 18)
         self.status = buffer[20]
@@ -60,7 +57,6 @@ class Pokemon:
         self.type1, self.type2 = decode_u4(buffer, 22)
         self.level = buffer[23]
         self.sleep_duration = None # duration info written after construction
-        # self.si = self.status_index()
 
     def status_index(self, frame_number):
         status_index = -1
@@ -72,17 +68,11 @@ class Pokemon:
         else:
             if not self.is_self:
                 status_index = 4 + (self.sleep_duration)
-                # print("{:08b}".format(self.status), self.sleep_duration)
                 assert(status_index >= 4 and status_index < 12)
             else:
-                # if (self.sleep_duration > 0):
-                #     print("weird shit at :", frame_number)
-                # print(self.sleep_duration)
                 s = self.status & 7
-                self.rest_durations[s] += 1
-                status_index = 12 + (s - 1)
+                status_index = 12 + (s - 1) #kinda out of order but doesnt matter   
                 assert(status_index >= 12 and status_index < 14)
-        self.all_status[status_index] += 1
         return status_index
 
     def to_tensor(self, t):
@@ -100,12 +90,10 @@ class Pokemon:
             pp = self.moves[i][1]
             if (m != 0):
                 t[c + (m - 1)] = 1
-            assert(m < 165 and m > 0)
         c += n_moves
         # status
         if self.status:
             t[c + self.status_index()] = 1
-
         c += n_status
         # types
         t[c + self.type1] = 1.0
@@ -207,13 +195,6 @@ class Battle:
         self.p2 = Side(buffer[184 : 368])
         self.result = None
 
-def print_status_duration(side, duration):
-    for _ in range(6):
-        i = side.order[_] - 1
-        pokemon = side.pokemon[i]
-        print(_, "{:08b}".format(pokemon.status), duration.sleeps[_])
-
-
 class Frame:
     def __init__(self, buffer, frame_index):
         self.battle = Battle(buffer[0 : 384])
@@ -261,7 +242,7 @@ def main():
     print(f"Reading {max_frames} frames.")
 
     if max_frames == 0:
-        print("File too small for even one 405-byte record.")
+        print("File too small for even one record.")
         return
 
     with open(FILENAME, 'rb') as f:
@@ -271,7 +252,5 @@ def main():
 
             frame = Frame(slice_bytes, _)
 
-    print(Pokemon.all_status)
-    print(Pokemon.rest_durations)
 if __name__ == "__main__":
     main()
