@@ -62,7 +62,7 @@ class Pokemon:
         self.sleep_duration = None # duration info written after construction
         # self.si = self.status_index()
 
-    def status_index(self):
+    def status_index(self, frame_number):
         status_index = -1
         if not self.status:
             return status_index 
@@ -75,6 +75,8 @@ class Pokemon:
                 # print("{:08b}".format(self.status), self.sleep_duration)
                 assert(status_index >= 4 and status_index < 12)
             else:
+                if (self.sleep_duration > 0):
+                    print("weird shit at :", frame_number)
                 # print(self.sleep_duration)
                 self.rest_durations[self.sleep_duration] += 1
                 status_index = 12 + self.sleep_duration
@@ -212,7 +214,7 @@ def print_status_duration(side, duration):
 
 
 class Frame:
-    def __init__(self, buffer):
+    def __init__(self, buffer, frame_index):
         self.battle = Battle(buffer[0 : 384])
         self.durations = Durations(buffer[384 : 392])
 
@@ -222,8 +224,8 @@ class Frame:
             self.battle.p1.pokemon[i].sleep_duration = self.durations.p1.sleeps[_]
             self.battle.p2.pokemon[j].sleep_duration = self.durations.p2.sleeps[_]
         for _ in range(6):
-            self.battle.p1.pokemon[_].status_index()
-            self.battle.p2.pokemon[_].status_index()
+            self.battle.p1.pokemon[_].status_index(frame_index)
+            self.battle.p2.pokemon[_].status_index(frame_index)
 
         self.result = int(buffer[392])
         self.eval = struct.unpack('<f', buffer[393 : 397])[0]
@@ -266,7 +268,7 @@ def main():
             f.seek(_ * FRAME_SIZE)
             slice_bytes = f.read(FRAME_SIZE)
 
-            frame = Frame(slice_bytes)
+            frame = Frame(slice_bytes, _)
 
     print(Pokemon.all_status)
     print(Pokemon.rest_durations)
