@@ -249,7 +249,10 @@ def main():
     filesize = os.path.getsize(FILENAME)
     max_frames = filesize // FRAME_SIZE
 
-    print(f"Found {max_frames} frames.")
+    if len(sys.argv >= 3):
+        max_frames = min(max_frames, int(argv[2]))
+
+    print(f"Reading {max_frames} frames.")
 
     if max_frames == 0:
         print("File too small for even one 405-byte record.")
