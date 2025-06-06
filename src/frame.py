@@ -74,6 +74,7 @@ class Pokemon:
                 # print("{:08b}".format(self.status), self.sleep_duration)
                 assert(status_index >= 4 and status_index < 11)
             else:
+                print(self.sleep_duration)
                 status_index = 11 + self.sleep_duration
                 assert(status_index >= 11 and status_index < 13)
         all_status[status_index] += 1
@@ -260,16 +261,11 @@ def main():
 
     with open(FILENAME, 'rb') as f:
         for _ in range(max_frames):
-            # n = random.randint(0, max_frames - 1)
-            # offset = FRAME_SIZE * n
             f.seek(_ * FRAME_SIZE)
             slice_bytes = f.read(FRAME_SIZE)
 
             frame = Frame(slice_bytes)
-            # for _ in range(6):
-            #     print("{:08b}".format(frame.battle.p1.pokemon[_].status),
-            #         frame.durations.p1.sleeps[_])
-            # print('\n')
+
     print(all_status)
 
 if __name__ == "__main__":
