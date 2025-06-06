@@ -78,7 +78,7 @@ class Pokemon:
                 # print(self.sleep_duration)
                 self.rest_durations[self.sleep_duration] += 1
                 status_index = 12 + self.sleep_duration
-                assert(status_index >= 12 and status_index < 13)
+                assert(status_index >= 12 and status_index < self.n_status)
         self.all_status[status_index] += 1
         return status_index
 
