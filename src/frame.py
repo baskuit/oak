@@ -222,12 +222,13 @@ class Frame:
         self.p2_policy = [x / self.iter for x in self.p2_visits]
 
     def write_to_buffers(self, buffers, index):
-        p, a, s, e = buffers.to_tensor(index)
+        p, a, s, e, acc = buffers.to_tensor(index)
 
         for i, side in enumerate([self.battle.p1, self.battle.p2]):
             
             active = side.pokemon[side.order[0] - 1]
             active.to_tensor(a[i, 0])
+            # acc[0] = active.hp
 
             for k in range(1, 6):
                 pokemon = side.pokemon[side.order[k] - 1]

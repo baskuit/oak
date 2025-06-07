@@ -36,9 +36,9 @@ class SharedBuffers:
     def __init__(self, batch_size):
         self.pokemon_buffer = mp.Array('f', batch_size * 2 * 5 * frame.Frame.pokemon_dim, lock=False)
         self.active_buffer = mp.Array('f', batch_size * 2 * 1 * frame.Frame.active_dim, lock=False)
-        self.score_buffer = mp.Array('f', batch_size, lock=False)
-        self.eval_buffer = mp.Array('f', batch_size, lock=False)
-
+        self.score_buffer = mp.Array('f', batch_size * 1, lock=False)
+        self.eval_buffer = mp.Array('f', batch_size * 1, lock=False)
+        self.acc_buffer = mp.Array('f', batch_size * 512, lock = False)
 
     def to_tensor(self, i = None):
         if i is None:
@@ -46,11 +46,23 @@ class SharedBuffers:
                 torch.frombuffer(self.pokemon_buffer, dtype=torch.float).view(-1, 2, 5, frame.Frame.pokemon_dim,),
                 torch.frombuffer(self.active_buffer, dtype=torch.float).view(-1, 2, 1, frame.Frame.active_dim,),
                 torch.frombuffer(self.score_buffer, dtype=torch.float).view(-1, 1),
-                torch.frombuffer(self.eval_buffer, dtype=torch.float).view(-1, 1)]
-        p, a, s, e = self.to_tensor()
-        return p[i], a[i], s[i], e[i]        
+                torch.frombuffer(self.eval_buffer, dtype=torch.float).view(-1, 1),
+                torch.frombuffer(self.acc_buffer, dtype=torch.float).view(-1, 2, 1, 256)]
+        p, a, s, e, acc = self.to_tensor()
+        return p[i], a[i], s[i], e[i], acc[i]     
+
+ACTIVE_OUT = 56 - 1
+POKEMON_OUT = 40 - 1
+assert((ACTIVE_OUT + 1) + 5 * (POKEMON_OUT + 1) == 256)
 
 def main():
+
+    pokemon_net = net.TwoLayerMLP(frame.Frame.pokemon_dim, 128, POKEMON_OUT)
+    pokemon_net.load("weights/p.pt")
+    active_net = net.TwoLayerMLP(frame.Frame.active_dim, 128, ACTIVE_OUT)
+    active_net.load("weights/a.pt")
+    main_net = net.TwoLayerMLP(512, 32, 1)
+    main_net.load("weights/nn.pt")
 
     buffer_path = sys.argv[1]
     batch_size = int(sys.argv[2])
@@ -59,13 +71,11 @@ def main():
     print(f"buffer_path={buffer_path}, batch_size={batch_size}, n_procs={n_procs}")
 
     global_buffer_size = os.path.getsize(buffer_path) // frame.FRAME_SIZE
-
     assert((os.path.getsize(buffer_path) % frame.FRAME_SIZE) == 0)
-
     shared_buffers = SharedBuffers(batch_size)
+
     lock = mp.Lock()
     ready_counter = mp.Value('i', 0)
-
     manager = mp.Manager()
     index_queue = manager.Queue()
     for i in range(batch_size):
@@ -88,12 +98,25 @@ def main():
                         ready_counter.value = 0
                         break
 
-            [p, a, s, e] = shared_buffers.to_tensor()
+            p, a, s, e, acc = shared_buffers.to_tensor()
+
+            pokemon_out = pokemon_net.forward(p)
+            active_out = active_net.forward(a)
+
+            for player in range(2):
+                a_ = active_out[:, player, 0]
+                acc[:, player, 0, 1 : ACTIVE_OUT + 1] = a_
+                for _ in range(5):
+                    start_index = ACTIVE_OUT + 1 + _ * (POKEMON_OUT + 1)
+                    acc[:, player, 0, (start_index + 1) : (start_index + POKEMON_OUT + 1)] = pokemon_out[:, player, _]
+
+            main_net_input = torch.concat([acc[:, 0, 0, :], acc[:, 1, 0, :]], dim=1)
+            value_output = main_net.forward(main_net_input)
 
             now = time.perf_counter()
             elapsed = now - start
             rate = total_steps / elapsed
-            print(f"rate: {rate}")
+            # print(f"rate: {rate}")
 
             for i in range(batch_size):
                 index_queue.put(i)
