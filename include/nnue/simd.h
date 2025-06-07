@@ -18,8 +18,6 @@
 
 #pragma once
 
-#include "preprocessor.h"
-
 #include <immintrin.h>
 
 namespace Stockfish::Simd {

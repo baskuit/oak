@@ -20,16 +20,12 @@
 
 #pragma once
 
-#include "preprocessor.h"
-
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <type_traits>
-
-// #include "../misc.h"
 
 // True if and only if the binary is compiled on a little-endian machine
 static inline const std::uint16_t Le             = 1;
@@ -261,10 +257,5 @@ inline void write_leb_128(std::ostream& stream, const IntType* values, std::size
 
     flush();
 }
-
-enum IncUpdateDirection {
-    FORWARD,
-    BACKWARDS
-};
 
 }  // namespace Stockfish::Eval::NNUE

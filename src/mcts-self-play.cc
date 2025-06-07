@@ -8,7 +8,6 @@
 #include <pi/frame.h>
 #include <pi/mcts.h>
 
-#include <util/print.h>
 #include <util/random.h>
 
 #include <atomic>
