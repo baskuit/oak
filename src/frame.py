@@ -1,6 +1,5 @@
 import sys
 import os
-import random
 import struct
 
 FRAME_SIZE = 442
@@ -26,8 +25,17 @@ class Duration:
 
 class Durations:
     def __init__(self, buffer):
-        self.p1 = Duration(buffer[:4])
+        assert(len(buffer) == 8)
+        self.p1 = Duration(buffer[0:4])
         self.p2 = Duration(buffer[4:8])
+
+class Stats():
+    def __init__(self, buffer):
+        self.hp = decode_u16(buffer, 0)
+        self.atk = decode_u16(buffer, 2)
+        self.def_ = decode_u16(buffer, 4)
+        self.spc = decode_u16(buffer, 6)
+        self.spe = decode_u16(buffer, 8)
 
 class Pokemon:
     n_moves = 164 # no None, Struggle
@@ -37,11 +45,7 @@ class Pokemon:
 
     def __init__(self, buffer):
         assert(len(buffer) == 24)
-        self.hp = decode_u16(buffer, 0)
-        self.atk = decode_u16(buffer, 2)
-        self.def_ = decode_u16(buffer, 4)
-        self.spe = decode_u16(buffer, 6)
-        self.spc = decode_u16(buffer, 8)
+        self.stats = Stats(buffer)
         self.moves = []
         for i in range(4):
             m = buffer[10 + 2 * i]
@@ -51,14 +55,14 @@ class Pokemon:
 
         self.current_hp = decode_u16(buffer, 18)
         self.status = buffer[20]
-        self.is_sleep: bool = (self.status & 7)
+        self.is_sleep = (self.status & 7)
         self.is_self = self.status >> 7
         self.species = buffer[21]
         self.type1, self.type2 = decode_u4(buffer, 22)
         self.level = buffer[23]
         self.sleep_duration = None # duration info written after construction
 
-    def status_index(self, frame_number):
+    def status_index(self):
         status_index = -1
         if not self.status:
             return status_index 
@@ -76,30 +80,22 @@ class Pokemon:
         return status_index
 
     def to_tensor(self, t):
-        c = 0
-        # stats
-        t[0] = self.hp
-        t[1] = self.atk
-        t[2] = self.def_
-        t[3] = self.spc
-        t[4] = self.spe
-        c += 5
-        # moves
+        t[0] = self.stats.hp
+        t[1] = self.stats.atk
+        t[2] = self.stats.def_
+        t[3] = self.stats.spc
+        t[4] = self.stats.spe
+        c = 5
         for i in range(4):
-            m = self.moves[i][0]
-            pp = self.moves[i][1]
-            if (m != 0):
-                t[c + (m - 1)] = 1
-        c += n_moves
-        # status
+            m, pp = self.moves[i]
+            if m and pp:
+                t[c + (m - 1)] = 1.0
+        c += self.n_moves
         if self.status:
-            t[c + self.status_index()] = 1
-        c += n_status
-        # types
+            t[c + self.status_index()] = 1.0
+        c += self.n_status
         t[c + self.type1] = 1.0
         t[c + self.type2] = 1.0
-        c += n_types
-        return t
 
 class Volatiles:
     n_confusion = 5
@@ -196,7 +192,10 @@ class Battle:
         self.result = None
 
 class Frame:
-    def __init__(self, buffer, frame_index):
+    active_dim = Pokemon.n_dim + Volatiles.n_dim
+    pokemon_dim = Pokemon.n_dim
+
+    def __init__(self, buffer):
         self.battle = Battle(buffer[0 : 384])
         self.durations = Durations(buffer[384 : 392])
 
@@ -205,14 +204,10 @@ class Frame:
             j = self.battle.p2.order[_] - 1
             self.battle.p1.pokemon[i].sleep_duration = self.durations.p1.sleeps[_]
             self.battle.p2.pokemon[j].sleep_duration = self.durations.p2.sleeps[_]
-        for _ in range(6):
-            self.battle.p1.pokemon[_].status_index(frame_index)
-            self.battle.p2.pokemon[_].status_index(frame_index)
 
         self.result = int(buffer[392])
         self.eval = struct.unpack('<f', buffer[393 : 397])[0]
         self.score = struct.unpack('<f', buffer[397 : 401])[0]
-
         self.iter = decode_u16(buffer, 401) + (256 ** 2) * decode_u16(buffer, 403)
         row_col = int(buffer[405])
         self.m = (row_col // 9) + 1
@@ -224,7 +219,22 @@ class Frame:
         for _ in range(self.n):
             self.p2_visits.append(decode_u16(buffer, 424 + 2*_))
         self.p1_policy = [x / self.iter for x in self.p1_visits]
-        self.p2_policy = [x / self.iter for x in self.p2_visits]  
+        self.p2_policy = [x / self.iter for x in self.p2_visits]
+
+    def write_to_buffers(self, buffers, index):
+        p, a, s, e = buffers.to_tensor(index)
+
+        for i, side in enumerate([self.battle.p1, self.battle.p2]):
+            
+            active = side.pokemon[side.order[0] - 1]
+            active.to_tensor(a[i, 0])
+
+            for k in range(1, 6):
+                pokemon = side.pokemon[side.order[k] - 1]
+                pokemon.to_tensor(p[i, k - 1])
+        
+        s[0] = self.score
+        e[0] = self.eval
 
 def main():
 
