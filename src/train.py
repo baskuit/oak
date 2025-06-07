@@ -16,26 +16,19 @@ import frame
 import net
 
 def get_validation_buffers(validation_buffers, buffer_path, global_buffer_size, max_samples):
-    while True:
-        try:
-            index = index_queue.get(timeout=1)
-        except:
-            continue
-        
-        index = 0
-        i = 0
-        while index < global_buffer_size and i < max_samples:
-            index += random.randint(50)
-            i += 1
+    index = random.randint(0, 50)
+    i = 0
+    while index < global_buffer_size and i < max_samples:
 
-            
         with open(buffer_path, "rb") as file:
             file.seek(index * frame.FRAME_SIZE)
-            data = f.read(frame.FRAME_SIZE)
+            data = file.read(frame.FRAME_SIZE)
         assert(len(data) == frame.FRAME_SIZE)
 
         f = frame.Frame(data)
-        f.write_to_buffers(shared_buffers, i)
+        f.write_to_buffers(validation_buffers, i)
+        index += random.randint(0, 50)
+        i += 1
 
 def worker(shared_buffers, buffer_path, global_buffer_size, lock, index_queue, ready_counter):
     while True:
@@ -45,9 +38,9 @@ def worker(shared_buffers, buffer_path, global_buffer_size, lock, index_queue, r
             continue
         
         # with lock:
-        with open(buffer_path, "rb") as f:
-            f.seek(random.randint(0, global_buffer_size - 1) * frame.FRAME_SIZE)
-            data = f.read(frame.FRAME_SIZE)
+        with open(buffer_path, "rb") as file:
+            file.seek(random.randint(0, global_buffer_size - 1) * frame.FRAME_SIZE)
+            data = file.read(frame.FRAME_SIZE)
         assert(len(data) == frame.FRAME_SIZE)
 
         f = frame.Frame(data)
@@ -86,7 +79,7 @@ def main():
 
     buffer_path = sys.argv[1]
     batch_size = int(sys.argv[2])
-    validation_size = int(sys.arg[3])
+    validation_size = int(sys.argv[3])
     n_procs = int(sys.argv[4])
 
     print(f"buffer_path={buffer_path}, batch_size={batch_size}, validation_size={validation_size}, n_procs={n_procs}")
@@ -95,7 +88,7 @@ def main():
     assert((os.path.getsize(buffer_path) % frame.FRAME_SIZE) == 0)
 
     validation_buffers = SharedBuffers(validation_size)
-    get_validation_buffers(validation_buffers, buffer_path, global_buffer_size, validation_size):
+    get_validation_buffers(validation_buffers, buffer_path, global_buffer_size, validation_size)
 
     shared_buffers = SharedBuffers(batch_size)
     lock = mp.Lock()
@@ -110,6 +103,15 @@ def main():
         p = mp.Process(target=worker, args=(shared_buffers, buffer_path, global_buffer_size, lock, index_queue, ready_counter))
         p.start()
         processes.append(p)
+
+    criterion = torch.nn.MSELoss()
+    # optimizer = torch.optim.SGD(main_net.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(
+        list(pokemon_net.parameters()) +
+        list(active_net.parameters()) +
+        list(main_net.parameters()),
+        lr=1e-2
+    )
 
     start = time.perf_counter()
     total_steps = 0
@@ -137,7 +139,13 @@ def main():
             main_net_input = torch.concat([acc[:, 0, 0, :], acc[:, 1, 0, :]], dim=1)
             value_output = main_net.forward(main_net_input)
 
+            loss = criterion(value_output, s)
+            # print(value_output.shape, s.shape)
+            print(loss)
 
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
 
             now = time.perf_counter()
             elapsed = now - start
