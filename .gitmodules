@@ -1,6 +1,3 @@
-[submodule "extern/pinyon"]
-	path = extern/pinyon
-	url = https://github.com/baskuit/pinyon
 [submodule "extern/lrslib"]
 	path = extern/lrslib
 	url = https://github.com/baskuit/lrslib
