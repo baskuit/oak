@@ -1,15 +1,3 @@
-# About
-
-This repo is firstly a combination of computer search with `libpkmn`.
-
-# Scope
-
-Currently, the target is a Pokemon-Showdown bot for the `gen1randombattle` format - probably the simplest format that is actively played.
-
-The approach is to combine sound perfect info search with determinization of the opponents private information. It is essentially IS-MCTS.
-
-The code is detailed in `include/readme.md`.
-
 # Building
 
 Must have cmake and zig installed. The bash below clones the repo, builds the lipkmn libraries
@@ -36,22 +24,3 @@ and run with
 ```
 ./extern/engine/src/bin/pkmn-debug
 ```
-
-# Status
-
-This repo is far from completion. The following is completed
-
-* Write a usuable C++ API
-
-* Clone the gen1randombattle team gen logic
-
-* Implement perfect-info MCTS for accurate 1v1 estimation
-
-* Create adequately strong HCE using 1v1 values
-
-Remaining items:
-
-* Train NNUE using HCE/Monte-Carlo data
-
-
-TODO
