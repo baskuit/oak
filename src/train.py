@@ -1,7 +1,7 @@
 import sys
 
-if (len(sys.argv) < 4):
-    print("Input: buffer_path, batch_size, n_procs")
+if (len(sys.argv) < 5):
+    print("Input: buffer_path, batch_size, validation_size, n_procs")
     exit()
 
 import os
@@ -10,8 +10,32 @@ import multiprocessing as mp
 import time
 
 import torch
+import torch.optim as optim
+
 import frame
 import net
+
+def get_validation_buffers(validation_buffers, buffer_path, global_buffer_size, max_samples):
+    while True:
+        try:
+            index = index_queue.get(timeout=1)
+        except:
+            continue
+        
+        index = 0
+        i = 0
+        while index < global_buffer_size and i < max_samples:
+            index += random.randint(50)
+            i += 1
+
+            
+        with open(buffer_path, "rb") as file:
+            file.seek(index * frame.FRAME_SIZE)
+            data = f.read(frame.FRAME_SIZE)
+        assert(len(data) == frame.FRAME_SIZE)
+
+        f = frame.Frame(data)
+        f.write_to_buffers(shared_buffers, i)
 
 def worker(shared_buffers, buffer_path, global_buffer_size, lock, index_queue, ready_counter):
     while True:
@@ -51,29 +75,29 @@ class SharedBuffers:
         p, a, s, e, acc = self.to_tensor()
         return p[i], a[i], s[i], e[i], acc[i]     
 
-ACTIVE_OUT = 56 - 1
-POKEMON_OUT = 40 - 1
-assert((ACTIVE_OUT + 1) + 5 * (POKEMON_OUT + 1) == 256)
-
 def main():
 
-    pokemon_net = net.TwoLayerMLP(frame.Frame.pokemon_dim, 128, POKEMON_OUT)
+    pokemon_net = net.TwoLayerMLP(frame.Frame.pokemon_dim, 128, frame.POKEMON_OUT - 1)
     pokemon_net.load("weights/p.pt")
-    active_net = net.TwoLayerMLP(frame.Frame.active_dim, 128, ACTIVE_OUT)
+    active_net = net.TwoLayerMLP(frame.Frame.active_dim, 128, frame.ACTIVE_OUT - 1)
     active_net.load("weights/a.pt")
     main_net = net.TwoLayerMLP(512, 32, 1)
     main_net.load("weights/nn.pt")
 
     buffer_path = sys.argv[1]
     batch_size = int(sys.argv[2])
-    n_procs = int(sys.argv[3])
+    validation_size = int(sys.arg[3])
+    n_procs = int(sys.argv[4])
 
-    print(f"buffer_path={buffer_path}, batch_size={batch_size}, n_procs={n_procs}")
+    print(f"buffer_path={buffer_path}, batch_size={batch_size}, validation_size={validation_size}, n_procs={n_procs}")
 
     global_buffer_size = os.path.getsize(buffer_path) // frame.FRAME_SIZE
     assert((os.path.getsize(buffer_path) % frame.FRAME_SIZE) == 0)
-    shared_buffers = SharedBuffers(batch_size)
 
+    validation_buffers = SharedBuffers(validation_size)
+    get_validation_buffers(validation_buffers, buffer_path, global_buffer_size, validation_size):
+
+    shared_buffers = SharedBuffers(batch_size)
     lock = mp.Lock()
     ready_counter = mp.Value('i', 0)
     manager = mp.Manager()
@@ -105,18 +129,20 @@ def main():
 
             for player in range(2):
                 a_ = active_out[:, player, 0]
-                acc[:, player, 0, 1 : ACTIVE_OUT + 1] = a_
+                acc[:, player, 0, 1 : frame.ACTIVE_OUT] = a_
                 for _ in range(5):
-                    start_index = ACTIVE_OUT + 1 + _ * (POKEMON_OUT + 1)
-                    acc[:, player, 0, (start_index + 1) : (start_index + POKEMON_OUT + 1)] = pokemon_out[:, player, _]
+                    start_index = frame.ACTIVE_OUT + _ * frame.POKEMON_OUT
+                    acc[:, player, 0, (start_index + 1) : start_index + frame.POKEMON_OUT] = pokemon_out[:, player, _]
 
             main_net_input = torch.concat([acc[:, 0, 0, :], acc[:, 1, 0, :]], dim=1)
             value_output = main_net.forward(main_net_input)
 
+
+
             now = time.perf_counter()
             elapsed = now - start
             rate = total_steps / elapsed
-            # print(f"rate: {rate}")
+            print(f"rate: {rate}")
 
             for i in range(batch_size):
                 index_queue.put(i)

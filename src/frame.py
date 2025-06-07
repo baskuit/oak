@@ -3,6 +3,9 @@ import os
 import struct
 
 FRAME_SIZE = 442
+ACTIVE_OUT = 56
+POKEMON_OUT = 40 
+assert(ACTIVE_OUT + 5 * POKEMON_OUT == 256)
 
 def decode_u16(buffer, n):
     return buffer[n] + 256 * buffer[n + 1]
@@ -36,6 +39,13 @@ class Stats():
         self.def_ = decode_u16(buffer, 4)
         self.spc = decode_u16(buffer, 6)
         self.spe = decode_u16(buffer, 8)
+
+    def to_tensor(self, t):
+        t[0] = self.hp
+        t[1] = self.atk
+        t[2] = self.def_
+        t[3] = self.spc
+        t[4] = self.spe
 
 class Pokemon:
     n_moves = 164 # no None, Struggle
@@ -79,12 +89,10 @@ class Pokemon:
                 assert(status_index >= 12 and status_index < 14)
         return status_index
 
-    def to_tensor(self, t):
-        t[0] = self.stats.hp
-        t[1] = self.stats.atk
-        t[2] = self.stats.def_
-        t[3] = self.stats.spc
-        t[4] = self.stats.spe
+    def to_tensor(self, t, write_stats=True):
+        assert(t.shape[0] == self.n_dim)
+        if write_stats:
+            self.stats.to_tensor(t[0: 5])
         c = 5
         for i in range(4):
             m, pp = self.moves[i]
@@ -145,14 +153,10 @@ class Volatiles:
         t[8 + self.confusion_duration] = 1
 
 class Active:
-    n_dim = 5 + Volatiles.n_dim
+    n_dim = Pokemon.n_dim + Volatiles.n_dim
 
     def __init__(self, buffer):
-        self.hp = decode_u16(buffer, 0)
-        self.atk = decode_u16(buffer, 2)
-        self.def_ = decode_u16(buffer, 4)
-        self.spe = decode_u16(buffer, 6)
-        self.spc = decode_u16(buffer, 8)
+        self.stats = Stats(buffer[0 : 10])
         self.species = buffer[10]
         self.type1, self.type2 = decode_u4(buffer, 11)
         self.boost_atk, self.boost_def = decode_u4(buffer, 12)
@@ -166,12 +170,9 @@ class Active:
             )
 
     def to_tensor(self, t):
-        t[0] = self.hp
-        t[1] = self.atk
-        t[2] = self.def_
-        t[3] = self.spe
-        t[4] = self.spc
-        self.volatiles.to_tensor(t[5:])
+        assert(t.shape[0] == self.n_dim)
+        self.stats.to_tensor(t)
+        self.volatiles.to_tensor(t[Pokemon.n_dim : Active.n_dim])
 
 class Side:
     def __init__(self, buffer):
@@ -199,6 +200,9 @@ class Frame:
         self.battle = Battle(buffer[0 : 384])
         self.durations = Durations(buffer[384 : 392])
 
+        self.battle.p1.active.volatiles.confusion_duration = self.durations.p1.confusion
+        self.battle.p2.active.volatiles.confusion_duration = self.durations.p2.confusion
+
         for _ in range(6):
             i = self.battle.p1.order[_] - 1
             j = self.battle.p2.order[_] - 1
@@ -225,14 +229,18 @@ class Frame:
         p, a, s, e, acc = buffers.to_tensor(index)
 
         for i, side in enumerate([self.battle.p1, self.battle.p2]):
-            
-            active = side.pokemon[side.order[0] - 1]
-            active.to_tensor(a[i, 0])
-            # acc[0] = active.hp
+            active_pokemon = side.pokemon[side.order[0] - 1]
+            active_pokemon.to_tensor(a[i, 0, 0 : Pokemon.n_dim], write_stats=False)
+            side.active.to_tensor(a[i, 0])
 
+            hp_percent = active_pokemon.current_hp / active_pokemon.stats.hp
+            assert(hp_percent >= 0 and hp_percent <= 1)
+            acc[i, 0, 0] = hp_percent
             for k in range(1, 6):
                 pokemon = side.pokemon[side.order[k] - 1]
                 pokemon.to_tensor(p[i, k - 1])
+                hp_percent = pokemon.current_hp / pokemon.stats.hp
+                acc[i, 0, ACTIVE_OUT + (k - 1) * POKEMON_OUT] = hp_percent
         
         s[0] = self.score
         e[0] = self.eval
