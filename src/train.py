@@ -184,6 +184,11 @@ def main():
                 )
                 print("output; eval; score:")
                 print(window[:Options.output_window_size])
+                p_, a_, s_, e_, acc_ = validation_buffers.to_tensor()
+                validation_output = validation_buffers.forward(pokemon_net, active_net, main_net)
+                validation_loss_score = criterion(validation_output, s_)
+                validation_loss_eval = criterion(validation_output, e_)
+                print(f"validation loss; score: {validation_loss_score}, eval: {validation_loss_eval}")
 
             loss = criterion(value_output, s)        
             loss.backward()
