@@ -1,8 +1,33 @@
 import sys
 
-if (len(sys.argv) < 5):
-    print("Input: buffer_path, batch_size, validation_size, n_procs")
+if (len(sys.argv) < 6):
+    print("Input: buffer_path, batch_size, validation_size, n_procs, out_dir")
     exit()
+
+class TrainingParameters:
+
+    pokemon_hidden_dim = 64
+    active_hidden_dim = 64
+    batch_size = int(sys.argv[2])
+
+    pokemon_lr = .001
+    pokemon_momentum = .01
+    active_lr = .001
+    active_momentum = .01
+    main_lr = .001
+    main_momentum = .01
+
+class Options:
+
+    buffer_path = sys.argv[1]
+    validation_size = int(sys.argv[3])
+    n_procs = int(sys.argv[4])
+    dir_name = sys.argv[5]
+
+    save_interval = 500
+    stats_interval = 50
+    output_window_size = 10
+
 
 import os
 import random
@@ -11,6 +36,7 @@ import time
 
 import torch
 import torch.optim as optim
+import torch.nn.functional as F
 
 import frame
 import net
@@ -18,8 +44,7 @@ import net
 def get_validation_buffers(validation_buffers, buffer_path, global_buffer_size, max_samples):
     index = random.randint(0, 50)
     i = 0
-    while index < global_buffer_size and i < max_samples:
-
+    while i < max_samples:
         with open(buffer_path, "rb") as file:
             file.seek(index * frame.FRAME_SIZE)
             data = file.read(frame.FRAME_SIZE)
@@ -27,7 +52,8 @@ def get_validation_buffers(validation_buffers, buffer_path, global_buffer_size, 
 
         f = frame.Frame(data)
         f.write_to_buffers(validation_buffers, i)
-        index += random.randint(0, 50)
+        index += 25 + random.randint(0, 50)
+        index %= global_buffer_size
         i += 1
 
 def worker(shared_buffers, buffer_path, global_buffer_size, lock, index_queue, ready_counter):
@@ -66,51 +92,70 @@ class SharedBuffers:
                 torch.frombuffer(self.eval_buffer, dtype=torch.float).view(-1, 1),
                 torch.frombuffer(self.acc_buffer, dtype=torch.float).view(-1, 2, 1, 256)]
         p, a, s, e, acc = self.to_tensor()
-        return p[i], a[i], s[i], e[i], acc[i]     
+        return p[i], a[i], s[i], e[i], acc[i]
+
+    def forward(self, pokemon_net, active_net, main_net):
+        p, a, s, e, acc = self.to_tensor() 
+        pokemon_out = F.relu(pokemon_net.forward(p))
+        active_out = F.relu(active_net.forward(a))
+
+        # write words to acc layer, offset by 1 for the hp entry
+        for player in range(2):
+            a_ = active_out[:, player, 0]
+            acc[:, player, 0, 1 : frame.ACTIVE_OUT] = a_
+            for _ in range(5):
+                start_index = frame.ACTIVE_OUT + _ * frame.POKEMON_OUT
+                acc[:, player, 0, (start_index + 1) : start_index + frame.POKEMON_OUT] = pokemon_out[:, player, _]
+
+        main_net_input = torch.concat([acc[:, 0, 0, :], acc[:, 1, 0, :]], dim=1)
+        return torch.sigmoid(main_net.forward(main_net_input))
 
 def main():
 
-    pokemon_net = net.TwoLayerMLP(frame.Frame.pokemon_dim, 128, frame.POKEMON_OUT - 1)
-    pokemon_net.load("weights/p.pt")
-    active_net = net.TwoLayerMLP(frame.Frame.active_dim, 128, frame.ACTIVE_OUT - 1)
-    active_net.load("weights/a.pt")
+    # add iterating through Options, etc params
+
+    if not os.path.exists(Options.dir_name):
+        os.mkdir(Options.dir_name)
+
+    pokemon_net = net.TwoLayerMLP(frame.Frame.pokemon_dim, TrainingParameters.pokemon_hidden_dim, frame.POKEMON_OUT - 1)
+    active_net = net.TwoLayerMLP(frame.Frame.active_dim, TrainingParameters.active_hidden_dim, frame.ACTIVE_OUT - 1)
     main_net = net.TwoLayerMLP(512, 32, 1)
-    main_net.load("weights/nn.pt")
+    criterion = torch.nn.MSELoss()
 
-    buffer_path = sys.argv[1]
-    batch_size = int(sys.argv[2])
-    validation_size = int(sys.argv[3])
-    n_procs = int(sys.argv[4])
+    global_buffer_size = os.path.getsize(Options.buffer_path) // frame.FRAME_SIZE
+    assert((os.path.getsize(Options.buffer_path) % frame.FRAME_SIZE) == 0)
+    validation_buffers = SharedBuffers(Options.validation_size)
+    get_validation_buffers(validation_buffers, Options.buffer_path, global_buffer_size, Options.validation_size)
+    
+    if True:
+        _, _, s, e, _ = validation_buffers.to_tensor()
+        control_loss = criterion(s, e)
+        print("control loss: ", control_loss)
 
-    print(f"buffer_path={buffer_path}, batch_size={batch_size}, validation_size={validation_size}, n_procs={n_procs}")
-
-    global_buffer_size = os.path.getsize(buffer_path) // frame.FRAME_SIZE
-    assert((os.path.getsize(buffer_path) % frame.FRAME_SIZE) == 0)
-
-    validation_buffers = SharedBuffers(validation_size)
-    get_validation_buffers(validation_buffers, buffer_path, global_buffer_size, validation_size)
-
-    shared_buffers = SharedBuffers(batch_size)
+    shared_buffers = SharedBuffers(TrainingParameters.batch_size)
     lock = mp.Lock()
     ready_counter = mp.Value('i', 0)
     manager = mp.Manager()
     index_queue = manager.Queue()
-    for i in range(batch_size):
+    for i in range(TrainingParameters.batch_size):
         index_queue.put(i)
-
     processes = []
-    for _ in range(n_procs):
-        p = mp.Process(target=worker, args=(shared_buffers, buffer_path, global_buffer_size, lock, index_queue, ready_counter))
-        p.start()
-        processes.append(p)
+    for _ in range(Options.n_procs):
+        proc = mp.Process(target=worker, args=(shared_buffers, Options.buffer_path, global_buffer_size, lock, index_queue, ready_counter))
+        proc.start()
+        processes.append(proc)
 
-    criterion = torch.nn.MSELoss()
-    # optimizer = torch.optim.SGD(main_net.parameters(), lr=0.01)
-    optimizer = torch.optim.Adam(
-        list(pokemon_net.parameters()) +
-        list(active_net.parameters()) +
-        list(main_net.parameters()),
-        lr=1e-2
+    pokemon_optimizer = torch.optim.Adam(
+        pokemon_net.parameters(),
+        lr=TrainingParameters.pokemon_lr
+    )
+    active_optimizer = torch.optim.Adam(
+        pokemon_net.parameters(),
+        lr=TrainingParameters.active_lr
+    )
+    main_optimizer = torch.optim.Adam(
+        main_net.parameters(),
+        lr=TrainingParameters.main_lr
     )
 
     start = time.perf_counter()
@@ -119,42 +164,47 @@ def main():
         while True:
             while True:
                 with ready_counter.get_lock():
-                    if ready_counter.value >= batch_size:
-                        total_steps += 1
-                        ready_counter.value = 0
+                    if ready_counter.value >= TrainingParameters.batch_size:
                         break
 
+            ready_counter.value = 0
+
             p, a, s, e, acc = shared_buffers.to_tensor()
+            value_output = shared_buffers.forward(pokemon_net, active_net, main_net)
 
-            pokemon_out = pokemon_net.forward(p)
-            active_out = active_net.forward(a)
+            if total_steps % Options.stats_interval == 0:
+                print(f"stats for step {total_steps}")
+                now = time.perf_counter()
+                elapsed = now - start
+                rate = (total_steps + 1) / elapsed
+                print(f"rate: {rate} steps/sec")
+                window = torch.cat(
+                    [value_output, e, s],
+                    dim=1
+                )
+                print("output; eval; score:")
+                print(window[:Options.output_window_size])
 
-            for player in range(2):
-                a_ = active_out[:, player, 0]
-                acc[:, player, 0, 1 : frame.ACTIVE_OUT] = a_
-                for _ in range(5):
-                    start_index = frame.ACTIVE_OUT + _ * frame.POKEMON_OUT
-                    acc[:, player, 0, (start_index + 1) : start_index + frame.POKEMON_OUT] = pokemon_out[:, player, _]
-
-            main_net_input = torch.concat([acc[:, 0, 0, :], acc[:, 1, 0, :]], dim=1)
-            value_output = main_net.forward(main_net_input)
-
-            loss = criterion(value_output, s)
-            # print(value_output.shape, s.shape)
-            print(loss)
-
+            loss = criterion(value_output, s)        
             loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+            for optim in [pokemon_optimizer, active_optimizer, main_optimizer]:
+                optim.step()
+                optim.zero_grad()
+            main_net.clamp_weights()
 
-            now = time.perf_counter()
-            elapsed = now - start
-            rate = total_steps / elapsed
-            print(f"rate: {rate}")
+            if total_steps % Options.save_interval == 0:
+                print(f"saving at step {total_steps}.")
+                save_dir = os.path.join(Options.dir_name, str(total_steps))
+                if not os.path.exists(save_dir):
+                    os.mkdir(save_dir)
+                pokemon_net.save(os.path.join(save_dir, "p.pt"))
+                active_net.save(os.path.join(save_dir, "a.pt"))
+                main_net.save(os.path.join(save_dir, "nn.pt"))
 
-            for i in range(batch_size):
+            for i in range(TrainingParameters.batch_size):
                 index_queue.put(i)
 
+            total_steps += 1
     finally:
         for p in processes:
             p.terminate()
