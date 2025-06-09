@@ -1,4 +1,5 @@
 import sys
+import os
 
 import torch
 import torch.nn as nn
@@ -40,37 +41,42 @@ class TwoLayerMLP(nn.Module):
             self.fc1.weight.clamp_(-2, 2)
             self.fc2.weight.clamp_(-2, 2)
 
-    def save_quantized(self, path):
-        n = 0
-        raw_save((self.fc0.weight * (64)).to(torch.int8).transpose(0, n), os.path.join(path, "w0"))
-        raw_save((self.fc1.weight * (64)).to(torch.int8).transpose(0, n), os.path.join(path, "w1"))
-        raw_save((self.fc2.weight * (64)).to(torch.int8).transpose(0, n), os.path.join(path, "w2"))
-        raw_save((self.fc0.bias * (127 * 64)).to(torch.int32), os.path.join(path, "b0"))
-        raw_save((self.fc1.bias * (127 * 64)).to(torch.int32), os.path.join(path, "b1"))
-        raw_save((self.fc2.bias * (127 * 64)).to(torch.int32), os.path.join(path, "b2"))
+    def save_quantized(self, path, str):
+        raw_save((self.fc0.weight * (64)).to(torch.int8), os.path.join(path, str + "w0"))
+        raw_save((self.fc1.weight * (64)).to(torch.int8), os.path.join(path, str + "w1"))
+        raw_save((self.fc2.weight * (64)).to(torch.int8), os.path.join(path, str + "w2"))
+        raw_save((self.fc0.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "b0"))
+        raw_save((self.fc1.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "b1"))
+        raw_save((self.fc2.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "b2"))
 
+def count_out_of_bounds_params(model, lower=-2.0, upper=2.0):
+    count = 0
+    total = 0
+    for param in model.parameters():
+        if param.requires_grad:
+            values = param.data
+            count += ((values < lower) | (values > upper)).sum().item()
+            total += values.numel()
+    return count, total
 
-def init():
-    acc = torch.rand(512).clamp_(0, 1)
-    torch.save(acc, "./weights/acc.pt")
-    accd = (acc * 127).to(torch.int8)
-    raw_save(accd, "./weights/accd")    
+def quantize_in_dir(path):
+    pokemon_net = TwoLayerMLP(198, 64, 39)
+    pokemon_net.load(os.path.join(path, "p.pt"))
+    active_net = TwoLayerMLP(198 + 14, 64, 55)
+    active_net.load(os.path.join(path, "a.pt"))
+    main_net = TwoLayerMLP(512, 32, 1)
+    main_net.load(os.path.join(path, "nn.pt"))
 
-    net = TwoLayerMLP(512, 32, 1)
-    net.clamp_weights   ()
-    net.save("./weights/nn.pt")
-    net.save_quantized("./weights")
+    cp, tp = count_out_of_bounds_params(pokemon_net)
+    ca, ta = count_out_of_bounds_params(active_net)
 
-    print(acc[:10])
-    print(accd[:10])
+    if cp > 0 or ca > 0:
+        print("one of the nets cant be quantized cus |x| > 2")
+        return
 
-def test():
-    net = TwoLayerMLP(512, 32, 1)
-    net.load("./weights/nn.pt")
-    acc = torch.load("./weights/acc.pt")
-    x = net.forward(acc)
-    print(x)
-    print((x * 127 * 64).to(torch.int32))
+    pokemon_net.save_quantized(path, "p")
+    active_net.save_quantized(path, "a")
+    main_net.save_quantized(path, "nn")
 
 def train():
     # Dummy data
@@ -94,7 +100,4 @@ def train():
     print("Loss:", loss.item())
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        init()
-    else:
-        test()
+    quantize_in_dir("./weights/9500")

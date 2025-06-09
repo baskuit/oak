@@ -109,8 +109,8 @@ struct NetworkArchitecture {
   }
 };
 
-template <int Hidden, int Out> struct WordNet {
-  static constexpr IndexType ConcatenatedSidesDims = 512;
+template <int In, int Hidden, int Out> struct WordNet {
+  static constexpr IndexType ConcatenatedSidesDims = In;
   static constexpr int FC_0_OUTPUTS = Hidden;
   static constexpr int FC_1_OUTPUTS = Hidden;
 
