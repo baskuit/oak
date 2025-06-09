@@ -284,8 +284,18 @@ struct MCTS {
       [[likely]] {
         print("Initializing node");
         ++total_nodes;
-        // return init_stats_and_rollout(node->stats(), device, battle, result);
-        return model.inference(input.battle, input.durations);
+        if constexpr (requires { model.nn; }) {
+          const auto m = pkmn_gen1_battle_choices(
+              &battle, PKMN_PLAYER_P1, pkmn_result_p1(result), choices.data(),
+              PKMN_GEN1_MAX_CHOICES);
+          const auto n = pkmn_gen1_battle_choices(
+              &battle, PKMN_PLAYER_P2, pkmn_result_p2(result), choices.data(),
+              PKMN_GEN1_MAX_CHOICES);
+          node->stats().init(m, n);
+          return model.inference(input.battle, input.durations);
+        } else {
+          return init_stats_and_rollout(node->stats(), device, battle, result);
+        }
       }
     case PKMN_RESULT_WIN: {
       return 1.0;
