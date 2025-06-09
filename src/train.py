@@ -114,6 +114,12 @@ def main():
 
     # add iterating through Options, etc params
 
+    for name, value in vars(Options).items():
+        print(name, value)
+
+    for name, value in vars(TrainingParameters).items():
+        print(name, value)
+
     if not os.path.exists(Options.dir_name):
         os.mkdir(Options.dir_name)
 
@@ -126,11 +132,6 @@ def main():
     assert((os.path.getsize(Options.buffer_path) % frame.FRAME_SIZE) == 0)
     validation_buffers = SharedBuffers(Options.validation_size)
     get_validation_buffers(validation_buffers, Options.buffer_path, global_buffer_size, Options.validation_size)
-    
-    if True:
-        _, _, s, e, _ = validation_buffers.to_tensor()
-        control_loss = criterion(s, e)
-        print("control loss: ", control_loss)
 
     shared_buffers = SharedBuffers(TrainingParameters.batch_size)
     lock = mp.Lock()
