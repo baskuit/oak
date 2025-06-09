@@ -92,10 +92,20 @@ struct WordCaches {
   struct Slot {
     std::map<PokemonKey, PokemonWord> p_cache;
     std::map<ActiveKey, ActiveWord> a_cache;
+
+    void print_sizes() const {
+        std::cout << p_cache.size() << ' ' << a_cache.size() << std::endl;
+    }
   };
 
   struct Side {
     std::array<Slot, 6> slots;
+
+    void print_sizes() const {
+        for (const auto &s : slots) {
+            s.print_sizes();
+        }
+    }
   };
 
   Side p1;
@@ -103,18 +113,18 @@ struct WordCaches {
 
   void write_acc(const Abstract &a, uint8_t *const acc) {
     auto *const acc2 = acc + 256;
-    std::memcpy(p1.slots[a.p1.order[0]].a_cache[a.p1.active_key].data(),
+    std::memcpy(p1.slots[a.p1.order[0] - 1].a_cache[a.p1.active_key].data(),
                 acc + 1, active_out_dim);
-    std::memcpy(p2.slots[a.p2.order[0]].a_cache[a.p2.active_key].data(),
+    std::memcpy(p2.slots[a.p2.order[0] - 1].a_cache[a.p2.active_key].data(),
                 acc2 + 1, active_out_dim);
     for (auto i = 0; i < 5; ++i) {
-      std::memcpy(p1.slots[a.p1.order[i + 1]]
-                      .p_cache[a.p1.pokemon_keys[a.p1.order[i + 1]]]
+      std::memcpy(p1.slots[a.p1.order[i + 1] - 1]
+                      .p_cache[a.p1.pokemon_keys[a.p1.order[i + 1] - 1]]
                       .data(),
                   acc + active_out_dim + i * pokemon_out_dim + 1,
                   pokemon_out_dim);
-      std::memcpy(p2.slots[a.p2.order[i + 1]]
-                      .p_cache[a.p2.pokemon_keys[a.p2.order[i + 1]]]
+      std::memcpy(p2.slots[a.p2.order[i + 1] - 1]
+                      .p_cache[a.p2.pokemon_keys[a.p2.order[i + 1] - 1]]
                       .data(),
                   acc2 + active_out_dim + i * pokemon_out_dim + 1,
                   pokemon_out_dim);

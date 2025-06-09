@@ -284,7 +284,8 @@ struct MCTS {
       [[likely]] {
         print("Initializing node");
         ++total_nodes;
-        return init_stats_and_rollout(node->stats(), device, battle, result);
+        // return init_stats_and_rollout(node->stats(), device, battle, result);
+        return model.inference(input.battle, input.durations);
       }
     case PKMN_RESULT_WIN: {
       return 1.0;
