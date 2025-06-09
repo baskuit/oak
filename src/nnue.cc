@@ -9,6 +9,9 @@ int main(int argc, char **argv) {
   const auto trials{1 << 22};
 
   Stockfish::Eval::NNUE::NetworkArchitecture nn{};
+  Stockfish::Eval::NNUE::WordNet<64, 39> pokemon_net{};
+  Stockfish::Eval::NNUE::WordNet<64, 55> active_net{};
+
 
   std::ifstream accs, w0s, b0s, w1s, b1s, w2s, b2s;
 
