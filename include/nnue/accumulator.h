@@ -94,7 +94,7 @@ struct WordCaches {
     std::map<ActiveKey, ActiveWord> a_cache;
 
     void print_sizes() const {
-        std::cout << p_cache.size() << ' ' << a_cache.size() << std::endl;
+      std::cout << p_cache.size() << ' ' << a_cache.size() << std::endl;
     }
   };
 
@@ -102,9 +102,9 @@ struct WordCaches {
     std::array<Slot, 6> slots;
 
     void print_sizes() const {
-        for (const auto &s : slots) {
-            s.print_sizes();
-        }
+      for (const auto &s : slots) {
+        s.print_sizes();
+      }
     }
   };
 
