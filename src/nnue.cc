@@ -33,10 +33,9 @@ struct Model {
 
 int main(int argc, char **argv) {
 
-  auto battle =
-      Init::battle(SampleTeams::teams[0], SampleTeams::teams[1]);
+  auto battle = Init::battle(SampleTeams::teams[0], SampleTeams::teams[1]);
   pkmn_gen1_battle_options options{};
-  auto result = Init::update(battle, 0, 0, options); 
+  auto result = Init::update(battle, 0, 0, options);
   prng device{312312};
   std::bit_cast<uint64_t *>(battle.bytes + Offsets::seed)[0] =
       device.uniform_64();
@@ -64,8 +63,11 @@ int main(int argc, char **argv) {
   }
 
   MonteCarlo::Input input{battle, durations, result};
-  auto output = search.run(1 << 20, node, input, model);
-
+  MonteCarlo::Model mcm{device};
+  std::chrono::milliseconds dur{100};
+  size_t count = 1 << 20;
+  auto output = search.run(count, node, input, mcm);
+  std::cout << output.iterations << std::endl;
 
   model.nnue_caches.p1.print_sizes();
   model.nnue_caches.p2.print_sizes();
