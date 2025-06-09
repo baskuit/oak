@@ -6,8 +6,8 @@ if (len(sys.argv) < 6):
 
 class TrainingParameters:
 
-    pokemon_hidden_dim = 64
-    active_hidden_dim = 64
+    pokemon_hidden_dim = 32
+    active_hidden_dim = 32
     batch_size = int(sys.argv[2])
 
     pokemon_lr = .001
