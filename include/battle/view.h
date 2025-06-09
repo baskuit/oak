@@ -170,6 +170,14 @@ struct ActivePokemon {
     bytes[15] |=
         static_cast<uint8_t>(value) & 0b11110000; // Set the upper 4 bits
   }
+
+  constexpr Volatiles &volatiles() noexcept {
+    return *std::bit_cast<Volatiles *>(bytes + 16); // TODO
+  }
+
+  constexpr const Volatiles &volatiles() const noexcept {
+    return *std::bit_cast<const Volatiles *>(bytes + 16); // TODO
+  }
 };
 
 struct Side {
