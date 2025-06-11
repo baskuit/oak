@@ -4,11 +4,12 @@
 #include <random>
 #include <vector>
 
-constexpr int NUM_ARMS = 5;
 constexpr int FP_SHIFT = 16;
 constexpr uint32_t FP_ONE = 1 << FP_SHIFT;
-constexpr uint32_t GAMMA = (uint32_t)(0.07 * FP_ONE); // 0.07 in Q16.16
-constexpr uint32_t GAMMA_OVER_K = GAMMA / NUM_ARMS;
+
+double de(uint32_t n) {
+  return n / (double) FP_ONE;
+}
 
 // Approximate exp(x) in Q16.16 using 1 + x + x²/2 + x³/6
 uint32_t approx_exp_q16(uint32_t x_q16) {
@@ -68,18 +69,7 @@ auto expl(const auto &matrix, const auto &p1, const auto &p2) {
   std::pair<float, float> result;
   result.first = *std::max_element(q1.begin(), q1.end());
   result.second = *std::min_element(q2.begin(), q2.end());
-  // assert(result.first > result.second);
-  if (result.first <= result.second) {
-    std::cout << result.first << ' ' << result.second << std::endl;
-    for (auto i = 0; i < m; ++i) {
-      std::cout << q1[i] << ' ';
-    }
-    std::cout << std::endl;
-    for (auto i = 0; i < n; ++i) {
-      std::cout << q2[i] << ' ';
-    }
-    std::cout << std::endl;
-  }
+  assert(result.first > result.second);
   return result;
 }
 
@@ -89,14 +79,17 @@ struct QuantBandit {
   std::vector<uint32_t> probs;   // Probabilities
   std::vector<uint32_t> chosen;
   std::mt19937 rng;
+  uint32_t GAMMA, GAMMA_OVER_K, NUM_ARMS;
 
-  QuantBandit(size_t NUM_ARMS) {
+  QuantBandit(size_t NUM_ARMS, float gamma) {
+    this->NUM_ARMS = NUM_ARMS;
     gains.resize(NUM_ARMS, 0);
     probs.resize(NUM_ARMS, FP_ONE / NUM_ARMS);
     weights.resize(NUM_ARMS, 0);
     chosen.resize(NUM_ARMS, 0);
     std::mt19937 rng{std::random_device{}()};
-    // std::cout << NUM_ARMS << ' ' << gains.size() << std::endl;
+    GAMMA = (uint32_t)(gamma * FP_ONE);
+    GAMMA_OVER_K = GAMMA / NUM_ARMS;
   }
 
   int select() {
@@ -106,8 +99,12 @@ struct QuantBandit {
     for (int i = 0; i < NUM_ARMS; ++i) {
       uint32_t gain_scaled = (gains[i] * GAMMA_OVER_K); // Q16.16
       weights[i] = approx_exp_q16(gain_scaled);
+      std::cout << de(gain_scaled) << " : " << de(weights[i]) << ' ';
+
       weight_sum += weights[i];
+      // std::cout << weights[i] / (float) FP_ONE << ' ';
     }
+    std::cout << '\n';
     // Compute probabilities in Q16.16
     for (int i = 0; i < NUM_ARMS; ++i) {
       uint32_t prob_exploit =
@@ -116,20 +113,22 @@ struct QuantBandit {
       // (1 - gamma) * exploit + gamma * explore
       probs[i] =
           ((FP_ONE - GAMMA) * prob_exploit + GAMMA * prob_explore) >> FP_SHIFT;
+      std::cout << probs[i] / (float) FP_ONE << ' ';
     }
+    std::cout << '\n';
     // Choose an arm
     int c = sample_arm(probs, rng);
     chosen[c]++;
     return c;
   }
 
-  void update(uint32_t reward, auto chosen) {
+  void update(uint32_t reward, auto c) {
     uint32_t estimated =
-        ((uint64_t)reward << FP_SHIFT) / probs[chosen]; // Q16.16
+        ((uint64_t)reward << FP_SHIFT) / probs[c]; // Q16.16
     // Convert estimated reward to scaled integer gain and clip
     uint32_t gain_update =
         estimated >> (FP_SHIFT - 4); // scale down to uint16_t range
-    gains[chosen] = std::min<uint32_t>(65535, gains[chosen] + gain_update);
+    gains[c] = std::min<uint32_t>(FP_ONE, gains[c] + gain_update);
   }
 };
 
@@ -138,7 +137,7 @@ auto try_poo(QuantBandit& b1, QuantBandit& b2, const auto &matrix, auto iter) {
     auto i = b1.select();
     auto j = b2.select();
     const uint32_t r = matrix[i][j] * FP_ONE;
-    const uint32_t s = (1 - matrix[i][j]) * FP_ONE;
+    const uint32_t s = FP_ONE - r;
     b1.update(r, i);
     b2.update(s, j);
   }
@@ -149,9 +148,7 @@ auto try_poo(QuantBandit& b1, QuantBandit& b2, const auto &matrix, auto iter) {
   p1.resize(m);
   for (auto i = 0; i < m; ++i) {
     p1[i] = static_cast<float>(b1.chosen[i]) / iter;
-    std::cout << p1[i] << ' ';
   }
-  std::cout << std::endl;
   std::vector<float> p2;
   p2.resize(n);
   for (auto i = 0; i < n; ++i) {
@@ -181,25 +178,14 @@ int main(int argc, char **argv) {
   auto start = std::chrono::high_resolution_clock::now();
 
   for (auto t = 0; t < trials; ++t) {
-    const auto matrix = random_matrix<float>(device, m, n);
-    QuantBandit b1{m};
-    QuantBandit b2{n};
+    auto matrix = random_matrix<float>(device, m, n);
+    matrix[0][1] = matrix[0][0] = 1.0;
+    matrix[1][1] = matrix[1][0] = 0.0;
+
+    QuantBandit b1{m, gamma};
+    QuantBandit b2{n, gamma};
     const auto x = try_poo(b1, b2, matrix, iter);
     total_x += x;
-
-//     const auto float_x =
-//         try_poo<float>(float_matrix_device, matrix, m, n, iter, gamma);
-//     total_float_x += float_x;
-//   }
-//   auto end = std::chrono::high_resolution_clock::now();
-//   auto d = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-//   std::cout << d.count() << std::endl;
-//   start = std::chrono::high_resolution_clock::now();
-//   for (auto t = 0; t < trials; ++t) {
-//     const auto matrix = random_matrix<_Float16>(half_matrix_device, m, n);
-//     const auto half_x = try_poo<_Float16>(half_device, matrix, m, n, iter,
-//                                           static_cast<_Float16>(gamma));
-//     total_half_x += half_x;
   }
 
   const auto end = std::chrono::high_resolution_clock::now();
