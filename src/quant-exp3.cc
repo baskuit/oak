@@ -4,18 +4,25 @@
 #include <iostream>
 #include <random>
 #include <vector>
-
+#include <cmath>
 #include <util/random.h>
 
 // represents float scaled by 1 << 14;
 using u8 = uint8_t;
 using u32 = uint32_t;
 using u16 = uint16_t;
-using i32 = int32_t;
-using i16 = int16_t;
+using u64 = uint64_t;
 
-constexpr int weight_shift = 4;
-constexpr u16 ONE = 1 << weight_shift;
+using Weight = u32;
+constexpr int bits = 32; 
+using Work = u64;
+
+constexpr int weight_shift = 16;
+constexpr Weight ONE = Weight{1} << weight_shift;
+
+constexpr float to_float(auto a) {
+  return (float) a / ONE;
+}
 
 void print_q(const auto& v) {
   for (const auto x : v) {
@@ -24,15 +31,27 @@ void print_q(const auto& v) {
   std::cout << std::endl;
 }
 
-int32_t approx_exp_q16(int32_t x) {
+void print(const auto& v) {
+  for (const auto x : v) {
+    std::cout << x << ' ';
+  }
+  std::cout << std::endl;
+}
 
-  // for (auto d = 1; d <= degree; ++d) {
+void print_q(const auto& v, auto sum) {
+  for (const auto x : v) {
+    std::cout << ((float)x) / (float)sum << ' ';
+  }
+  std::cout << std::endl;
+}
 
-  // }
-  int32_t x2 = (x * x) >> weight_shift;
-  int32_t x3 = (x2 * x) >> weight_shift;
-  int32_t x4 = (x3 * x) >> weight_shift;
-  return ONE + x + (x2 / 2) + (x3 / 6) + (x4 / 24);
+Work exp32(Work x) {
+  Work x2 = (x * x) >> weight_shift;
+  Work x3 = (x2 * x) >> weight_shift;
+  Work x4 = (x3 * x) >> weight_shift;
+  Work x5 = (x4 * x) >> weight_shift;
+  Work x6 = (x5 * x) >> weight_shift;
+  return ONE + x + (x2 / 2) + (x3 / 6) + (x4 / 24) + (x5 / 120) + (x6 / 720);
 }
 
 template <typename T> auto random_matrix(prng &device, auto m, auto n) {
@@ -66,77 +85,92 @@ auto expl(const auto &matrix, const auto &p1, const auto &p2) {
 }
 
 struct QuantBandit {
-  std::vector<u16> weights; // exp(gain)
+  std::vector<Weight> weights; // exp(gain)
   std::vector<u8> priors;
-  std::vector<uint32_t> probs; // Probabilities
-  std::vector<uint32_t> chosen;
+  std::vector<Work> probs; // Probabilities
+  std::vector<Work> chosen;
   std::mt19937 rng;
-  u32 gamma, eta, k, gamma_over_one_minus_gamma;
-  u32 eta_over_mu;
+  Work gamma, eta, k, gamma_over_one_minus_gamma;
+  Work eta_over_mu;
+  float eta_over_mu_f;
+  float g;
+  Work sum = 0;
+
 
   QuantBandit(auto num_arms, float g) {
-    k = static_cast<u32>(num_arms);
-    probs.resize(k, ONE / k);
+    k = static_cast<Work>(num_arms);
+    probs.resize(k, 0);
     weights.resize(k, ONE);
     chosen.resize(k, 0);
     priors.resize(k, 256 / k);
     std::mt19937 rng{std::random_device{}()};
-    gamma = (uint32_t)(g * ONE);
+    gamma = (Work)(g * ONE);
     eta = gamma / k;
-    std::cout << "gamma: " << gamma << " eta: " << eta << std::endl;
-    gamma_over_one_minus_gamma = (u32)(g / (1 - g) * ONE);
+    gamma_over_one_minus_gamma = (Work)(g / (1 - g) * ONE);
+    // std::cout << "gamma: " << to_float(gamma) << " eta: " << to_float(eta) << " z: " << to_float(gamma_over_one_minus_gamma) << std::endl;
+    // std::cout << "gamma: " << g << " eta: " << g/k << " z: " << g/(1-g) << std::endl;
+    this->g = g;
   }
 
   int select() {
 
     bool should_halve = false;
-    u32 sum = 0;
-    std::cout << "weights: " << std::endl;
-    print_q(weights);
+    sum = 0;
+    Work w_sum = 0;
+    // std::cout << "weights: " << std::endl;
+    // print_q(weights);
     for (auto i = 0; i < k; ++i) {
-      if (weights[i] >= 1 << 15) {
+      if (weights[i] >= (Work{1} << (bits - 8))) {
         should_halve = true;
       }
-      probs[i] = weights[i] + priors[i] * gamma_over_one_minus_gamma / 256;
+      Work update = (priors[i] * gamma_over_one_minus_gamma / 256);
+      // std::cout << "u: " << update << " ~ " << to_float(update) << std::endl;
+      probs[i] = weights[i] + update;
       sum += probs[i];
+      w_sum += weights[i];
     }
 
-    std::cout << "probs: " << std::endl;
-    print_q(probs);
+    std::uniform_int_distribution<Work> dist(0, sum);
+    Work r = dist(rng);
 
-    std::uniform_int_distribution<uint32_t> dist(0, sum);
-    uint32_t r = dist(rng);
-
-    int c = 0;
-    u32 acc = 0;
+    int c = -1;
+    Work acc = 0;
     for (int i = 0; i < weights.size(); ++i) {
       acc += probs[i];
+      c += 1;
       if (r < acc) {
         break;
       }
-      ++c;
     }
     ++chosen[c];
 
-    std::cout << " sum: " << sum;
-    std::cout << " probs[c]: " << probs[c];
-    std::cout << " eta: " << eta;
-    std::cout << std::endl;
+    double mu_float = (double)probs[c] / sum;
+    double eta_float = g / k;
 
-
-    eta_over_mu = sum * ONE / probs[c] * eta / ONE;
+    eta_over_mu = (eta_float / mu_float) * ONE;
+    eta_over_mu_f = (eta_float / mu_float);
 
     if (should_halve) {
+      std::cout << "halve" << std::endl;
       for (auto &w : weights) {
+        w += 1;
         w /= 2;
       }
+      eta_over_mu += 1;
       eta_over_mu /= 2;
     }
 
     return c;
   }
 
-  void update(auto c, float r) { weights[c] += r * eta_over_mu; }
+  void update(auto c, float r) { 
+    // double factor = exp(r * to_float(eta_over_mu));
+    double factor = exp(r * eta_over_mu_f);
+    Work fac = exp32(eta_over_mu * r);
+    // weights[c] *= fac;
+    // weights[c] /= ONE;
+    weights[c] *= factor;
+  }
 };
 
 auto try_poo(QuantBandit &b1, QuantBandit &b2, const auto &matrix, auto iter) {
@@ -161,6 +195,9 @@ auto try_poo(QuantBandit &b1, QuantBandit &b2, const auto &matrix, auto iter) {
   for (auto i = 0; i < n; ++i) {
     p2[i] = static_cast<float>(b2.chosen[i]) / iter;
   }
+
+  print(p1);
+  print(p2);
 
   const auto e = expl(matrix, p1, p2);
   const auto x = e.first - e.second;
@@ -197,6 +234,13 @@ int main(int argc, char **argv) {
 
   for (auto t = 0; t < trials; ++t) {
     auto matrix = random_matrix<double>(device, m, n);
+
+    // if ((m == 2) && (n == 2)) {
+    //   matrix[0][0] = 1.0;
+    //   matrix[0][1] = 0.0;
+    //   matrix[1][0] = 0.0;
+    //   matrix[1][1] = 1.0;
+    // }
 
     QuantBandit b1{m, gamma};
     QuantBandit b2{n, gamma};
