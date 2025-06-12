@@ -17,6 +17,13 @@ using i16 = int16_t;
 constexpr int weight_shift = 4;
 constexpr u16 ONE = 1 << weight_shift;
 
+void print_q(const auto& v) {
+  for (const auto x : v) {
+    std::cout << (float)x / ONE << ' ';
+  }
+  std::cout << std::endl;
+}
+
 int32_t approx_exp_q16(int32_t x) {
 
   // for (auto d = 1; d <= degree; ++d) {
@@ -70,12 +77,13 @@ struct QuantBandit {
   QuantBandit(auto num_arms, float g) {
     k = static_cast<u32>(num_arms);
     probs.resize(k, ONE / k);
-    weights.resize(k, 0);
+    weights.resize(k, ONE);
     chosen.resize(k, 0);
     priors.resize(k, 256 / k);
     std::mt19937 rng{std::random_device{}()};
     gamma = (uint32_t)(g * ONE);
     eta = gamma / k;
+    std::cout << "gamma: " << gamma << " eta: " << eta << std::endl;
     gamma_over_one_minus_gamma = (u32)(g / (1 - g) * ONE);
   }
 
@@ -83,6 +91,8 @@ struct QuantBandit {
 
     bool should_halve = false;
     u32 sum = 0;
+    std::cout << "weights: " << std::endl;
+    print_q(weights);
     for (auto i = 0; i < k; ++i) {
       if (weights[i] >= 1 << 15) {
         should_halve = true;
@@ -90,6 +100,9 @@ struct QuantBandit {
       probs[i] = weights[i] + priors[i] * gamma_over_one_minus_gamma / 256;
       sum += probs[i];
     }
+
+    std::cout << "probs: " << std::endl;
+    print_q(probs);
 
     std::uniform_int_distribution<uint32_t> dist(0, sum);
     uint32_t r = dist(rng);
@@ -105,6 +118,14 @@ struct QuantBandit {
     }
     ++chosen[c];
 
+    std::cout << " sum: " << sum;
+    std::cout << " probs[c]: " << probs[c];
+    std::cout << " eta: " << eta;
+    std::cout << std::endl;
+
+
+    eta_over_mu = sum * ONE / probs[c] * eta / ONE;
+
     if (should_halve) {
       for (auto &w : weights) {
         w /= 2;
@@ -112,7 +133,6 @@ struct QuantBandit {
       eta_over_mu /= 2;
     }
 
-    eta_over_mu = sum * ONE / probs[c] * eta / ONE;
     return c;
   }
 
@@ -154,12 +174,22 @@ int main(int argc, char **argv) {
               << std::endl;
     return 1;
   }
+
+
   prng device{5564564563};
   const auto m = std::atoi(argv[1]);
   const auto n = std::atoi(argv[2]);
   const auto iter = std::atoi(argv[3]);
   const auto trials = std::atoi(argv[4]);
   const float gamma = std::atof(argv[5]);
+
+  std::cout << "ONE: " << ONE << std::endl;
+
+  std::cout << " m: " << m;
+  std::cout << " n: " << n;
+  std::cout << " iter: " << iter;
+  std::cout << " trails: " << trials;
+  std::cout << " gamma: " << gamma << std::endl;
 
   double total_x = 0;
   double total_x_uniform = 0;

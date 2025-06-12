@@ -77,7 +77,7 @@ using Node =
 
 void generate(int fd, std::atomic<size_t> *write_index,
               std::atomic<size_t> *frame_count, size_t global_buffer_size,
-              std::chrono::milliseconds dur, uint64_t seed) {
+              size_t dur, uint64_t seed) {
 
   auto buffer_raw = new ThreadFrameBuffer{};
   auto &buffer = *buffer_raw;
@@ -390,7 +390,7 @@ int main(int argc, char **argv) {
   for (auto t = 0; t < threads; ++t) {
     thread_pool[t] = std::thread{
         &generate,          buffer_fd,          &write_index,
-        &frame_count,       global_buffer_size, std::chrono::milliseconds{ms},
+        &frame_count,       global_buffer_size, ms,
         device.uniform_64()};
   }
   std::thread print_thread{&handle_print, &frame_count};
