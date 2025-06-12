@@ -63,7 +63,6 @@ struct uint24_t_test {
     }
     return x;
   }
-  // static_assert(static_cast<uint32_t>(overflow()) == 0);
 };
 
 template <bool enabled> struct JointBanditDataBase;

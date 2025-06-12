@@ -51,8 +51,8 @@ bool read_params_from_dir(std::filesystem::path path, auto &pokemon_net,
     // std::cout << std::filesystem::exists(path / (tag + "w0")) << std::endl;
     // std::cout << std::filesystem::exists(path / (tag + "b0")) << std::endl;
     const bool success = nn.fc_0.read_parameters(w0s, b0s) &&
-           nn.fc_1.read_parameters(w1s, b1s) &&
-           nn.fc_2.read_parameters(w2s, b2s);
+                         nn.fc_1.read_parameters(w1s, b1s) &&
+                         nn.fc_2.read_parameters(w2s, b2s);
     std::cout << success << std::endl;
     return success;
   };
@@ -73,7 +73,8 @@ int main(int argc, char **argv) {
   Node node{};
   Model model{};
 
-  bool success = read_params_from_dir("./weights/9500", model.pokemon_net, model.active_net, model.nn);
+  bool success = read_params_from_dir("./weights/9500", model.pokemon_net,
+                                      model.active_net, model.nn);
   std::cout << success << std::endl;
   // MonteCarlo::Input input{battle, durations, result};
   // MonteCarlo::Model mcm{device};
