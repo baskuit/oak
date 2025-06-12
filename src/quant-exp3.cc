@@ -93,11 +93,12 @@ struct QuantBandit {
   Work gamma, eta, k, gamma_over_one_minus_gamma;
   Work eta_over_mu;
   float eta_over_mu_f;
-  float g;
+  float gamma_f;
+  float eta_f;
   Work sum = 0;
 
 
-  QuantBandit(auto num_arms, float g) {
+  QuantBandit(auto num_arms, float g, float e) {
     k = static_cast<Work>(num_arms);
     probs.resize(k, 0);
     weights.resize(k, ONE);
@@ -109,7 +110,8 @@ struct QuantBandit {
     gamma_over_one_minus_gamma = (Work)(g / (1 - g) * ONE);
     // std::cout << "gamma: " << to_float(gamma) << " eta: " << to_float(eta) << " z: " << to_float(gamma_over_one_minus_gamma) << std::endl;
     // std::cout << "gamma: " << g << " eta: " << g/k << " z: " << g/(1-g) << std::endl;
-    this->g = g;
+    gamma_f = g;
+    eta_f = e;
   }
 
   int select() {
@@ -123,7 +125,8 @@ struct QuantBandit {
       if (weights[i] >= (Work{1} << (bits - 8))) {
         should_halve = true;
       }
-      Work update = (priors[i] * gamma_over_one_minus_gamma / 256);
+      // Work update = (priors[i] * gamma_over_one_minus_gamma / 256);
+      Work update = 0;
       // std::cout << "u: " << update << " ~ " << to_float(update) << std::endl;
       probs[i] = weights[i] + update;
       sum += probs[i];
@@ -145,13 +148,13 @@ struct QuantBandit {
     ++chosen[c];
 
     double mu_float = (double)probs[c] / sum;
-    double eta_float = g / k;
+    double eta_float = eta_f;
 
     eta_over_mu = (eta_float / mu_float) * ONE;
-    eta_over_mu_f = (eta_float / mu_float);
+    eta_over_mu_f = (eta_float / (mu_float + gamma_f));
 
     if (should_halve) {
-      std::cout << "halve" << std::endl;
+      // std::cout << "halve" << std::endl;
       for (auto &w : weights) {
         w += 1;
         w /= 2;
@@ -166,7 +169,7 @@ struct QuantBandit {
   void update(auto c, float r) { 
     // double factor = exp(r * to_float(eta_over_mu));
     double factor = exp(r * eta_over_mu_f);
-    Work fac = exp32(eta_over_mu * r);
+    // Work fac = exp32(eta_over_mu * r);
     // weights[c] *= fac;
     // weights[c] /= ONE;
     weights[c] *= factor;
@@ -196,8 +199,8 @@ auto try_poo(QuantBandit &b1, QuantBandit &b2, const auto &matrix, auto iter) {
     p2[i] = static_cast<float>(b2.chosen[i]) / iter;
   }
 
-  print(p1);
-  print(p2);
+  // print(p1);
+  // print(p2);
 
   const auto e = expl(matrix, p1, p2);
   const auto x = e.first - e.second;
@@ -206,7 +209,7 @@ auto try_poo(QuantBandit &b1, QuantBandit &b2, const auto &matrix, auto iter) {
 
 int main(int argc, char **argv) {
 
-  if (argc < 6) {
+  if (argc < 7) {
     std::cerr << "m n iter trials gamma; get average expl. for quantized exp3."
               << std::endl;
     return 1;
@@ -219,6 +222,7 @@ int main(int argc, char **argv) {
   const auto iter = std::atoi(argv[3]);
   const auto trials = std::atoi(argv[4]);
   const float gamma = std::atof(argv[5]);
+  const float eta = std::atof(argv[6]);
 
   std::cout << "ONE: " << ONE << std::endl;
 
@@ -226,7 +230,8 @@ int main(int argc, char **argv) {
   std::cout << " n: " << n;
   std::cout << " iter: " << iter;
   std::cout << " trails: " << trials;
-  std::cout << " gamma: " << gamma << std::endl;
+  std::cout << " gamma: " << gamma;
+  std::cout << " eta: " << eta << std::endl;
 
   double total_x = 0;
   double total_x_uniform = 0;
@@ -242,8 +247,8 @@ int main(int argc, char **argv) {
     //   matrix[1][1] = 1.0;
     // }
 
-    QuantBandit b1{m, gamma};
-    QuantBandit b2{n, gamma};
+    QuantBandit b1{m, gamma, eta};
+    QuantBandit b2{n, gamma, eta};
     const auto x = try_poo(b1, b2, matrix, iter);
     total_x += x;
 
