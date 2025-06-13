@@ -93,7 +93,45 @@ def save_raw_in_dir(path, quantize=True):
         pokemon_net.save_float(path, "p")
         active_net.save_float(path, "a")
 
+def read_frame_and_inference():
+    if len(sys.argv) < 3:
+        print("Input: path to buffer, path to nets.")
+        exit()
+
+    from frame import Frame, Pokemon, Active
+    FRAME_SIZE = 442
+
+    buffer_path = sys.argv[1]
+    net_path = sys.argv[2]
+
+    pokemon_net = TwoLayerMLP(198, 32, 39)
+    pokemon_net.load(os.path.join(net_path, "p.pt"))
+    active_net = TwoLayerMLP(198 + 14, 32, 55)
+    active_net.load(os.path.join(net_path, "a.pt"))
+
+    pokemon_input = torch.zeros((Pokemon.n_dim,))
+    active_input = torch.zeros((Active.n_dim,))
+
+
+    
+    with open(buffer_path, 'rb') as f:
+        f.seek(FRAME_SIZE)
+        slice_bytes = f.read(FRAME_SIZE)
+        frame = Frame(slice_bytes)
+
+        frame.battle.p1.pokemon[0].to_tensor(pokemon_input)
+        active_pokemon = frame.battle.p1.pokemon[frame.battle.p1.order[0] - 1]
+        active_pokemon.to_tensor(active_input[:198], write_stats=False)
+        frame.battle.p1.active.to_tensor(active_input)
+
+
+    pokemon_output = pokemon_net.relu(pokemon_net.forward(pokemon_input))
+    active_output = active_net.relu(active_net.forward(active_input))
+
+    print(pokemon_output)
+    print((pokemon_output * 127).to(torch.uint8))
+    print(active_output)
+    print((active_output * 127).to(torch.uint8))
+
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("please provide path for formatting.")
-    save_raw_in_dir(sys.argv[1], False)
+    read_frame_and_inference()
