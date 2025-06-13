@@ -39,7 +39,7 @@
     - accumulation happens directly to int32s
 */
 
-namespace Stockfish::Eval::NNUE::Layers {
+namespace NNUE::Layers {
 
 template <IndexType InDims, IndexType OutDims> class AffineTransform {
 public:
@@ -57,15 +57,6 @@ public:
       ceil_to_multiple<IndexType>(OutputDimensions, MaxSimdWidth);
 
   using OutputBuffer = OutputType[PaddedOutputDimensions];
-
-  // Hash value embedded in the evaluation file
-  static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
-    std::uint32_t hashValue = 0xCC03DAE4u;
-    hashValue += OutputDimensions;
-    hashValue ^= prevHash >> 1;
-    hashValue ^= prevHash << 31;
-    return hashValue;
-  }
 
   static constexpr IndexType get_weight_index_scrambled(IndexType i) {
     return (i / 4) % (PaddedInputDimensions / 4) * OutputDimensions * 4 +
@@ -91,6 +82,15 @@ public:
       weights[get_weight_index(i)] =
           read_little_endian<WeightType>(stream_weight);
     }
+    // for (IndexType i = 0; i < OutputDimensions; ++i) {
+    //   for (IndexType j = 0; j < InputDimensions; ++j) {
+    //     weights[get_weight_index(j + i * InputDimensions)] =
+    //         read_little_endian<WeightType>(stream_weight);
+    //   }
+    //   for (IndexType j = InputDimensions; j < PaddedInputDimensions; ++j) {
+    //     weights[get_weight_index(j + i * InputDimensions)] = 0;
+    //   }
+    // }
     return !(stream_weight.fail() || stream_bias.fail());
   }
 
@@ -184,6 +184,6 @@ public:
       WeightType weights[OutputDimensions * PaddedInputDimensions];
 };
 
-} // namespace Stockfish::Eval::NNUE::Layers
+} // namespace NNUE::Layers
 
 #endif // #ifndef NNUE_LAYERS_AFFINE_TRANSFORM_H_INCLUDED

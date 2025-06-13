@@ -34,7 +34,7 @@ static inline const bool IsLittleEndian =
 
 #include <immintrin.h>
 
-namespace Stockfish::Eval::NNUE {
+namespace NNUE {
 
 // Version of the evaluation file
 constexpr std::uint32_t Version = 0x7AF32F20u;
@@ -89,6 +89,13 @@ inline IntType read_little_endian(std::istream &stream) {
   return result;
 }
 
+template <typename FloatType>
+inline FloatType read_little_endian_float(std::istream &stream) {
+  std::array<char, 4> result;
+  stream.read(reinterpret_cast<char *>(result.data()), sizeof(FloatType));
+  return std::bit_cast<float>(result);
+}
+
 // Utility to write an integer (signed or unsigned, any size)
 // to a stream in little-endian order. We swap the byte order before the write
 // if necessary to always write in little-endian order, independently of the
@@ -126,6 +133,13 @@ inline void read_little_endian(std::istream &stream, IntType *out,
   else
     for (std::size_t i = 0; i < count; ++i)
       out[i] = read_little_endian<IntType>(stream);
+}
+
+template <typename IntType>
+inline void read_little_endian_float(std::istream &stream, IntType *out,
+                                     std::size_t count) {
+  for (std::size_t i = 0; i < count; ++i)
+    out[i] = read_little_endian_float<IntType>(stream);
 }
 
 // Write integers in bulk to a little-endian stream.
@@ -252,4 +266,4 @@ inline void write_leb_128(std::ostream &stream, const IntType *values,
   flush();
 }
 
-} // namespace Stockfish::Eval::NNUE
+} // namespace NNUE

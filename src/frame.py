@@ -193,7 +193,7 @@ class Battle:
         self.result = None
 
 class Frame:
-    active_dim = Pokemon.n_dim + Volatiles.n_dim
+    active_dim = Active.n_dim
     pokemon_dim = Pokemon.n_dim
 
     def __init__(self, buffer):
@@ -271,5 +271,10 @@ def main():
 
             frame = Frame(slice_bytes, _)
 
+def print_dims():
+    print(Pokemon.n_dim)
+    print(Active.n_dim)
+    
+
 if __name__ == "__main__":
-    main()
+    print_dims()

@@ -8,7 +8,7 @@ import torch.optim as optim
         
 def raw_save(tensor, path):
     with open(path, "wb") as f:
-        f.write(tensor.numpy().tobytes())
+        f.write(tensor.detach().numpy().tobytes())
 
 class ClampedReLU(nn.Module):
     def forward(self, x):
@@ -49,6 +49,14 @@ class TwoLayerMLP(nn.Module):
         raw_save((self.fc1.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "b1"))
         raw_save((self.fc2.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "b2"))
 
+    def save_float(self, path, str):
+        raw_save(self.fc0.weight, os.path.join(path, str + "w0"))
+        raw_save(self.fc1.weight, os.path.join(path, str + "w1"))
+        raw_save(self.fc2.weight, os.path.join(path, str + "w2"))
+        raw_save(self.fc0.bias, os.path.join(path, str + "b0"))
+        raw_save(self.fc1.bias, os.path.join(path, str + "b1"))
+        raw_save(self.fc2.bias, os.path.join(path, str + "b2"))
+
 def count_out_of_bounds_params(model, lower=-2.0, upper=2.0):
     count = 0
     total = 0
@@ -59,13 +67,16 @@ def count_out_of_bounds_params(model, lower=-2.0, upper=2.0):
             total += values.numel()
     return count, total
 
-def quantize_in_dir(path):
-    pokemon_net = TwoLayerMLP(198, 64, 39)
+def save_raw_in_dir(path, quantize=True):
+    pokemon_net = TwoLayerMLP(198, 32, 39)
     pokemon_net.load(os.path.join(path, "p.pt"))
-    active_net = TwoLayerMLP(198 + 14, 64, 55)
+    active_net = TwoLayerMLP(198 + 14, 32, 55)
     active_net.load(os.path.join(path, "a.pt"))
     main_net = TwoLayerMLP(512, 32, 1)
     main_net.load(os.path.join(path, "nn.pt"))
+
+    print(pokemon_net.fc0.bias)
+    return
 
     cp, tp = count_out_of_bounds_params(pokemon_net)
     ca, ta = count_out_of_bounds_params(active_net)
@@ -74,30 +85,15 @@ def quantize_in_dir(path):
         print("one of the nets cant be quantized cus |x| > 2")
         return
 
-    pokemon_net.save_quantized(path, "p")
-    active_net.save_quantized(path, "a")
     main_net.save_quantized(path, "nn")
-
-def train():
-    # Dummy data
-    batch_size = 64
-    inputs = torch.randn(batch_size, 512)
-    targets = torch.rand(batch_size, 1)  # Target in [0, 1]
-
-    # Model
-    model = TwoLayerMLP(input_dim=512, hidden_dim=32, output_dim=1)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-
-    # Training step
-    model.train()
-    optimizer.zero_grad()            # Clear previous gradients
-    outputs = model(inputs)          # Forward pass
-    loss = criterion(outputs, targets)  # Compute loss
-    loss.backward()                  # Backpropagation
-    optimizer.step()                 # Update weights
-
-    print("Loss:", loss.item())
+    if quantize:
+        pokemon_net.save_quantized(path, "p")
+        active_net.save_quantized(path, "a")
+    else:
+        pokemon_net.save_float(path, "p")
+        active_net.save_float(path, "a")
 
 if __name__ == '__main__':
-    quantize_in_dir("./weights/9500")
+    if len(sys.argv) < 2:
+        print("please provide path for formatting.")
+    save_raw_in_dir(sys.argv[1], False)

@@ -20,7 +20,7 @@
 
 #include <immintrin.h>
 
-namespace Stockfish::Simd {
+namespace Simd {
 
 [[maybe_unused]] static int m256_hadd(__m256i sum, int bias) {
   __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum),
@@ -37,4 +37,4 @@ namespace Stockfish::Simd {
   product0 = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
   acc = _mm256_add_epi32(acc, product0);
 }
-} // namespace Stockfish::Simd
+} // namespace Simd

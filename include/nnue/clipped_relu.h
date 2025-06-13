@@ -27,7 +27,7 @@
 
 #include "nnue_common.h"
 
-namespace Stockfish::Eval::NNUE::Layers {
+namespace NNUE::Layers {
 
 // Clipped ReLU
 template <IndexType InDims> class ClippedReLU {
@@ -43,13 +43,6 @@ public:
       ceil_to_multiple<IndexType>(OutputDimensions, 32);
 
   using OutputBuffer = OutputType[PaddedOutputDimensions];
-
-  // Hash value embedded in the evaluation file
-  static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
-    std::uint32_t hashValue = 0x538D24C7u;
-    hashValue += prevHash;
-    return hashValue;
-  }
 
   // Read network parameters
   bool read_parameters(std::istream &) { return true; }
@@ -106,6 +99,6 @@ public:
   }
 };
 
-} // namespace Stockfish::Eval::NNUE::Layers
+} // namespace NNUE::Layers
 
 #endif // NNUE_LAYERS_CLIPPED_RELU_H_INCLUDED

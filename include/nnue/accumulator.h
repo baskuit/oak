@@ -9,12 +9,13 @@
 
 namespace NNUE {
 
-using ProcessedStatus = uint8_t;
+using StatusIndex = uint8_t;
 using MoveKey = uint8_t;
-using PokemonKey = std::pair<ProcessedStatus, MoveKey>;
+using PokemonKey = std::pair<StatusIndex, MoveKey>;
 
 constexpr auto process_status(auto status, auto sleeps) {
-  return std::bit_cast<ProcessedStatus>(status);
+  // TODO
+  return std::bit_cast<StatusIndex>(status);
 }
 
 using Volatiles = uint64_t;
@@ -81,6 +82,50 @@ struct Abstract {
   }
 };
 
+constexpr auto pokemon_in_dim = 198;
+constexpr auto active_in_dim = 212;
+
+using PokemonInput = std::array<float, pokemon_in_dim>;
+using ActiveInput = std::array<float, active_in_dim>;
+
+template <bool read_stats = true>
+PokemonInput get_pokemon_input(const PokemonKey key, const View::Side &side,
+                               auto slot) {
+  PokemonInput output;
+
+  const auto &pokemon = side.pokemon(slot);
+  auto c = 0;
+  if constexpr (read_stats) {
+    const auto &stats = pokemon.stats();
+    output[0] = stats.hp();
+    output[1] = stats.atk();
+    output[2] = stats.def();
+    output[3] = stats.spc();
+    output[4] = stats.spe();
+  }
+  c += 5;
+  const auto &moves = pokemon.moves();
+  for (auto i = 0; i < 4; ++i) {
+    if (moves[i].id && moves[i].pp) {
+      output[c + moves[i].id - 1] = 1.0;
+    }
+  }
+  c += 4;
+  if (key.first) {
+    output[c + key.first] = 1.0;
+  }
+  c += 14; // TODO
+  output[c + static_cast<int>(pokemon.types() % 16)] = 1.0;
+  output[c + static_cast<int>(pokemon.types() / 16)] = 1.0;
+}
+
+ActiveInput get_active_input(const ActiveKey &key,
+                             const View::ActivePokemon &active) {
+  ActiveInput output;
+  // const auto p = get_pokemon_input()
+  return output;
+}
+
 constexpr auto pokemon_out_dim = 39;
 constexpr auto active_out_dim = 55;
 
@@ -88,6 +133,25 @@ using PokemonWord = std::array<uint8_t, 39>;
 using ActiveWord = std::array<uint8_t, 55>;
 
 struct WordCaches {
+
+  template <typename Net, typename Key, typename Value, typename Data>
+  struct NNCache {
+  private:
+    std::map<Key, Value> _cache;
+    Data data;
+
+  public:
+    NNCache(const auto &nn) : _cache{} {}
+
+    const Value &operator[](const Key &key) {
+      const auto it = _cache.find(key);
+      if (it == _cache.end()) {
+        // inference
+      } else {
+        return *it;
+      }
+    }
+  };
 
   struct Slot {
     std::map<PokemonKey, PokemonWord> p_cache;

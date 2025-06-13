@@ -389,9 +389,8 @@ int main(int argc, char **argv) {
   std::thread thread_pool[threads];
   for (auto t = 0; t < threads; ++t) {
     thread_pool[t] = std::thread{
-        &generate,          buffer_fd,          &write_index,
-        &frame_count,       global_buffer_size, ms,
-        device.uniform_64()};
+        &generate,          buffer_fd, &write_index,       &frame_count,
+        global_buffer_size, ms,        device.uniform_64()};
   }
   std::thread print_thread{&handle_print, &frame_count};
 
