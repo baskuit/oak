@@ -1,11 +1,11 @@
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <random>
-#include <vector>
-#include <cmath>
 #include <util/random.h>
+#include <vector>
 
 // represents float scaled by 1 << 14;
 using u8 = uint8_t;
@@ -14,31 +14,29 @@ using u16 = uint16_t;
 using u64 = uint64_t;
 
 using Weight = u32;
-constexpr int bits = 32; 
+constexpr int bits = 32;
 using Work = u64;
 
 constexpr int weight_shift = 16;
 constexpr Weight ONE = Weight{1} << weight_shift;
 
-constexpr float to_float(auto a) {
-  return (float) a / ONE;
-}
+constexpr float to_float(auto a) { return (float)a / ONE; }
 
-void print_q(const auto& v) {
+void print_q(const auto &v) {
   for (const auto x : v) {
     std::cout << (float)x / ONE << ' ';
   }
   std::cout << std::endl;
 }
 
-void print(const auto& v) {
+void print(const auto &v) {
   for (const auto x : v) {
     std::cout << x << ' ';
   }
   std::cout << std::endl;
 }
 
-void print_q(const auto& v, auto sum) {
+void print_q(const auto &v, auto sum) {
   for (const auto x : v) {
     std::cout << ((float)x) / (float)sum << ' ';
   }
@@ -97,7 +95,6 @@ struct QuantBandit {
   float eta_f;
   Work sum = 0;
 
-
   QuantBandit(auto num_arms, float g, float e) {
     k = static_cast<Work>(num_arms);
     probs.resize(k, 0);
@@ -108,8 +105,9 @@ struct QuantBandit {
     gamma = (Work)(g * ONE);
     eta = gamma / k;
     gamma_over_one_minus_gamma = (Work)(g / (1 - g) * ONE);
-    // std::cout << "gamma: " << to_float(gamma) << " eta: " << to_float(eta) << " z: " << to_float(gamma_over_one_minus_gamma) << std::endl;
-    // std::cout << "gamma: " << g << " eta: " << g/k << " z: " << g/(1-g) << std::endl;
+    // std::cout << "gamma: " << to_float(gamma) << " eta: " << to_float(eta) <<
+    // " z: " << to_float(gamma_over_one_minus_gamma) << std::endl; std::cout <<
+    // "gamma: " << g << " eta: " << g/k << " z: " << g/(1-g) << std::endl;
     gamma_f = g;
     eta_f = e;
   }
@@ -166,7 +164,7 @@ struct QuantBandit {
     return c;
   }
 
-  void update(auto c, float r) { 
+  void update(auto c, float r) {
     // double factor = exp(r * to_float(eta_over_mu));
     double factor = exp(r * eta_over_mu_f);
     // Work fac = exp32(eta_over_mu * r);
@@ -214,7 +212,6 @@ int main(int argc, char **argv) {
               << std::endl;
     return 1;
   }
-
 
   prng device{5564564563};
   const auto m = std::atoi(argv[1]);
