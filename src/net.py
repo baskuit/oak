@@ -22,10 +22,14 @@ class TwoLayerMLP(nn.Module):
         self.fc1 = nn.Linear(hidden_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
 
-    def forward(self, x):
+    def forward(self, x, print_buffer=True):
+        if print_buffer: print("input\n",x)
         x = self.relu(self.fc0(x))
+        if print_buffer: print("fc0 out\n",x)
         x = self.relu(self.fc1(x))
+        if print_buffer: print("fc1 out\n",x)
         x = self.fc2(x)
+        if print_buffer: print("fc2 out\n",x)
         return x
 
     def save(self, path):
@@ -111,27 +115,28 @@ def read_frame_and_inference():
 
     pokemon_input = torch.zeros((Pokemon.n_dim,))
     active_input = torch.zeros((Active.n_dim,))
-
-
     
-    with open(buffer_path, 'rb') as f:
-        f.seek(FRAME_SIZE)
-        slice_bytes = f.read(FRAME_SIZE)
-        frame = Frame(slice_bytes)
+    # with open(buffer_path, 'rb') as f:
+    #     f.seek(FRAME_SIZE)
+    #     slice_bytes = f.read(FRAME_SIZE)
+    #     frame = Frame(slice_bytes)
 
-        frame.battle.p1.pokemon[0].to_tensor(pokemon_input)
-        active_pokemon = frame.battle.p1.pokemon[frame.battle.p1.order[0] - 1]
-        active_pokemon.to_tensor(active_input[:198], write_stats=False)
-        frame.battle.p1.active.to_tensor(active_input)
-
-
+    #     frame.battle.p1.pokemon[0].to_tensor(pokemon_input)
+    #     active_pokemon = frame.battle.p1.pokemon[frame.battle.p1.order[0] - 1]
+    #     active_pokemon.to_tensor(active_input[:198], write_stats=False)
+    #     frame.battle.p1.active.to_tensor(active_input)
+    pokemon_input[0] = 1.0
     pokemon_output = pokemon_net.relu(pokemon_net.forward(pokemon_input))
-    active_output = active_net.relu(active_net.forward(active_input))
+    # active_output = active_net.relu(active_net.forward(active_input))
+    # print(pokemon_input)
+    # print(active_input)
+    # print(pokemon_output)
+    # print((pokemon_output * 127).to(torch.uint8))
+    # print(active_output)
+    # print((active_output * 127).to(torch.uint8))
 
-    print(pokemon_output)
-    print((pokemon_output * 127).to(torch.uint8))
-    print(active_output)
-    print((active_output * 127).to(torch.uint8))
+    # print("p net w1 (32x32)")
+    # print(pokemon_net.fc1.weight)
 
 if __name__ == '__main__':
     read_frame_and_inference()

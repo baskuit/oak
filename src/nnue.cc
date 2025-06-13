@@ -37,7 +37,6 @@ struct Model {
 
     const float out = nn.propagate(acc.data()) / (127 * 64);
     const float val = 1 / (1 + std::exp(-out));
-    std::cout << "out: " << val << " = sigmoid " << out << std::endl;
     return val;
   }
 };
@@ -94,18 +93,90 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  NNUE::WordNet<NNUE::pokemon_in_dim, 32, NNUE::pokemon_out_dim> p;
-  const bool success = read_net(path, p, "p");
+  NNUE::WordNet<NNUE::pokemon_in_dim, 32, NNUE::pokemon_out_dim> pokemon_net;
+  const bool success = read_net(path, pokemon_net, "p");
   std::cout << success << std::endl;
+  
+  // print fc1.weight
+  // for (auto i = 0; i < 32; ++i) {
+  //   for (auto j = 0; j < 32; ++j) {
+  //     std::cout << pokemon_net.fc_1.weights[i][j] << ' ';
+  //   }
+  //   std::cout << std::endl;
+  // }
 
+  std::array<float, NNUE::pokemon_in_dim> pokemon_input = {
+      323., 248., 268., 328., 298., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.,
+      0.,   0.,   1.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+      1.,   0.,   0.,   1.,   0.,   0};
 
-  for (const auto f : p.fc_0.biases) {
-    std::cout << f << ' ';
+  std::array<float, NNUE::pokemon_in_dim> dummy_input{};
+  dummy_input[0] = 1.0;
+  // dummy_input[NNUE::pokemon_in_dim - 1] = 1.0;
+
+  const auto out = pokemon_net.propagate(dummy_input.data(), true);
+
+  for (const auto x : out) {
+    std::cout << (int)x << ' ';
   }
   std::cout << std::endl;
 
   return 0;
 }
+
+// int read_buffer(int argc, char **argv) {
+
+//   size_t start = 0;
+//   size_t end = 1;
+
+//   const size_t length = end - start;
+//   uint8_t *bytes = new uint8_t[length * sizeof(Frame)];
+//   const auto r =
+//       pread(fd, bytes, length * sizeof(Frame), start * sizeof(Frame));
+//   if (r == -1) {
+//     std::cerr << "pread Error." << std::endl;
+//     return -1;
+//   }
+
+//   const auto i = 0;
+//   const auto &frame =
+//       *reinterpret_cast<const Frame *>(bytes + (sizeof(Frame) * i));
+
+//   pkmn_gen1_battle battle;
+//   std::memcpy(battle.bytes, frame.battle.data(), Sizes::battle);
+//   size_t m = (frame.row_col / 9) + 1;
+//   size_t n = (frame.row_col % 9) + 1;
+
+//   std::cout << i + start << ":\n";
+//   std::cout << Strings::battle_to_string(battle);
+//   print_durations(frame.durations);
+
+//   std::cout << "Q/Z: " << frame.eval << " ~ " << frame.score
+//             << " | iter: " << frame.iter << '\n';
+//   // std::cout << "m: " << m << " n: " << n << '\n';
+//   std::cout << "P1 Policy:\n";
+//   for (auto i = 0; i < m; ++i) {
+//     std::cout << frame.p1_visits[i] / (float)frame.iter << ' ';
+//   }
+//   std::cout << '\n';
+//   std::cout << "P2 Policy:\n";
+//   for (auto i = 0; i < n; ++i) {
+//     std::cout << frame.p2_visits[i] / (float)frame.iter << ' ';
+//   }
+//   std::cout << '\n';
+
+//   return 0;
+// }
 
 // int poo(int argc, char **argv) {
 

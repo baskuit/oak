@@ -35,10 +35,11 @@ public:
 
   static constexpr size_t InputDimensions = InDims;
   static constexpr size_t OutputDimensions = OutDims;
-  using OutputBuffer = OutputType[OutDims];
+  using OutputBuffer = std::array<OutputType, OutDims>;
 
   bool read_parameters(std::istream &stream_weight, std::istream &stream_bias) {
-    read_little_endian_float<BiasType>(stream_bias, biases.data(), OutputDimensions);
+    read_little_endian_float<BiasType>(stream_bias, biases.data(),
+                                       OutputDimensions);
     for (size_t i = 0; i < OutputDimensions * InputDimensions; ++i) {
       weights[i / InputDimensions][i % InputDimensions] =
           read_little_endian_float<WeightType>(stream_weight);

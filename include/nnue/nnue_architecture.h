@@ -104,7 +104,7 @@ template <int In, int Hidden, int Out> struct WordNet {
   SlowLayer<Hidden, Hidden> fc_1;
   SlowLayer<Hidden, Out> fc_2;
 
-  std::array<std::uint8_t, Out> propagate(const float *transformedFeatures) {
+  std::array<std::uint8_t, Out> propagate(const float *transformedFeatures, bool print=false) {
     struct Buffer {
       alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
       alignas(CacheLineSize) typename decltype(fc_1)::OutputBuffer fc_1_out;
@@ -115,12 +115,28 @@ template <int In, int Hidden, int Out> struct WordNet {
 
     static thread_local Buffer buffer;
 
-    fc_0.propagate(transformedFeatures, buffer.fc_0_out);
-    fc_1.propagate(buffer.fc_0_out, buffer.fc_1_out);
-    fc_2.propagate(buffer.fc_1_out, buffer.fc_2_out);
+    fc_0.propagate(transformedFeatures, buffer.fc_0_out.data());
+    fc_1.propagate(buffer.fc_0_out.data(), buffer.fc_1_out.data());
+    fc_2.propagate(buffer.fc_1_out.data(), buffer.fc_2_out.data());
     std::array<std::uint8_t, Out> output;
     for (IndexType i = 0; i < Out; ++i) {
-      output[i] = static_cast<TransformedFeatureType>(255 * buffer.fc_2.out[i]);
+      output[i] = static_cast<std::uint8_t>(255 * buffer.fc_2_out[i]);
+    }
+    const auto arr_print = [](const auto& v) {
+      for (const auto x : v) {
+        std::cout << x << ' ';
+      }
+      std::cout << std::endl;
+    };
+
+    if (print) {
+      std::cout << "input" << std::endl;
+      std::cout << "fc0 out" << std::endl;
+      arr_print(buffer.fc_0_out);
+      std::cout << "fc1 out" << std::endl;
+      arr_print(buffer.fc_1_out);
+      std::cout << "fc2 out" << std::endl;
+      arr_print(buffer.fc_2_out);
     }
     return output;
   }
