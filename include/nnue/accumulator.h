@@ -144,6 +144,7 @@ ActiveInput get_active_input(const ActiveKey &key,
   std::memcpy(output.data(), p.data(), sizeof(float) * pokemon_in_dim);
   const auto &volatiles = active.volatiles();
   auto c = pokemon_in_dim;
+  // TODO volatiles output[c] =
   return output;
 }
 

@@ -22,6 +22,7 @@ enum class Status : std::underlying_type_t<std::byte> {
   Sleep7 = 0b00000111,
   Rest1 = 0b10000001,
   Rest2 = 0b10000010,
+  // Seemingly only possible mid update
   Rest3 = 0b10000011,
 };
 

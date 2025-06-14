@@ -28,8 +28,8 @@ struct Model {
 
   float inference(const pkmn_gen1_battle &battle,
                   const pkmn_gen1_chance_durations &durations) {
-    NNUE::Abstract abstract{battle, durations};
-    nnue_caches.write_acc(abstract, acc.data());
+    NNUE::BattleKeys abstract{battle, durations};
+    nnue_caches.accumulate(abstract, acc.data());
     for (const auto byte : acc) {
       std::cout << (int)byte << ' ';
     }

@@ -121,6 +121,8 @@ struct Pokemon {
 
 struct Volatiles {
   uint8_t bytes[8];
+
+  bool leech_seed const() {}
 };
 
 struct ActivePokemon {
