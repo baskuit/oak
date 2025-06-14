@@ -6,6 +6,7 @@
 #include <map>
 
 #include <battle/view.h>
+#include <nnue/nnue_architecture.h>
 
 namespace NNUE {
 
@@ -13,7 +14,7 @@ using StatusIndex = uint8_t;
 using MoveKey = uint8_t;
 using PokemonKey = std::pair<StatusIndex, MoveKey>;
 
-constexpr auto process_status(auto status, auto sleeps) {
+constexpr auto get_status_index(auto status, auto sleeps) {
   // TODO
   return std::bit_cast<StatusIndex>(status);
 }
@@ -27,8 +28,8 @@ struct ActiveKey {
   PokemonKey pokemon_key;
 
   bool operator<(const ActiveKey &other) const {
-    return (volatiles < other.volatiles) || (stats < other.stats) ||
-           (pokemon_key < other.pokemon_key);
+    return (pokemon_key < other.pokemon_key) || (volatiles < other.volatiles) ||
+           (stats < other.stats);
   }
 };
 
@@ -41,8 +42,9 @@ PokemonKey get_pokemon_key(const View::Side &side, const View::Duration &d,
     move_key |= (pokemon.moves()[i].pp > 0);
     move_key <<= 1;
   }
-  process_status(std::bit_cast<uint8_t>(pokemon.status()), sleeps);
-  return PokemonKey{move_key, move_key};
+  const auto si =
+      get_status_index(std::bit_cast<uint8_t>(pokemon.status()), sleeps);
+  return PokemonKey{si, move_key};
 }
 
 ActiveKey get_active_key(const View::Side &side, const View::Duration &d) {
@@ -67,17 +69,22 @@ struct Abstract {
     const auto &b = View::ref(battle);
     const auto &d = View::ref(durations);
     p1.active_key = get_active_key(b.side(0), d.duration(0));
-    p2.active_key = get_active_key(b.side(1), d.duration(1));
+    p2.active_key = get_active_key(b.side(1), d.duration(0));
 
     for (auto i = 0; i < 6; ++i) {
+      const auto& pokemon1 = b.side(0).pokemon(b.side(0).order()[i] - 1);
+      const auto& pokemon2 = b.side(1).pokemon(b.side(0).order()[i] - 1);
       p1.pokemon_keys[i] = get_pokemon_key(b.side(0), d.duration(0), i);
       p2.pokemon_keys[i] = get_pokemon_key(b.side(1), d.duration(1), i);
+      p1.hp[i] = (float)pokemon1.hp() / pokemon1.max_hp();
+      p2.hp[i] = (float)pokemon2.hp() / pokemon2.max_hp();
     }
     p1.order = b.side(0).order();
     p2.order = b.side(1).order();
   }
 
   void update(const View::Battle &battle, pkmn_choice c1, pkmn_choice c2) {
+    // TODO?
     return;
   }
 };
@@ -89,11 +96,9 @@ using PokemonInput = std::array<float, pokemon_in_dim>;
 using ActiveInput = std::array<float, active_in_dim>;
 
 template <bool read_stats = true>
-PokemonInput get_pokemon_input(const PokemonKey key, const View::Side &side,
-                               auto slot) {
+PokemonInput get_pokemon_input(const PokemonKey key,
+                               const View::Pokemon &pokemon) {
   PokemonInput output;
-
-  const auto &pokemon = side.pokemon(slot);
   auto c = 0;
   if constexpr (read_stats) {
     const auto &stats = pokemon.stats();
@@ -120,9 +125,13 @@ PokemonInput get_pokemon_input(const PokemonKey key, const View::Side &side,
 }
 
 ActiveInput get_active_input(const ActiveKey &key,
-                             const View::ActivePokemon &active) {
+                             const View::ActivePokemon &active,
+                             const View::Pokemon &pokemon) {
   ActiveInput output;
-  // const auto p = get_pokemon_input()
+  const auto p = get_pokemon_input(key.pokemon_key, pokemon);
+  std::memcpy(output.data(), p.data(), sizeof(float) * pokemon_in_dim);
+  const auto &volatiles = active.volatiles();
+  auto c = pokemon_in_dim;
   return output;
 }
 
@@ -132,33 +141,52 @@ constexpr auto active_out_dim = 55;
 using PokemonWord = std::array<uint8_t, 39>;
 using ActiveWord = std::array<uint8_t, 55>;
 
-struct WordCaches {
+using PokemonNet = WordNet<pokemon_in_dim, 32, pokemon_out_dim>;
+using ActiveNet = WordNet<active_in_dim, 32, active_out_dim>;
 
-  template <typename Net, typename Key, typename Value, typename Data>
-  struct NNCache {
+struct NNUECache {
+
+  template <typename Net, typename Key, typename Value> struct WordCache {
+    static constexpr bool is_active = std::is_same_v<Key, ActiveKey>;
+
   private:
     std::map<Key, Value> _cache;
-    Data data;
+    View::Pokemon *p;
+    View::ActivePokemon *a;
+    Net *net;
 
   public:
-    NNCache(const auto &nn) : _cache{} {}
+    WordCache(const auto &nn) : _cache{} {}
 
     const Value &operator[](const Key &key) {
       const auto it = _cache.find(key);
       if (it == _cache.end()) {
-        // inference
-      } else {
-        return *it;
+        const auto &v = *view;
+        const auto get_input = [this]() {
+          if constexpr (is_active) {
+            return get_active_input(key, *a, *p);
+          } else {
+            return get_pokemon_input(key, *p);
+          }
+        };
+        const auto input = get_input();
+        const auto output = net->propagate(input.data());
+        _cache[key] = output;
       }
+      return _cache[key];
     }
   };
 
+  using PokemonCache = WordCache<PokemonNet, PokemonInput, PokemonOutput>;
+  using ActiveCache = WordCache<ActiveNet, ActiveInput, ActiveOutput>;
+
   struct Slot {
-    std::map<PokemonKey, PokemonWord> p_cache;
-    std::map<ActiveKey, ActiveWord> a_cache;
+    PokemonCache p_cache;
+    ActiveCache a_cache;
 
     void print_sizes() const {
-      std::cout << p_cache.size() << ' ' << a_cache.size() << std::endl;
+      std::cout << p_cache._cache.size() << ' ' << a_cache._cache.size()
+                << std::endl;
     }
   };
 
@@ -175,24 +203,49 @@ struct WordCaches {
   Side p1;
   Side p2;
 
+  NNUECache(const pkmn_gen1_battle *battle, PokemonNet &pokemon_net,
+            ActiveNet &active_net)
+      : p1{}, p2{} {
+    const auto &b = View::ref(battle);
+    for (auto s = 0; s < 2; ++s) {
+      const auto &side = b.side(s);
+      for (int i = 0; i < 6; ++i) {
+        auto &slot = side.slots[i];
+        slot.p_cache.pokemon = &b.side(0).pokemon(i); // TODO
+        slot.p_cache.active = &b.side(0).active();
+        stot1.p_cache.net = &pokemon_net;
+        slot.a_cache.pokemon = &b.side(0).pokemon(i); // TODO
+        slot.a_cache.active = &b.side(0).active();
+        stot1.a_cache.net = &active_net;
+      }
+    }
+  }
+
   void write_acc(const Abstract &a, uint8_t *const acc) {
+    auto *const acc1 = acc;
     auto *const acc2 = acc + 256;
     std::memcpy(p1.slots[a.p1.order[0] - 1].a_cache[a.p1.active_key].data(),
-                acc + 1, active_out_dim);
+                acc1 + 1, active_out_dim);
     std::memcpy(p2.slots[a.p2.order[0] - 1].a_cache[a.p2.active_key].data(),
                 acc2 + 1, active_out_dim);
+    acc1[0] = p1.hp[0];
+    acc2[0] = p2.hp[0];
     for (auto i = 0; i < 5; ++i) {
+      const auto poke1 = acc1 + (active_out_dim + i * pokemon_out_dim);
+      const auto poke2 = acc2 + (active_out_dim + i * pokemon_out_dim);
+
       std::memcpy(p1.slots[a.p1.order[i + 1] - 1]
                       .p_cache[a.p1.pokemon_keys[a.p1.order[i + 1] - 1]]
                       .data(),
-                  acc + active_out_dim + i * pokemon_out_dim + 1,
-                  pokemon_out_dim);
+                  poke1 + 1, pokemon_out_dim);
       std::memcpy(p2.slots[a.p2.order[i + 1] - 1]
                       .p_cache[a.p2.pokemon_keys[a.p2.order[i + 1] - 1]]
                       .data(),
-                  acc2 + active_out_dim + i * pokemon_out_dim + 1,
-                  pokemon_out_dim);
-    }
+                  poke2 + 1, pokemon_out_dim);
+      poke1[0] = p1.hp[i + 1];
+      poke2[0] = p2.hp[i + 1];
+      
+    } // TODO all this order shit
   }
 };
 

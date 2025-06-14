@@ -20,7 +20,7 @@ using Node =
 struct Model {
 
   prng device{34545645};
-  NNUE::WordCaches nnue_caches;
+  NNUE::NNUECache nnue_caches;
   NNUE::WordNet<198, 32, 39> pokemon_net;
   NNUE::WordNet<198 + 14, 32, 55> active_net;
   NNUE::NetworkArchitecture nn;
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
   NNUE::WordNet<NNUE::pokemon_in_dim, 32, NNUE::pokemon_out_dim> pokemon_net;
   const bool success = read_net(path, pokemon_net, "p");
   std::cout << success << std::endl;
-  
+
   // print fc1.weight
   // for (auto i = 0; i < 32; ++i) {
   //   for (auto j = 0; j < 32; ++j) {

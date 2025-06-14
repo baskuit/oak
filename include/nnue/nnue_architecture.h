@@ -104,7 +104,8 @@ template <int In, int Hidden, int Out> struct WordNet {
   SlowLayer<Hidden, Hidden> fc_1;
   SlowLayer<Hidden, Out> fc_2;
 
-  std::array<std::uint8_t, Out> propagate(const float *transformedFeatures, bool print=false) {
+  std::array<std::uint8_t, Out> propagate(const float *transformedFeatures,
+                                          bool print = false) {
     struct Buffer {
       alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
       alignas(CacheLineSize) typename decltype(fc_1)::OutputBuffer fc_1_out;
@@ -122,7 +123,7 @@ template <int In, int Hidden, int Out> struct WordNet {
     for (IndexType i = 0; i < Out; ++i) {
       output[i] = static_cast<std::uint8_t>(255 * buffer.fc_2_out[i]);
     }
-    const auto arr_print = [](const auto& v) {
+    const auto arr_print = [](const auto &v) {
       for (const auto x : v) {
         std::cout << x << ' ';
       }
