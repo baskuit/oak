@@ -120,9 +120,33 @@ struct Pokemon {
 };
 
 struct Volatiles {
-  uint8_t bytes[8];
-
-  bool leech_seed const() {}
+  uint64_t bits;
+  bool bide() const { return bits & (1 << 0); }
+  bool thrashing() const { return bits & (1 << 1); }
+  bool multi_hit() const { return bits & (1 << 2); }
+  bool flinch() const { return bits & (1 << 3); }
+  bool charging() const { return bits & (1 << 4); }
+  bool binding() const { return bits & (1 << 5); }
+  bool invulnerable() const { return bits & (1 << 6); }
+  bool confusion() const { return bits & (1 << 7); }
+  bool mist() const { return bits & (1 << 8); }
+  bool focus_energy() const { return bits & (1 << 9); }
+  bool substitute() const { return bits & (1 << 10); }
+  bool recharging() const { return bits & (1 << 11); }
+  bool rage() const { return bits & (1 << 12); }
+  bool leech_seed() const { return bits & (1 << 13); }
+  bool toxic() const { return bits & (1 << 14); }
+  bool light_screen() const { return bits & (1 << 15); }
+  bool reflect() const { return bits & (1 << 16); }
+  bool transform() const { return bits & (1 << 17); }
+  bool confusion_left() const { return (bits >> 18) & 0b111; }
+  bool attacks() const { return (bits >> 21) & 0b111; }
+  bool state() const { return (bits >> 24) & 0xFFFF; }
+  bool substitute_hp() const { return (bits >> 40) & 0xFF; }
+  bool transform_species() const { return (bits >> 48) & 0xF; }
+  bool disable_left() const { return (bits >> 52) & 0xF; }
+  bool disable_move() const { return (bits >> 56) & 0b111; }
+  bool toxic_counter() const { return (bits >> 59) & 0b11111; }
 };
 
 struct ActivePokemon {

@@ -27,7 +27,6 @@
 
 // #include "features/half_ka_v2_hm.h"
 #include "affine_transform.h"
-#include "slow.h"
 // #include "layers/affine_transform_sparse_input.h"
 #include "clipped_relu.h"
 // #include "layers/sqr_clipped_relu.h"
@@ -100,9 +99,9 @@ template <int In, int Hidden, int Out> struct WordNet {
   static constexpr int FC_0_OUTPUTS = Hidden;
   static constexpr int FC_1_OUTPUTS = Hidden;
 
-  SlowLayer<In, Hidden> fc_0;
-  SlowLayer<Hidden, Hidden> fc_1;
-  SlowLayer<Hidden, Out> fc_2;
+  Layers::AffineTransformFloat<In, Hidden> fc_0;
+  Layers::AffineTransformFloat<Hidden, Hidden> fc_1;
+  Layers::AffineTransformFloat<Hidden, Out> fc_2;
 
   std::array<std::uint8_t, Out> propagate(const float *transformedFeatures,
                                           bool print = false) {

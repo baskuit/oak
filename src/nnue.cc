@@ -2,6 +2,7 @@
 #include <battle/sample-teams.h>
 #include <battle/strings.h>
 #include <pi/exp3.h>
+#include <pi/frame.h>
 #include <pi/mcts.h>
 #include <util/random.h>
 
@@ -9,10 +10,13 @@
 #include <nnue/nnue_architecture.h>
 
 #include <cmath>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <random>
+#include <stdio.h>
 #include <string>
+#include <unistd.h>
 
 using Node =
     Tree::Node<Exp3::JointBanditData<.03f, false>, std::array<uint8_t, 16>>;
@@ -79,104 +83,88 @@ bool read_params_from_dir(std::filesystem::path path, auto &pokemon_net,
          read(main_net, path, "nn");
 }
 
-int main(int argc, char **argv) {
+// int main(int argc, char **argv) {
 
-  if (argc < 2) {
-    std::cerr << "Input: nn path." << std::endl;
-    return 1;
-  }
-
-  std::filesystem::path path{std::string{argv[1]}};
-
-  if (!std::filesystem::exists(path)) {
-    std::cerr << "Path does not exist." << std::endl;
-    return 1;
-  }
-
-  NNUE::WordNet<NNUE::pokemon_in_dim, 32, NNUE::pokemon_out_dim> pokemon_net;
-  const bool success = read_net(path, pokemon_net, "p");
-  std::cout << success << std::endl;
-
-  // print fc1.weight
-  // for (auto i = 0; i < 32; ++i) {
-  //   for (auto j = 0; j < 32; ++j) {
-  //     std::cout << pokemon_net.fc_1.weights[i][j] << ' ';
-  //   }
-  //   std::cout << std::endl;
-  // }
-
-  std::array<float, NNUE::pokemon_in_dim> pokemon_input = {
-      323., 248., 268., 328., 298., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.,
-      0.,   0.,   1.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-      1.,   0.,   0.,   1.,   0.,   0};
-
-  std::array<float, NNUE::pokemon_in_dim> dummy_input{};
-  dummy_input[0] = 1.0;
-  // dummy_input[NNUE::pokemon_in_dim - 1] = 1.0;
-
-  const auto out = pokemon_net.propagate(dummy_input.data(), true);
-
-  for (const auto x : out) {
-    std::cout << (int)x << ' ';
-  }
-  std::cout << std::endl;
-
-  return 0;
-}
-
-// int read_buffer(int argc, char **argv) {
-
-//   size_t start = 0;
-//   size_t end = 1;
-
-//   const size_t length = end - start;
-//   uint8_t *bytes = new uint8_t[length * sizeof(Frame)];
-//   const auto r =
-//       pread(fd, bytes, length * sizeof(Frame), start * sizeof(Frame));
-//   if (r == -1) {
-//     std::cerr << "pread Error." << std::endl;
-//     return -1;
+//   if (argc < 2) {
+//     std::cerr << "Input: nn path." << std::endl;
+//     return 1;
 //   }
 
-//   const auto i = 0;
-//   const auto &frame =
-//       *reinterpret_cast<const Frame *>(bytes + (sizeof(Frame) * i));
+//   std::filesystem::path path{std::string{argv[1]}};
 
-//   pkmn_gen1_battle battle;
-//   std::memcpy(battle.bytes, frame.battle.data(), Sizes::battle);
-//   size_t m = (frame.row_col / 9) + 1;
-//   size_t n = (frame.row_col % 9) + 1;
-
-//   std::cout << i + start << ":\n";
-//   std::cout << Strings::battle_to_string(battle);
-//   print_durations(frame.durations);
-
-//   std::cout << "Q/Z: " << frame.eval << " ~ " << frame.score
-//             << " | iter: " << frame.iter << '\n';
-//   // std::cout << "m: " << m << " n: " << n << '\n';
-//   std::cout << "P1 Policy:\n";
-//   for (auto i = 0; i < m; ++i) {
-//     std::cout << frame.p1_visits[i] / (float)frame.iter << ' ';
+//   if (!std::filesystem::exists(path)) {
+//     std::cerr << "Path does not exist." << std::endl;
+//     return 1;
 //   }
-//   std::cout << '\n';
-//   std::cout << "P2 Policy:\n";
-//   for (auto i = 0; i < n; ++i) {
-//     std::cout << frame.p2_visits[i] / (float)frame.iter << ' ';
+
+//   NNUE::WordNet<NNUE::pokemon_in_dim, 32, NNUE::pokemon_out_dim> pokemon_net;
+//   const bool success = read_net(path, pokemon_net, "p");
+//   std::cout << success << std::endl;
+
+//   // print fc1.weight
+//   // for (auto i = 0; i < 32; ++i) {
+//   //   for (auto j = 0; j < 32; ++j) {
+//   //     std::cout << pokemon_net.fc_1.weights[i][j] << ' ';
+//   //   }
+//   //   std::cout << std::endl;
+//   // }
+
+//   std::array<float, NNUE::pokemon_in_dim> pokemon_input = {
+//       323., 248., 268., 328., 298., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+//       0., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0.,
+//       0., 0., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0.,
+//       0., 0., 0., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0.,
+//       0., 0., 0., 1., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0.,
+//       0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0.,
+//       0., 1., 0., 0., 0., 0., 0., 0.,   0.,   1.,   0.,   0.,   0., 0., 0.,
+//       0., 0., 0., 0., 0., 1., 0., 0., 0.,   0.,   0.,   0.,   0.,   0., 0.,
+//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0.,   0.,
+//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0., 0.,
+//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0., 0.,
+//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0., 0.,
+//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.,   0.,   0.,   1.,   0., 0};
+
+//   std::array<float, NNUE::pokemon_in_dim> dummy_input{};
+//   dummy_input[0] = 1.0;
+//   // dummy_input[NNUE::pokemon_in_dim - 1] = 1.0;
+
+//   const auto out = pokemon_net.propagate(dummy_input.data(), true);
+
+//   for (const auto x : out) {
+//     std::cout << (int)x << ' ';
 //   }
-//   std::cout << '\n';
+//   std::cout << std::endl;
 
 //   return 0;
 // }
+
+int main(int argc, char **argv) {
+  std::string fn{argv[1]};
+
+  size_t start = std::atoll(argv[2]);
+  size_t end = start + 1;
+
+  const size_t length = end - start;
+  uint8_t *bytes = new uint8_t[length * sizeof(Frame)];
+  int fd = open(fn.data(), O_RDONLY);
+
+  const auto r =
+      pread(fd, bytes, length * sizeof(Frame), start * sizeof(Frame));
+  if (r == -1) {
+    std::cerr << "pread Error." << std::endl;
+    return -1;
+  }
+
+  const auto i = 0;
+  const auto &frame =
+      *reinterpret_cast<const Frame *>(bytes + (sizeof(Frame) * i));
+
+  NNUE::BattleKeys battle_keys{
+      std::bit_cast<pkmn_gen1_battle>(frame.battle),
+      std::bit_cast<pkmn_gen1_chance_durations>(frame.durations)};
+
+  return 0;
+}
 
 // int poo(int argc, char **argv) {
 

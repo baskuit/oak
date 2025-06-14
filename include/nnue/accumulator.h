@@ -88,8 +88,8 @@ struct BattleKeys {
       const auto &pokemon2 = b.side(1).pokemon(b.side(0).order()[i] - 1);
       p1.pokemon_keys[i] = get_pokemon_key(b.side(0), d.duration(0), i);
       p2.pokemon_keys[i] = get_pokemon_key(b.side(1), d.duration(1), i);
-      p1.hp[i] = (float)pokemon1.hp() / pokemon1.max_hp();
-      p2.hp[i] = (float)pokemon2.hp() / pokemon2.max_hp();
+      p1.hp[i] = (float)pokemon1.hp() / pokemon1.stats().hp();
+      p2.hp[i] = (float)pokemon2.hp() / pokemon2.stats().hp();
     }
     p1.order = b.side(0).order();
     p2.order = b.side(1).order();
@@ -123,8 +123,8 @@ PokemonInput get_pokemon_input(const PokemonKey key,
   c += 5;
   const auto &moves = pokemon.moves();
   for (auto i = 0; i < 4; ++i) {
-    if (moves[i].id && moves[i].pp) {
-      output[c + moves[i].id - 1] = 1.0;
+    if ((bool)moves[i].id && (bool)moves[i].pp) {
+      output[c + (uint8_t)moves[i].id - 1] = 1.0;
     }
   }
   c += 4;
@@ -134,6 +134,7 @@ PokemonInput get_pokemon_input(const PokemonKey key,
   c += 14; // TODO
   output[c + static_cast<int>(pokemon.types() % 16)] = 1.0;
   output[c + static_cast<int>(pokemon.types() / 16)] = 1.0;
+  return output;
 }
 
 ActiveInput get_active_input(const ActiveKey &key,
@@ -144,15 +145,23 @@ ActiveInput get_active_input(const ActiveKey &key,
   std::memcpy(output.data(), p.data(), sizeof(float) * pokemon_in_dim);
   const auto &volatiles = active.volatiles();
   auto c = pokemon_in_dim;
-  // TODO volatiles output[c] =
+  output[c + 0] = volatiles.binding();
+  output[c + 1] = volatiles.substitute();
+  output[c + 2] = volatiles.recharging();
+  output[c + 3] = volatiles.leech_seed();
+  output[c + 4] = volatiles.toxic();
+  output[c + 5] = volatiles.light_screen();
+  output[c + 6] = volatiles.reflect();
+  output[c + 7] = volatiles.substitute_hp();
+  output[c + 8] = volatiles.toxic_counter();
   return output;
 }
 
 constexpr auto pokemon_out_dim = 39;
 constexpr auto active_out_dim = 55;
 
-using PokemonWord = std::array<uint8_t, pokemon_out_dim>;
-using ActiveWord = std::array<uint8_t, active_out_dim>;
+using PokemonOutput = std::array<uint8_t, pokemon_out_dim>;
+using ActiveOutput = std::array<uint8_t, active_out_dim>;
 
 using PokemonNet = WordNet<pokemon_in_dim, 32, pokemon_out_dim>;
 using ActiveNet = WordNet<active_in_dim, 32, active_out_dim>;
@@ -162,20 +171,19 @@ struct NNUECache {
   template <typename Net, typename Key, typename Value> struct WordCache {
     static constexpr bool is_active = std::is_same_v<Key, ActiveKey>;
 
-  private:
     std::map<Key, Value> _cache;
     View::Pokemon *p;
     View::ActivePokemon *a;
     Net *net;
 
   public:
+    WordCache() = default;
     WordCache(const auto &nn) : _cache{} {}
 
     const Value &operator[](const Key &key) {
       const auto it = _cache.find(key);
       if (it == _cache.end()) {
-        const auto &v = *view;
-        const auto get_input = [this]() {
+        const auto get_input = [this, key]() {
           if constexpr (is_active) {
             return get_active_input(key, *a, *p);
           } else {
@@ -188,23 +196,33 @@ struct NNUECache {
       }
       return _cache[key];
     }
+
+    size_t size() const { return _cache.size(); }
   };
 
-  using PokemonCache = WordCache<PokemonNet, PokemonInput, PokemonOutput>;
-  using ActiveCache = WordCache<ActiveNet, ActiveInput, ActiveOutput>;
+  using PokemonCache = WordCache<PokemonNet, PokemonKey, PokemonOutput>;
+  using ActiveCache = WordCache<ActiveNet, ActiveKey, ActiveOutput>;
 
   struct Slot {
     PokemonCache p_cache;
     ActiveCache a_cache;
 
+    Slot() = default;
+
+    Slot(auto &pokemon_net, auto &active_net)
+        : p_cache{pokemon_net}, a_cache{active_net} {}
+
     void print_sizes() const {
-      std::cout << p_cache._cache.size() << ' ' << a_cache._cache.size()
-                << std::endl;
+      std::cout << p_cache.size() << ' ' << a_cache.size() << std::endl;
     }
   };
 
   struct SideCache {
     std::array<Slot, 6> slots;
+
+    SideCache(auto &pokemon_net, auto &active_net) {
+      slots.fill(Slot{pokemon_net, active_net});
+    }
 
     void print_sizes() const {
       for (const auto &s : slots) {
@@ -221,17 +239,19 @@ struct NNUECache {
 
   NNUECache(const pkmn_gen1_battle *battle, PokemonNet &pokemon_net,
             ActiveNet &active_net)
-      : b{View::ref(*battle)} p1{}, p2{} {
+      : b{View::ref(*battle)}, p1{pokemon_net, active_net},
+        p2{pokemon_net, active_net} {
+    SideCache *side_ptr[2]{&p1, &p2};
     for (auto s = 0; s < 2; ++s) {
       const auto &side = b.side(s);
       for (int i = 0; i < 6; ++i) {
-        auto &slot = side.slots[i];
-        slot.p_cache.pokemon = &b.side(0).pokemon(i); // TODO
-        slot.p_cache.active = &b.side(0).active();
-        stot1.p_cache.net = &pokemon_net;
-        slot.a_cache.pokemon = &b.side(0).pokemon(i); // TODO
-        slot.a_cache.active = &b.side(0).active();
-        stot1.a_cache.net = &active_net;
+        auto &slot = side_ptr[s]->slots[i];
+        slot.p_cache.p = &b.side(0).pokemon(i); // TODO order
+        slot.p_cache.a = &b.side(0).active();
+        slot.p_cache.net = &pokemon_net;
+        slot.a_cache.p = &b.side(0).pokemon(i);
+        slot.a_cache.a = &b.side(0).active();
+        slot.a_cache.net = &active_net;
       }
     }
   }
@@ -239,25 +259,29 @@ struct NNUECache {
   void accumulate(const BattleKeys &a, uint8_t *const output) {
     auto *const acc1 = output;
     auto *const acc2 = output + 256;
-    acc1[0] = p1.hp[0];
-    acc2[0] = p2.hp[0];
-    std::memcpy(p1.slots[a.p1.order[0] - 1].a_cache[a.p1.active_key].data(),
-                acc1 + 1, active_out_dim);
-    std::memcpy(p2.slots[a.p2.order[0] - 1].a_cache[a.p2.active_key].data(),
-                acc2 + 1, active_out_dim);
+    acc1[0] = a.p1.hp[0];
+    acc2[0] = a.p2.hp[0];
+    std::memcpy(acc1 + 1,
+                p1.slots[a.p1.order[0] - 1].a_cache[a.p1.active_key].data(),
+                active_out_dim);
+    std::memcpy(acc2 + 1,
+                p2.slots[a.p2.order[0] - 1].a_cache[a.p2.active_key].data(),
+                active_out_dim);
     for (auto i = 0; i < 5; ++i) {
-      const auto poke1 = acc1 + (active_out_dim + i * pokemon_out_dim);
-      const auto poke2 = acc2 + (active_out_dim + i * pokemon_out_dim);
-      poke1[0] = p1.hp[i + 1];
-      poke2[0] = p2.hp[i + 1];
-      std::memcpy(p1.slots[a.p1.order[i + 1] - 1]
+      auto *const poke1 = acc1 + (active_out_dim + i * pokemon_out_dim);
+      auto *const poke2 = acc2 + (active_out_dim + i * pokemon_out_dim);
+      poke1[0] = a.p1.hp[i + 1];
+      poke2[0] = a.p2.hp[i + 1];
+      std::memcpy(poke1 + 1,
+                  p1.slots[a.p1.order[i + 1] - 1]
                       .p_cache[a.p1.pokemon_keys[a.p1.order[i + 1] - 1]]
                       .data(),
-                  poke1 + 1, pokemon_out_dim);
-      std::memcpy(p2.slots[a.p2.order[i + 1] - 1]
+                  pokemon_out_dim);
+      std::memcpy(poke2 + 1,
+                  p2.slots[a.p2.order[i + 1] - 1]
                       .p_cache[a.p2.pokemon_keys[a.p2.order[i + 1] - 1]]
                       .data(),
-                  poke2 + 1, pokemon_out_dim);
+                  pokemon_out_dim);
     } // TODO all this order shit
   }
 };
