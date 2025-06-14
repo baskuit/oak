@@ -82,6 +82,14 @@ struct Pokemon {
     return *std::bit_cast<const std::array<MoveSlot, 4> *>(bytes + 10);
   }
 
+  constexpr MoveSlot &moves(const auto i) noexcept {
+    return *std::bit_cast<std::array<MoveSlot, 4> *>(bytes + 10)[i];
+  }
+
+  constexpr const MoveSlot &moves(const auto i) const noexcept {
+    return *std::bit_cast<std::array<MoveSlot, 4> *>(bytes + 10)[i];
+  }
+
   constexpr uint16_t &hp() noexcept {
     return *std::bit_cast<uint16_t *>(bytes + 18);
   }
@@ -121,6 +129,7 @@ struct Pokemon {
 
 struct Volatiles {
   uint64_t bits;
+
   bool bide() const { return bits & (1 << 0); }
   bool thrashing() const { return bits & (1 << 1); }
   bool multi_hit() const { return bits & (1 << 2); }
@@ -139,14 +148,14 @@ struct Volatiles {
   bool light_screen() const { return bits & (1 << 15); }
   bool reflect() const { return bits & (1 << 16); }
   bool transform() const { return bits & (1 << 17); }
-  bool confusion_left() const { return (bits >> 18) & 0b111; }
-  bool attacks() const { return (bits >> 21) & 0b111; }
-  bool state() const { return (bits >> 24) & 0xFFFF; }
-  bool substitute_hp() const { return (bits >> 40) & 0xFF; }
-  bool transform_species() const { return (bits >> 48) & 0xF; }
-  bool disable_left() const { return (bits >> 52) & 0xF; }
-  bool disable_move() const { return (bits >> 56) & 0b111; }
-  bool toxic_counter() const { return (bits >> 59) & 0b11111; }
+  auto confusion_left() const { return (bits >> 18) & 0b111; }
+  auto attacks() const { return (bits >> 21) & 0b111; }
+  auto state() const { return (bits >> 24) & 0xFFFF; }
+  auto substitute_hp() const { return (bits >> 40) & 0xFF; }
+  auto transform_species() const { return (bits >> 48) & 0xF; }
+  auto disable_left() const { return (bits >> 52) & 0xF; }
+  auto disable_move() const { return (bits >> 56) & 0b111; }
+  auto toxic_counter() const { return (bits >> 59) & 0b11111; }
 };
 
 struct ActivePokemon {
@@ -233,6 +242,14 @@ struct Side {
   constexpr const std::array<uint8_t, 6> &order() const noexcept {
     return *std::bit_cast<const std::array<uint8_t, 6> *>(bytes +
                                                           Offsets::order);
+  }
+
+  constexpr uint8_t &order(const auto i) noexcept {
+    return (bytes + Offsets::order)[i];
+  }
+
+  constexpr const uint8_t &order(const auto i) const noexcept {
+    return (bytes + Offsets::order)[i];
   }
 };
 

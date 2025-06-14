@@ -3,9 +3,11 @@
 #include <pkmn.h>
 
 #include <array>
+#include <bit>
 #include <map>
 
 #include <battle/view.h>
+#include <data/status.h>
 #include <nnue/nnue_architecture.h>
 
 // The data in a pokemon slot that is used by the network can be split into two
@@ -23,9 +25,25 @@ using StatusIndex = uint8_t;
 using MoveKey = uint8_t;
 using PokemonKey = std::pair<StatusIndex, MoveKey>;
 
-constexpr auto get_status_index(auto status, auto sleeps) {
-  // TODO
-  return std::bit_cast<StatusIndex>(status);
+constexpr StatusIndex get_status_index(auto status, auto sleeps) {
+  if (!status) {
+    return 0;
+  }
+  auto index = 0;
+  if (!Data::is_sleep(status)) {
+    index = std::countr_zero(status) - 4;
+    assert((index >= 0) && (index < 4));
+  } else {
+    if (!Data::self(status)) {
+      index = 4 + sleeps;
+      assert((index >= 4) && (index < 12));
+    } else {
+      const auto s = status & 7;
+      index = 12 + (s - 1);
+      assert((index >= 12) && (index < 14));
+    }
+  }
+  return index + 1;
 }
 
 using Volatiles = uint64_t;
@@ -44,11 +62,11 @@ struct ActiveKey {
 
 PokemonKey get_pokemon_key(const View::Side &side, const View::Duration &d,
                            auto i) {
-  const auto &pokemon = side.pokemon(side.order()[i] - 1);
+  const auto &pokemon = side.pokemon(side.order(i) - 1);
   const auto sleeps = d.sleep(i);
   MoveKey move_key{};
-  for (auto i = 0; i < 4; ++i) {
-    move_key |= (pokemon.moves()[i].pp > 0);
+  for (const auto ms : pokemon.moves()) {
+    move_key |= (ms.pp > 0);
     move_key <<= 1;
   }
   const auto si =
@@ -59,7 +77,7 @@ PokemonKey get_pokemon_key(const View::Side &side, const View::Duration &d,
 ActiveKey get_active_key(const View::Side &side, const View::Duration &d) {
   return {*std::bit_cast<Volatiles *>(&side.active().volatiles()),
           *std::bit_cast<Stats *>(&side.active().stats()),
-          get_pokemon_key(side, d, 0)};
+          get_pokemon_key(side, d, 0)}; // TODO this can probably be retrieved.
 }
 
 // Keys to use in the various pokemon/active caches for computing accumulator
@@ -67,6 +85,8 @@ ActiveKey get_active_key(const View::Side &side, const View::Duration &d) {
 // construction in the event of a cache miss
 struct BattleKeys {
   struct Side {
+    // This array should reflect the raw layout of the battle object, ignoring
+    // order
     std::array<PokemonKey, 6> pokemon_keys;
     ActiveKey active_key;
     std::array<uint8_t, 6> order;
@@ -81,15 +101,17 @@ struct BattleKeys {
     const auto &b = View::ref(battle);
     const auto &d = View::ref(durations);
     p1.active_key = get_active_key(b.side(0), d.duration(0));
-    p2.active_key = get_active_key(b.side(1), d.duration(0));
+    p2.active_key = get_active_key(b.side(1), d.duration(1));
 
     for (auto i = 0; i < 6; ++i) {
-      const auto &pokemon1 = b.side(0).pokemon(b.side(0).order()[i] - 1);
-      const auto &pokemon2 = b.side(1).pokemon(b.side(0).order()[i] - 1);
-      p1.pokemon_keys[i] = get_pokemon_key(b.side(0), d.duration(0), i);
-      p2.pokemon_keys[i] = get_pokemon_key(b.side(1), d.duration(1), i);
-      p1.hp[i] = (float)pokemon1.hp() / pokemon1.stats().hp();
-      p2.hp[i] = (float)pokemon2.hp() / pokemon2.stats().hp();
+      p1.pokemon_keys[b.side(0).order(i) - 1] =
+          get_pokemon_key(b.side(0), d.duration(0), i);
+      p2.pokemon_keys[b.side(1).order(i) - 1] =
+          get_pokemon_key(b.side(1), d.duration(1), i);
+      const auto &pokemon1 = b.side(0).pokemon(b.side(0).order(i) - 1);
+      const auto &pokemon2 = b.side(1).pokemon(b.side(1).order(i) - 1);
+      p1.hp[i] = (255 * (uint32_t)pokemon1.hp()) / pokemon1.stats().hp();
+      p2.hp[i] = (255 * (uint32_t)pokemon2.hp()) / pokemon2.stats().hp();
     }
     p1.order = b.side(0).order();
     p2.order = b.side(1).order();
@@ -129,9 +151,9 @@ PokemonInput get_pokemon_input(const PokemonKey key,
   }
   c += 4;
   if (key.first) {
-    output[c + key.first] = 1.0;
+    output[c + (key.first - 1)] = 1.0;
   }
-  c += 14; // TODO
+  c += 14;
   output[c + static_cast<int>(pokemon.types() % 16)] = 1.0;
   output[c + static_cast<int>(pokemon.types() / 16)] = 1.0;
   return output;
@@ -241,6 +263,7 @@ struct NNUECache {
             ActiveNet &active_net)
       : b{View::ref(*battle)}, p1{pokemon_net, active_net},
         p2{pokemon_net, active_net} {
+
     SideCache *side_ptr[2]{&p1, &p2};
     for (auto s = 0; s < 2; ++s) {
       const auto &side = b.side(s);
