@@ -8,6 +8,15 @@
 #include <battle/view.h>
 #include <nnue/nnue_architecture.h>
 
+// The data in a pokemon slot that is used by the network can be split into two
+// categories: rhe data that stays the same (base stats, move id), and the data
+// the changes with battle updates (pp, status). Note that hp is missing, since
+// that is added at the accumulator layer to avoid bucketing. The data that
+// changes is used as the key to lookup the pokemon embedding. The data that
+// does not change is just stored as a const battle object and the individual
+// caches (std::maps) store offsets of that battle as pointers.The same applies
+// to the active slots.
+
 namespace NNUE {
 
 using StatusIndex = uint8_t;
@@ -53,7 +62,10 @@ ActiveKey get_active_key(const View::Side &side, const View::Duration &d) {
           get_pokemon_key(side, d, 0)};
 }
 
-struct Abstract {
+// Keys to use in the various pokemon/active caches for computing accumulator
+// layer. Used for both cache lookup and tensor input (pokemon/active word net)
+// construction in the event of a cache miss
+struct BattleKeys {
   struct Side {
     std::array<PokemonKey, 6> pokemon_keys;
     ActiveKey active_key;
@@ -64,16 +76,16 @@ struct Abstract {
   Side p1;
   Side p2;
 
-  Abstract(const pkmn_gen1_battle &battle,
-           const pkmn_gen1_chance_durations &durations) {
+  BattleKeys(const pkmn_gen1_battle &battle,
+             const pkmn_gen1_chance_durations &durations) {
     const auto &b = View::ref(battle);
     const auto &d = View::ref(durations);
     p1.active_key = get_active_key(b.side(0), d.duration(0));
     p2.active_key = get_active_key(b.side(1), d.duration(0));
 
     for (auto i = 0; i < 6; ++i) {
-      const auto& pokemon1 = b.side(0).pokemon(b.side(0).order()[i] - 1);
-      const auto& pokemon2 = b.side(1).pokemon(b.side(0).order()[i] - 1);
+      const auto &pokemon1 = b.side(0).pokemon(b.side(0).order()[i] - 1);
+      const auto &pokemon2 = b.side(1).pokemon(b.side(0).order()[i] - 1);
       p1.pokemon_keys[i] = get_pokemon_key(b.side(0), d.duration(0), i);
       p2.pokemon_keys[i] = get_pokemon_key(b.side(1), d.duration(1), i);
       p1.hp[i] = (float)pokemon1.hp() / pokemon1.max_hp();
@@ -138,8 +150,8 @@ ActiveInput get_active_input(const ActiveKey &key,
 constexpr auto pokemon_out_dim = 39;
 constexpr auto active_out_dim = 55;
 
-using PokemonWord = std::array<uint8_t, 39>;
-using ActiveWord = std::array<uint8_t, 55>;
+using PokemonWord = std::array<uint8_t, pokemon_out_dim>;
+using ActiveWord = std::array<uint8_t, active_out_dim>;
 
 using PokemonNet = WordNet<pokemon_in_dim, 32, pokemon_out_dim>;
 using ActiveNet = WordNet<active_in_dim, 32, active_out_dim>;
@@ -190,7 +202,7 @@ struct NNUECache {
     }
   };
 
-  struct Side {
+  struct SideCache {
     std::array<Slot, 6> slots;
 
     void print_sizes() const {
@@ -200,13 +212,15 @@ struct NNUECache {
     }
   };
 
-  Side p1;
-  Side p2;
+  // BattleKeys has the current info, we only need this for the 'base'
+  View::Battle b;
+
+  SideCache p1;
+  SideCache p2;
 
   NNUECache(const pkmn_gen1_battle *battle, PokemonNet &pokemon_net,
             ActiveNet &active_net)
-      : p1{}, p2{} {
-    const auto &b = View::ref(battle);
+      : b{View::ref(*battle)} p1{}, p2{} {
     for (auto s = 0; s < 2; ++s) {
       const auto &side = b.side(s);
       for (int i = 0; i < 6; ++i) {
@@ -221,19 +235,20 @@ struct NNUECache {
     }
   }
 
-  void write_acc(const Abstract &a, uint8_t *const acc) {
-    auto *const acc1 = acc;
-    auto *const acc2 = acc + 256;
+  void accumulate(const BattleKeys &a, uint8_t *const output) {
+    auto *const acc1 = output;
+    auto *const acc2 = output + 256;
+    acc1[0] = p1.hp[0];
+    acc2[0] = p2.hp[0];
     std::memcpy(p1.slots[a.p1.order[0] - 1].a_cache[a.p1.active_key].data(),
                 acc1 + 1, active_out_dim);
     std::memcpy(p2.slots[a.p2.order[0] - 1].a_cache[a.p2.active_key].data(),
                 acc2 + 1, active_out_dim);
-    acc1[0] = p1.hp[0];
-    acc2[0] = p2.hp[0];
     for (auto i = 0; i < 5; ++i) {
       const auto poke1 = acc1 + (active_out_dim + i * pokemon_out_dim);
       const auto poke2 = acc2 + (active_out_dim + i * pokemon_out_dim);
-
+      poke1[0] = p1.hp[i + 1];
+      poke2[0] = p2.hp[i + 1];
       std::memcpy(p1.slots[a.p1.order[i + 1] - 1]
                       .p_cache[a.p1.pokemon_keys[a.p1.order[i + 1] - 1]]
                       .data(),
@@ -242,9 +257,6 @@ struct NNUECache {
                       .p_cache[a.p2.pokemon_keys[a.p2.order[i + 1] - 1]]
                       .data(),
                   poke2 + 1, pokemon_out_dim);
-      poke1[0] = p1.hp[i + 1];
-      poke2[0] = p2.hp[i + 1];
-      
     } // TODO all this order shit
   }
 };
