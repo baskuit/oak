@@ -284,7 +284,7 @@ struct MCTS {
       [[likely]] {
         print("Initializing node");
         ++total_nodes;
-        if constexpr (requires { model.nn; }) {
+        if constexpr (requires { model.main_net; }) {
           const auto m = pkmn_gen1_battle_choices(
               &battle, PKMN_PLAYER_P1, pkmn_result_p1(result), choices.data(),
               PKMN_GEN1_MAX_CHOICES);

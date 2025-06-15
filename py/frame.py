@@ -149,7 +149,7 @@ class Volatiles:
         t[5] = self.light_screen
         t[6] = self.reflect
         t[7] = self.substitute_hp
-        t[8] = self.toxic_counter
+        t[8] = self.toxic_counter # Fix
         t[8 + self.confusion_duration] = 1
 
 class Active:

@@ -17,33 +17,45 @@
 #include <stdio.h>
 #include <string>
 #include <unistd.h>
+#include <atomic>
+#include <thread>
 
-using Node =
-    Tree::Node<Exp3::JointBanditData<.03f, false>, std::array<uint8_t, 16>>;
+using Obs = std::array<uint8_t, 16>;
+using Node = Tree::Node<Exp3::JointBanditData<.03f, false>, Obs>;
 
+void print_p(const auto& v) {
+  for (const auto x : v) {
+    std::cout << x <<  ' ';
+  }
+  std::cout << std::endl;
+}
+
+namespace NNUE {
 struct Model {
+  prng device{304958340593840}; // for mcts..
+  NNUE::PokemonNet pokemon_net;
+  NNUE::ActiveNet active_net;
+  NNUE::NNUECache nnue_cache;
 
-  prng device{34545645};
-  NNUE::NNUECache nnue_caches;
-  NNUE::WordNet<198, 32, 39> pokemon_net;
-  NNUE::WordNet<198 + 14, 32, 55> active_net;
-  NNUE::NetworkArchitecture nn;
+  NNUE::NetworkArchitecture main_net;
   std::array<uint8_t, 512> acc;
+
+  Model(const pkmn_gen1_battle &battle)
+      : pokemon_net{}, active_net{},
+        nnue_cache{battle, pokemon_net, active_net}, main_net{}, acc{} {}
 
   float inference(const pkmn_gen1_battle &battle,
                   const pkmn_gen1_chance_durations &durations) {
-    NNUE::BattleKeys abstract{battle, durations};
-    nnue_caches.accumulate(abstract, acc.data());
-    for (const auto byte : acc) {
-      std::cout << (int)byte << ' ';
-    }
-    std::cout << std::endl;
-
-    const float out = nn.propagate(acc.data()) / (127 * 64);
+    NNUE::BattleKeys battle_keys{battle, durations};
+    nnue_cache.accumulate(battle_keys, acc.data());
+    // NNUE::print_acc(acc);
+    const float out = main_net.propagate(acc.data()) / (8128.0);
+    // std::cout << "model scaled out: " << out << std::endl;
     const float val = 1 / (1 + std::exp(-out));
     return val;
   }
 };
+}
 
 bool read_net(std::filesystem::path path, auto &net, std::string tag) {
   std::ifstream accs, w0s, b0s, w1s, b1s, w2s, b2s;
@@ -66,7 +78,6 @@ bool read_params_from_dir(std::filesystem::path path, auto &pokemon_net,
                        const std::string tag) {
     std::ifstream accs, w0s, b0s, w1s, b1s, w2s, b2s;
     std::filesystem::path p = path / (tag + "w0");
-    // std::cout << p.string() << std::endl;
     w0s.open(path / (tag + "w0"), std::ios::binary);
     b0s.open(path / (tag + "b0"), std::ios::binary);
     w1s.open(path / (tag + "w1"), std::ios::binary);
@@ -76,92 +87,116 @@ bool read_params_from_dir(std::filesystem::path path, auto &pokemon_net,
     const bool success = nn.fc_0.read_parameters(w0s, b0s) &&
                          nn.fc_1.read_parameters(w1s, b1s) &&
                          nn.fc_2.read_parameters(w2s, b2s);
-    // std::cout << "affine read success :" << std::endl;
     return success;
   };
-  return read(active_net, path, "a") && read(pokemon_net, path, "p") &&
-         read(main_net, path, "nn");
+  const bool m_success = read(main_net, path, "nn");
+  const bool p_success = read(pokemon_net, path, "p");
+  const bool a_success = read(active_net, path, "a");
+  std::cout << "net reads: " << m_success << p_success << a_success
+            << std::endl;
+  return m_success && p_success && a_success;
 }
 
-// int main(int argc, char **argv) {
+void thread_fn(std::atomic<size_t> *score, std::atomic<size_t> *counter,
+               size_t trials, size_t iterations, std::string net_path) {
 
-//   if (argc < 2) {
-//     std::cerr << "Input: nn path." << std::endl;
-//     return 1;
-//   }
+  for (int trial = 0; trial < trials; ++trial) {
 
-//   std::filesystem::path path{std::string{argv[1]}};
+    prng device{std::random_device{}()};
+    const auto team1 =
+        SampleTeams::teams[device.random_int(SampleTeams::teams.size())];
+    const auto team2 =
+        SampleTeams::teams[device.random_int(SampleTeams::teams.size())];
 
-//   if (!std::filesystem::exists(path)) {
-//     std::cerr << "Path does not exist." << std::endl;
-//     return 1;
-//   }
+    auto battle = Init::battle(team1, team2);
+    pkmn_gen1_battle_options options{};
+    auto result = Init::update(battle, 0, 0, options);
+    pkmn_gen1_chance_durations durations{};
 
-//   NNUE::WordNet<NNUE::pokemon_in_dim, 32, NNUE::pokemon_out_dim> pokemon_net;
-//   const bool success = read_net(path, pokemon_net, "p");
-//   std::cout << success << std::endl;
+    NNUE::Model nnue{battle};
 
-//   // print fc1.weight
-//   // for (auto i = 0; i < 32; ++i) {
-//   //   for (auto j = 0; j < 32; ++j) {
-//   //     std::cout << pokemon_net.fc_1.weights[i][j] << ' ';
-//   //   }
-//   //   std::cout << std::endl;
-//   // }
 
-//   std::array<float, NNUE::pokemon_in_dim> pokemon_input = {
-//       323., 248., 268., 328., 298., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-//       0., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0., 0.,
-//       0., 0., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0., 0.,
-//       0., 0., 0., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0., 0.,
-//       0., 0., 0., 1., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0., 0., 0.,
-//       0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0.,   0., 0., 0., 0.,
-//       0., 1., 0., 0., 0., 0., 0., 0.,   0.,   1.,   0.,   0.,   0., 0., 0.,
-//       0., 0., 0., 0., 0., 1., 0., 0., 0.,   0.,   0.,   0.,   0.,   0., 0.,
-//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0.,   0.,
-//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0., 0.,
-//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0., 0.,
-//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,   0.,   0.,   0.,   0., 0.,
-//       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.,   0.,   0.,   1.,   0., 0};
+    const bool read_success = read_params_from_dir(
+        net_path, nnue.pokemon_net, nnue.active_net, nnue.main_net);
+    if (!read_success) {
+      std::cerr << "Failed to read net params from " << net_path << std::endl;
+      return;
+    }
 
-//   std::array<float, NNUE::pokemon_in_dim> dummy_input{};
-//   dummy_input[0] = 1.0;
-//   // dummy_input[NNUE::pokemon_in_dim - 1] = 1.0;
+    while (!pkmn_result_type(result)) {
 
-//   const auto out = pokemon_net.propagate(dummy_input.data(), true);
+      pkmn_choice c1, c2;
 
-//   for (const auto x : out) {
-//     std::cout << (int)x << ' ';
-//   }
-//   std::cout << std::endl;
+      const auto [choices1, choices2] = Init::choices(battle, result);
 
-//   return 0;
-// }
+      {
+        MCTS search{};
+        Node node{};
+        MonteCarlo::Input input{battle, durations, result};
+        MonteCarlo::Model model{device.uniform_64()};
+        const auto output = search.run(iterations, node, input, model);
+        c1 = choices1[device.sample_pdf(output.p1)];
+        // print_p(output.p1);
+        // print_p(output.p2);
+      }
+      {
+        MCTS search{};
+        Node node{};
+        MonteCarlo::Input input{battle, durations, result};
+        const auto output = search.run(iterations, node, input, nnue);
+        c2 = choices2[device.sample_pdf(output.p2)];
+        // print_p(output.p1);
+        // print_p(output.p2);
+      }
+
+      // std::cout << '!' << std::endl;
+
+      result = Init::update(battle, c1, c2, options);
+    }
+
+    const size_t s = 2 * Init::score(result);
+    score->fetch_add(s);
+    counter->fetch_add(1);
+
+  }
+}
+
+void print_thread_fn(std::atomic<size_t> *score, std::atomic<size_t> *counter, bool* run) {
+  while(*run) {
+    sleep(10);
+    std::cout << "score: " << score->load() << "; counter: " << counter->load() << " = " <<
+    (score->load() / 2.0) / counter->load() << std::endl;
+  }
+}
 
 int main(int argc, char **argv) {
-  std::string fn{argv[1]};
-
-  size_t start = std::atoll(argv[2]);
-  size_t end = start + 1;
-
-  const size_t length = end - start;
-  uint8_t *bytes = new uint8_t[length * sizeof(Frame)];
-  int fd = open(fn.data(), O_RDONLY);
-
-  const auto r =
-      pread(fd, bytes, length * sizeof(Frame), start * sizeof(Frame));
-  if (r == -1) {
-    std::cerr << "pread Error." << std::endl;
-    return -1;
+  if (argc < 5) {
+    std::cerr << "Input: net-path, threads, trials, iterations." << std::endl;
+    return 1;
   }
 
-  const auto i = 0;
-  const auto &frame =
-      *reinterpret_cast<const Frame *>(bytes + (sizeof(Frame) * i));
+  std::string net_path{argv[1]};
+  const size_t threads = std::atoll(argv[2]);
+  const size_t trials = std::atoll(argv[3]);
+  const size_t iterations = std::atoll(argv[4]);
 
-  NNUE::BattleKeys battle_keys{
-      std::bit_cast<pkmn_gen1_battle>(frame.battle),
-      std::bit_cast<pkmn_gen1_chance_durations>(frame.durations)};
+  std::atomic<size_t> score{};
+  std::atomic<size_t> counter{};
+  bool run_print = true;
+
+  std::thread thread_pool[threads];
+  for (auto t = 0; t < threads; ++t) {
+    thread_pool[t] = std::thread{&thread_fn, &score, &counter, trials, iterations, net_path};
+  }
+  std::thread print_thread{&print_thread_fn, &score, &counter, &run_print};
+
+  for (auto t = 0; t < threads; ++t) {
+    thread_pool[t].join();
+  }
+  
+  run_print = false;
+
+  print_thread.join();
 
   return 0;
 }
