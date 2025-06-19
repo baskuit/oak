@@ -107,7 +107,7 @@ class Pokemon:
         t[c + self.type2] = 1.0
 
 class Volatiles:
-    n_confusion = 5
+    n_confusion = 6
     n_dim = 9 + n_confusion # ls/reflect/trapping/recharge/leech/toxic/toxic_counter/sub/subhp
 
     def __init__(self, buffer: bytes):
