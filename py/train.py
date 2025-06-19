@@ -8,14 +8,15 @@ class TrainingParameters:
 
     pokemon_hidden_dim = 32
     active_hidden_dim = 32
+    main_hidden_dim = 32
     batch_size = int(sys.argv[2])
 
-    pokemon_lr = .001
-    pokemon_momentum = .01
-    active_lr = .001
-    active_momentum = .01
-    main_lr = .001
-    main_momentum = .01
+    pokemon_lr = .00001
+    pokemon_momentum = .001
+    active_lr = .00001
+    active_momentum = .001
+    main_lr = .00001
+    main_momentum = .001
 
 class Options:
 
@@ -102,13 +103,15 @@ class SharedBuffers:
         # write words to acc layer, offset by 1 for the hp entry
         for player in range(2):
             a_ = active_out[:, player, 0]
+            assert(a_.shape[1] == frame.ACTIVE_OUT - 1)
             acc[:, player, 0, 1 : frame.ACTIVE_OUT] = a_
             for _ in range(5):
                 start_index = frame.ACTIVE_OUT + _ * frame.POKEMON_OUT
                 acc[:, player, 0, (start_index + 1) : start_index + frame.POKEMON_OUT] = pokemon_out[:, player, _]
 
         main_net_input = torch.concat([acc[:, 0, 0, :], acc[:, 1, 0, :]], dim=1)
-        return torch.sigmoid(main_net.forward(main_net_input))
+        value_out, policy_out = main_net.forward(main_net_input)
+        return torch.sigmoid(value_out)
 
 def main():
 
@@ -123,9 +126,9 @@ def main():
     if not os.path.exists(Options.dir_name):
         os.mkdir(Options.dir_name)
 
-    pokemon_net = net.TwoLayerMLP(frame.Frame.pokemon_dim, TrainingParameters.pokemon_hidden_dim, frame.POKEMON_OUT - 1)
-    active_net = net.TwoLayerMLP(frame.Frame.active_dim, TrainingParameters.active_hidden_dim, frame.ACTIVE_OUT - 1)
-    main_net = net.TwoLayerMLP(512, 32, 1)
+    pokemon_net = net.EmbeddingNet(frame.Frame.pokemon_dim, TrainingParameters.pokemon_hidden_dim, frame.POKEMON_OUT - 1)
+    active_net = net.EmbeddingNet(frame.Frame.active_dim, TrainingParameters.active_hidden_dim, frame.ACTIVE_OUT - 1)
+    main_net = net.MainNet(512, TrainingParameters.main_hidden_dim, 18, False)
     criterion = torch.nn.MSELoss()
 
     global_buffer_size = os.path.getsize(Options.buffer_path) // frame.FRAME_SIZE
@@ -151,7 +154,7 @@ def main():
         lr=TrainingParameters.pokemon_lr
     )
     active_optimizer = torch.optim.Adam(
-        pokemon_net.parameters(),
+        active_net.parameters(),
         lr=TrainingParameters.active_lr
     )
     main_optimizer = torch.optim.Adam(
@@ -196,6 +199,8 @@ def main():
             for optim in [pokemon_optimizer, active_optimizer, main_optimizer]:
                 optim.step()
                 optim.zero_grad()
+            pokemon_net.clamp_weights()
+            active_net.clamp_weights()
             main_net.clamp_weights()
 
             if total_steps % Options.save_interval == 0:

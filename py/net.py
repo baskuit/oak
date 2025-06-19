@@ -14,15 +14,15 @@ class ClampedReLU(nn.Module):
     def forward(self, x):
         return torch.clamp(F.relu(x), 0.0, 1.0)
 
-class TwoLayerMLP(nn.Module):
+class EmbeddingNet(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
-        super(TwoLayerMLP, self).__init__()
+        super(EmbeddingNet, self).__init__()
         self.relu = ClampedReLU()
         self.fc0 = nn.Linear(input_dim, hidden_dim)
         self.fc1 = nn.Linear(hidden_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
 
-    def forward(self, x, print_buffer=True):
+    def forward(self, x, print_buffer=False):
         if print_buffer: print("input\n",x)
         x = self.relu(self.fc0(x))
         if print_buffer: print("fc0 out\n",x)
@@ -61,6 +61,78 @@ class TwoLayerMLP(nn.Module):
         raw_save(self.fc1.bias, os.path.join(path, str + "b1"))
         raw_save(self.fc2.bias, os.path.join(path, str + "b2"))
 
+
+class MainNet(nn.Module):
+    def __init__(self, input_dim, hidden_dim, policy_output_dim, use_policy=False):
+        super(MainNet, self).__init__()
+        self.relu = ClampedReLU()
+        self.fc0 = nn.Linear(input_dim, hidden_dim)
+        self.vfc1 = nn.Linear(hidden_dim, hidden_dim)
+        self.vfc2 = nn.Linear(hidden_dim, 1)
+        self.use_policy = use_policy
+        if use_policy:
+            self.pfc1 = nn.Linear(hidden_dim, hidden_dim)
+            self.pfc2 = nn.Linear(hidden_dim, policy_output_dim)
+
+    def forward(self, acc, print_buffer=False):
+        if print_buffer: print("input\n", acc)
+        x = self.relu(self.fc0(acc))
+        if print_buffer: print("fc0 out\n", x)
+        v = self.relu(self.vfc1(x))
+        p = None
+        # p = self.relu(self.pfc1(x))
+        if print_buffer: print("v/p 1 out\n", v, p)
+        v = self.vfc2(v)
+        # p = self.pfc2(p)
+        if print_buffer: print("v/p 2 out\n", v, p)
+        return v, None
+
+    def save(self, path):
+        torch.save(self.state_dict(), path)
+
+    def load(self, path, map_location=None):
+        state_dict = torch.load(path, map_location=map_location)
+        self.load_state_dict(state_dict)
+
+    def clamp_weights(self):
+        with torch.no_grad():
+            self.fc0.weight.clamp_(-2, 2)
+            self.vfc1.weight.clamp_(-2, 2)
+            self.vfc2.weight.clamp_(-2, 2)
+            if self.use_policy:
+                self.pfc1.weight.clamp_(-2, 2)
+                self.pfc2.weight.clamp_(-2, 2)
+
+    def save_quantized(self, path, str):
+        raw_save((self.fc0.weight * (64)).to(torch.int8), os.path.join(path, str + "w0"))
+        raw_save((self.fc0.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "b0"))
+
+        raw_save((self.vfc1.weight * (64)).to(torch.int8), os.path.join(path, str + "vw1"))
+        raw_save((self.vfc2.weight * (64)).to(torch.int8), os.path.join(path, str + "vw2"))
+        raw_save((self.vfc1.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "vb1"))
+        raw_save((self.vfc2.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "vb2"))
+
+        if self.use_policy:
+            raw_save((self.pfc1.weight * (64)).to(torch.int8), os.path.join(path, str + "pw1"))
+            raw_save((self.pfc2.weight * (64)).to(torch.int8), os.path.join(path, str + "pw2"))
+            raw_save((self.pfc1.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "pb1"))
+            raw_save((self.pfc2.bias * (127 * 64)).to(torch.int32), os.path.join(path, str + "pb2"))
+
+    def save_float(self, path, str):
+        raw_save(self.fc0.weight, os.path.join(path, str + "w0"))
+        raw_save(self.fc0.bias, os.path.join(path, str + "b0"))
+
+        raw_save(self.vfc1.weight, os.path.join(path, str + "vw1"))
+        raw_save(self.vfc2.weight, os.path.join(path, str + "vw2"))
+        raw_save(self.vfc1.bias, os.path.join(path, str + "vb1"))
+        raw_save(self.vfc2.bias, os.path.join(path, str + "vb2"))
+
+        if self.use_policy:
+            raw_save(self.pfc1.weight, os.path.join(path, str + "pw1"))
+            raw_save(self.pfc2.weight, os.path.join(path, str + "pw2"))
+            raw_save(self.pfc1.bias, os.path.join(path, str + "pb1"))
+            raw_save(self.pfc2.bias, os.path.join(path, str + "pb2"))
+
 def count_out_of_bounds_params(model, lower=-2.0, upper=2.0):
     count = 0
     total = 0
@@ -71,16 +143,26 @@ def count_out_of_bounds_params(model, lower=-2.0, upper=2.0):
             total += values.numel()
     return count, total
 
-def save_raw_in_dir(path, quantize=True):
-    pokemon_net = TwoLayerMLP(198, 32, 39)
-    pokemon_net.load(os.path.join(path, "p.pt"))
-    active_net = TwoLayerMLP(198 + 14, 32, 55)
-    active_net.load(os.path.join(path, "a.pt"))
-    main_net = TwoLayerMLP(512, 32, 1)
-    main_net.load(os.path.join(path, "nn.pt"))
+def save_raw_in_dir():
 
-    print(pokemon_net.fc0.bias)
-    return
+    if (len(sys.argv) < 2):
+        print("Input: net path")
+        exit()
+
+    from frame import Frame, Pokemon, Active
+
+
+    path = sys.argv[1]
+    quantize = False
+
+    n_logits = 151 + 165 # all species, all moves (no none, yes struggle)
+
+    pokemon_net = EmbeddingNet(Pokemon.n_dim, 32, 39)
+    pokemon_net.load(os.path.join(path, "p.pt"))
+    active_net = EmbeddingNet(Active.n_dim, 32, 55)
+    active_net.load(os.path.join(path, "a.pt"))
+    main_net = MainNet(512, 32, n_logits, False)
+    main_net.load(os.path.join(path, "nn.pt"))
 
     cp, tp = count_out_of_bounds_params(pokemon_net)
     ca, ta = count_out_of_bounds_params(active_net)
@@ -108,9 +190,9 @@ def read_frame_and_inference():
     buffer_path = sys.argv[1]
     net_path = sys.argv[2]
 
-    pokemon_net = TwoLayerMLP(198, 32, 39)
+    pokemon_net = EmbeddingNet(Pokemon.n_dim, 32, 39)
     pokemon_net.load(os.path.join(net_path, "p.pt"))
-    active_net = TwoLayerMLP(198 + 14, 32, 55)
+    active_net = EmbeddingNet(Active.n_dim, 32, 55)
     active_net.load(os.path.join(net_path, "a.pt"))
 
     pokemon_input = torch.zeros((Pokemon.n_dim,))
@@ -139,4 +221,4 @@ def read_frame_and_inference():
     # print(pokemon_net.fc1.weight)
 
 if __name__ == '__main__':
-    read_frame_and_inference()
+    save_raw_in_dir()

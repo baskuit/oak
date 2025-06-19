@@ -41,11 +41,12 @@ class Stats():
         self.spe = decode_u16(buffer, 8)
 
     def to_tensor(self, t):
-        t[0] = self.hp
-        t[1] = self.atk
-        t[2] = self.def_
-        t[3] = self.spc
-        t[4] = self.spe
+        assert(t.shape[0] == 5)
+        t[0] = self.hp / 999
+        t[1] = self.atk / 999
+        t[2] = self.def_ / 999
+        t[3] = self.spc / 999
+        t[4] = self.spe / 999
 
 class Pokemon:
     n_moves = 164 # no None, Struggle
@@ -130,7 +131,7 @@ class Volatiles:
         self.light_screen  = bool((bits >> 15) & 1)
         self.reflect       = bool((bits >> 16) & 1)
         self.transform     = bool((bits >> 17) & 1)
-        self.confusion = (bits >> 18) & 0b111
+        self.confusion_raw = (bits >> 18) & 0b111
         self.attacks = (bits >> 21) & 0b111
         self.state = (bits >> 24) & 0xFFFF
         self.substitute_hp = (bits >> 40) & 0xFF
@@ -141,6 +142,7 @@ class Volatiles:
         self.confusion_duration = None
 
     def to_tensor(self, t):
+        assert(t.shape[0] == self.n_dim)
         t[0] = self.binding
         t[1] = self.substitute
         t[2] = self.recharging
@@ -148,9 +150,9 @@ class Volatiles:
         t[4] = self.toxic
         t[5] = self.light_screen
         t[6] = self.reflect
-        t[7] = self.substitute_hp
-        t[8] = self.toxic_counter # Fix
-        t[8 + self.confusion_duration] = 1
+        t[7] = self.substitute_hp / 176 # chansey hp / 4
+        t[8] = self.toxic_counter / 16 # if its at 16 it ohkos yeah?
+        t[9 + self.confusion_duration] = 1
 
 class Active:
     n_dim = Pokemon.n_dim + Volatiles.n_dim
@@ -171,7 +173,7 @@ class Active:
 
     def to_tensor(self, t):
         assert(t.shape[0] == self.n_dim)
-        self.stats.to_tensor(t)
+        self.stats.to_tensor(t[0 : 5])
         self.volatiles.to_tensor(t[Pokemon.n_dim : Active.n_dim])
 
 class Side:
@@ -236,11 +238,12 @@ class Frame:
             hp_percent = active_pokemon.current_hp / active_pokemon.stats.hp
             assert(hp_percent >= 0 and hp_percent <= 1)
             acc[i, 0, 0] = hp_percent
-            for k in range(1, 6):
-                pokemon = side.pokemon[side.order[k] - 1]
-                pokemon.to_tensor(p[i, k - 1])
+            for k in range(5):
+                pokemon = side.pokemon[side.order[k + 1] - 1]
+                pokemon.to_tensor(p[i, k])
                 hp_percent = pokemon.current_hp / pokemon.stats.hp
-                acc[i, 0, ACTIVE_OUT + (k - 1) * POKEMON_OUT] = hp_percent
+                assert(hp_percent >= 0 and hp_percent <= 1)
+                acc[i, 0, ACTIVE_OUT + k * POKEMON_OUT] = hp_percent
         
         s[0] = self.score
         e[0] = self.eval
