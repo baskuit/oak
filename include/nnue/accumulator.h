@@ -49,7 +49,6 @@ constexpr StatusIndex get_status_index(auto status, auto sleeps) {
   if (!Data::is_sleep(status)) {
     index = std::countr_zero(status) - 3;
     assert((index >= 0) && (index < 4));
-
   } else {
     if (!Data::self(status)) {
       index = 4 + sleeps;
@@ -152,11 +151,11 @@ PokemonInput get_pokemon_input(const PokemonKey key,
   auto c = 0;
   if constexpr (read_stats) {
     const auto &stats = pokemon.stats();
-    output[0] = stats.hp();
-    output[1] = stats.atk();
-    output[2] = stats.def();
-    output[3] = stats.spe();
-    output[4] = stats.spc();
+    output[0] = stats.hp() / 999.0;
+    output[1] = stats.atk() / 999.0;
+    output[2] = stats.def() / 999.0;
+    output[3] = stats.spe() / 999.0;
+    output[4] = stats.spc() / 999.0;
   }
   c += 5;
   const auto &moves = pokemon.moves();
@@ -190,9 +189,9 @@ ActiveInput get_active_input(const ActiveKey &key,
   output[c + 4] = volatiles.toxic();
   output[c + 5] = volatiles.light_screen();
   output[c + 6] = volatiles.reflect();
-  output[c + 7] = volatiles.substitute_hp();
-  output[c + 8] = volatiles.toxic_counter();
-  output[c + 8] = 1.0; // Confusion duration, need to refactor for this
+  output[c + 7] = volatiles.substitute_hp() / 176.0;
+  output[c + 8] = volatiles.toxic_counter() / 16.0;
+  output[c + 9 + 0] = 1.0; // Confusion duration, need to refactor for this
   // Also its just a mistake since it overwrites toxic
   return output;
 }
