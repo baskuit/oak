@@ -18,6 +18,30 @@ template <typename T, size_t shift> T scaled_int_div(T x, T y) {
   return (x << shift) / y;
 }
 
+int fast_log2_approx(uint32_t x) {
+    int lz = __builtin_clz(x);
+    int y = x << lz;  // normalize to [0.5, 1.0)
+    int frac = (y >> 23) & 0xFF;  // rough fractional component
+    return ((31 - lz) << 8) | frac;  // integer + 8-bit fraction
+}
+
+uint32_t log2_int(uint32_t x) {
+    return 31 - __builtin_clz(x); // assumes x > 0
+}
+
+constexpr uint32_t SCALE = 1024;
+uint32_t sqrt_scaled_fast(uint32_t x) {
+    if (x == 0) return 0;
+
+    // log2(x) = 31 - clz(x)
+    int log2x = 31 - __builtin_clz(x);
+
+    // shift = floor(log2(x) / 2)
+    int shift = log2x / 2;
+
+    return SCALE << shift;
+}
+
 #pragma pack(push, 1)
 struct uint24_t {
   std::array<uint8_t, 3> _data;
@@ -61,8 +85,8 @@ struct uint24_t_test {
 #pragma pack(push, 1)
 class JointBanditData {
 public:
-  std::array<uint32_t, 9> p1_score;
-  std::array<uint32_t, 9> p2_score;
+  std::array<float, 9> p1_score;
+  std::array<float, 9> p2_score;
   std::array<uint32_t, 9> p1_visits;
   std::array<uint32_t, 9> p2_visits;
   uint8_t _rows;
@@ -90,8 +114,8 @@ public:
   template <typename Outcome> void update(const Outcome &outcome) noexcept {
     ++this->p1_visits[outcome.p1_index];
     ++this->p2_visits[outcome.p2_index];
-    p1_score[outcome.p1_index] += 2 * outcome.value;
-    p2_score[outcome.p2_index] += 2 - 2 * outcome.value;
+    p1_score[outcome.p1_index] += outcome.value;
+    p2_score[outcome.p2_index] += 1 - outcome.value;
   }
 
   template <typename PRNG, typename Outcome>
@@ -99,40 +123,38 @@ public:
     if (_rows < 2) {
       outcome.p1_index = 0;
     } else {
-      std::array<uint64_t, 9> q{};
+      std::array<float, 9> q{};
       uint64_t N{};
       for (auto i = 0; i < _rows; ++i) {
-        q[i] = scaled_int_div<uint32_t, 9>(p1_score[i], p1_visits[i]);
+        q[i] = (float)p1_score[i] / p1_visits[i];
         N += p1_visits[i];
       }
-      double sqrt_log_N = sqrt(log(N));
-      double max = 0;
+      float log_N = log(N);
+      float max = 0;
       for (auto i = 0; i < _rows; ++i) {
-        double e = sqrt_log_N / p1_visits[i];
-        double a = e + q[i] / 1024.0;
-        // std::cout << a << ' ';
+        float e = sqrt(log_N / p1_visits[i]);
+        float a = e + q[i];
         if (a > max) {
             max = a;
             outcome.p1_index = i;
         }
       }
-      // std::cout << std::endl;
     }
 
     if (_cols < 2) {
       outcome.p2_index = 0;
     } else {
-      std::array<uint64_t, 9> q{};
+      std::array<float, 9> q{};
       uint64_t N{};
       for (auto i = 0; i < _cols; ++i) {
-        q[i] = scaled_int_div<uint32_t, 9>(p2_score[i], p2_visits[i]);
+        q[i] = (float)p2_score[i] / p2_visits[i];
         N += p2_visits[i];
       }
-      double sqrt_log_N = sqrt(log(N));
-      double max = 0;
+      float log_N = log(N);
+      float max = 0;
       for (auto i = 0; i < _cols; ++i) {
-        double e = sqrt_log_N / p2_visits[i];
-        double a = e + q[i] / 1024.0;
+        float e = sqrt(log_N / p2_visits[i]);
+        float a = e + q[i];
         if (a > max) {
             max = a;
             outcome.p2_index = i;
