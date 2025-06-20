@@ -12,7 +12,6 @@
 
 #include <battle/init.h>
 
-#include <pi/exp3.h>
 #include <pi/tree.h>
 
 #include <chrono>
