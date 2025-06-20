@@ -47,8 +47,9 @@ constexpr StatusIndex get_status_index(auto status, auto sleeps) {
   }
   auto index = 0;
   if (!Data::is_sleep(status)) {
-    index = std::countr_zero(status) - 4;
+    index = std::countr_zero(status) - 3;
     assert((index >= 0) && (index < 4));
+
   } else {
     if (!Data::self(status)) {
       index = 4 + sleeps;
@@ -56,7 +57,7 @@ constexpr StatusIndex get_status_index(auto status, auto sleeps) {
     } else {
       const auto s = status & 7;
       index = 12 + (s - 1);
-      assert((index >= 12) && (index < 14));
+      assert((index >= 12) && (index <= 14));
     }
   }
   return index + 1;
@@ -139,7 +140,7 @@ struct BattleKeys {
 };
 
 constexpr auto pokemon_in_dim = 198;
-constexpr auto active_in_dim = 212;
+constexpr auto active_in_dim = 213;
 
 using PokemonInput = std::array<float, pokemon_in_dim>;
 using ActiveInput = std::array<float, active_in_dim>;
