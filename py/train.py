@@ -97,8 +97,8 @@ class SharedBuffers:
 
     def forward(self, pokemon_net, active_net, main_net, print_buffer=False):
         p, a, s, e, acc = self.to_tensor() 
-        pokemon_out = F.relu(pokemon_net.forward(p, print_buffer))
-        active_out = F.relu(active_net.forward(a, print_buffer))
+        pokemon_out = pokemon_net.forward(p, print_buffer)
+        active_out = active_net.forward(a, print_buffer)
 
         # write words to acc layer, offset by 1 for the hp entry
         for player in range(2):
