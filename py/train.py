@@ -95,10 +95,10 @@ class SharedBuffers:
         p, a, s, e, acc = self.to_tensor()
         return p[i], a[i], s[i], e[i], acc[i]
 
-    def forward(self, pokemon_net, active_net, main_net):
+    def forward(self, pokemon_net, active_net, main_net, print_buffer=False):
         p, a, s, e, acc = self.to_tensor() 
-        pokemon_out = F.relu(pokemon_net.forward(p))
-        active_out = F.relu(active_net.forward(a))
+        pokemon_out = F.relu(pokemon_net.forward(p, print_buffer))
+        active_out = F.relu(active_net.forward(a, print_buffer))
 
         # write words to acc layer, offset by 1 for the hp entry
         for player in range(2):
@@ -110,7 +110,7 @@ class SharedBuffers:
                 acc[:, player, 0, (start_index + 1) : start_index + frame.POKEMON_OUT] = pokemon_out[:, player, _]
 
         main_net_input = torch.concat([acc[:, 0, 0, :], acc[:, 1, 0, :]], dim=1)
-        value_out, policy_out = main_net.forward(main_net_input)
+        value_out, policy_out = main_net.forward(main_net_input, print_buffer)
         return torch.sigmoid(value_out)
 
 def main():
@@ -123,12 +123,31 @@ def main():
     for name, value in vars(TrainingParameters).items():
         print(name, value)
 
+    total_steps = 0
+
     if not os.path.exists(Options.dir_name):
         os.mkdir(Options.dir_name)
+    else:
+        for name in os.listdir(Options.dir_name):
+            try:
+                value = int(name)
+                total_steps = max(total_steps, value)
+            except ValueError:
+                continue
 
     pokemon_net = net.EmbeddingNet(frame.Frame.pokemon_dim, TrainingParameters.pokemon_hidden_dim, frame.POKEMON_OUT - 1)
     active_net = net.EmbeddingNet(frame.Frame.active_dim, TrainingParameters.active_hidden_dim, frame.ACTIVE_OUT - 1)
     main_net = net.MainNet(512, TrainingParameters.main_hidden_dim, 18, False)
+    
+    if total_steps > 0:
+        latest_dir = os.path.join(Options.dir_name, str(total_steps))
+        pokemon_net.load(os.path.join(latest_dir, "p.pt"))
+        active_net.load(os.path.join(latest_dir, "a.pt"))
+        main_net.load(os.path.join(latest_dir, "nn.pt"))
+        total_steps += 1 # otherwsie overwrite
+
+    print("step: ", total_steps)
+    
     criterion = torch.nn.MSELoss()
 
     global_buffer_size = os.path.getsize(Options.buffer_path) // frame.FRAME_SIZE
@@ -163,9 +182,13 @@ def main():
     )
 
     start = time.perf_counter()
-    total_steps = 0
     try:
-        while True:
+        while total_steps >= 0:
+
+            print_step: bool = (total_steps % Options.stats_interval == 0)
+            save_step: bool = (total_steps % Options.save_interval == 0)
+
+            # Waiting on batch
             while True:
                 with ready_counter.get_lock():
                     if ready_counter.value >= TrainingParameters.batch_size:
@@ -176,7 +199,7 @@ def main():
             p, a, s, e, acc = shared_buffers.to_tensor()
             value_output = shared_buffers.forward(pokemon_net, active_net, main_net)
 
-            if total_steps % Options.stats_interval == 0:
+            if print_step:
                 print(f"stats for step {total_steps}")
                 now = time.perf_counter()
                 elapsed = now - start
@@ -189,7 +212,7 @@ def main():
                 print("output; eval; score:")
                 print(window[:Options.output_window_size])
                 p_, a_, s_, e_, acc_ = validation_buffers.to_tensor()
-                validation_output = validation_buffers.forward(pokemon_net, active_net, main_net)
+                validation_output = validation_buffers.forward(pokemon_net, active_net, main_net, True)
                 validation_loss_score = criterion(validation_output, s_)
                 validation_loss_eval = criterion(validation_output, e_)
                 print(f"validation loss; score: {validation_loss_score}, eval: {validation_loss_eval}")
@@ -203,7 +226,7 @@ def main():
             active_net.clamp_weights()
             main_net.clamp_weights()
 
-            if total_steps % Options.save_interval == 0:
+            if save_step:
                 print(f"saving at step {total_steps}.")
                 save_dir = os.path.join(Options.dir_name, str(total_steps))
                 if not os.path.exists(save_dir):
@@ -211,15 +234,16 @@ def main():
                 pokemon_net.save(os.path.join(save_dir, "p.pt"))
                 active_net.save(os.path.join(save_dir, "a.pt"))
                 main_net.save(os.path.join(save_dir, "nn.pt"))
+                net.save_raw_in_dir(save_dir)
 
             for i in range(TrainingParameters.batch_size):
                 index_queue.put(i)
 
             total_steps += 1
     finally:
-        for p in processes:
-            p.terminate()
-            p.join()
+        for proc in processes:
+            proc.terminate()
+            proc.join()
 
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)
