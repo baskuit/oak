@@ -133,27 +133,16 @@ class MainNet(nn.Module):
             raw_save(self.pfc1.bias, os.path.join(path, str + "pb1"))
             raw_save(self.pfc2.bias, os.path.join(path, str + "pb2"))
 
-def count_out_of_bounds_params(model, lower=-2.0, upper=2.0):
-    count = 0
-    total = 0
-    for param in model.parameters():
-        if param.requires_grad:
-            values = param.data
-            count += ((values < lower) | (values > upper)).sum().item()
-            total += values.numel()
-    return count, total
+def save_raw_in_dir(path=None, quantize=False):
 
-def save_raw_in_dir():
-
-    if (len(sys.argv) < 2):
+    if (path is None and len(sys.argv) < 2):
         print("Input: net path")
         exit()
 
-    from frame import Frame, Pokemon, Active
+    from frame import Pokemon, Active
 
-
-    path = sys.argv[1]
-    quantize = False
+    if path is None:
+        path = sys.argv[1]
 
     n_logits = 151 + 165 # all species, all moves (no none, yes struggle)
 
@@ -163,15 +152,8 @@ def save_raw_in_dir():
     active_net.load(os.path.join(path, "a.pt"))
     main_net = MainNet(512, 32, n_logits, False)
     main_net.load(os.path.join(path, "nn.pt"))
-
-    cp, tp = count_out_of_bounds_params(pokemon_net)
-    ca, ta = count_out_of_bounds_params(active_net)
-
-    if cp > 0 or ca > 0:
-        print("one of the nets cant be quantized cus |x| > 2")
-        return
-
     main_net.save_quantized(path, "nn")
+    
     if quantize:
         pokemon_net.save_quantized(path, "p")
         active_net.save_quantized(path, "a")
